@@ -1,0 +1,8 @@
+image: cloudfoundry/inigo-ci
+
+env:
+  - GINKGO_PARALLEL=true
+  - DEFAULT_EVENTUALLY_TIMEOUT=15s
+
+script:
+  - ./src/github.com/cloudfoundry-incubator/vizzini/scripts/dev-test-inner

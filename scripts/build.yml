@@ -1,0 +1,14 @@
+---
+image: docker:///cloudfoundry/inigo-ci
+
+params:
+  GINKGO_PARALLEL: true
+  DEFAULT_EVENTUALLY_TIMEOUT: 15s
+
+run:
+  path: bash
+  args:
+    - '-c'
+    - |
+      cd vizzini/ &&
+      ./src/github.com/cloudfoundry-incubator/vizzini/scripts/dev-test-inner "$@"

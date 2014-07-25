@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e -x
+
+export GOROOT=/usr/local/go
+export PATH=${GOROOT}/bin:${PATH}
+
+export GOPATH_ROOT=$PWD
+
+export GOPATH=${GOPATH_ROOT}
+export PATH=${GOPATH_ROOT}/bin:${PATH}
+
+# set up compile-time $GOPATHs for each component
+export LOGGREGATOR_GOPATH=${GOPATH_ROOT}/loggregator
+export EXECUTOR_GOPATH=${GOPATH_ROOT}
+export AUCTIONEER_GOPATH=${GOPATH_ROOT}
+export CONVERGER_GOPATH=${GOPATH_ROOT}
+export REP_GOPATH=${GOPATH_ROOT}
+export STAGER_GOPATH=${GOPATH_ROOT}
+export APP_MANAGER_GOPATH=${GOPATH_ROOT}
+export FILE_SERVER_GOPATH=${GOPATH_ROOT}
+export WARDEN_LINUX_GOPATH=${GOPATH_ROOT}
+export ROUTE_EMITTER_GOPATH=${GOPATH_ROOT}
+export ROUTER_GOPATH=${GOPATH_ROOT}
+export LINUX_CIRCUS_GOPATH=${GOPATH_ROOT}
+export TPS_GOPATH=${GOPATH_ROOT}
+export NSYNC_GOPATH=${GOPATH_ROOT}
+
+# install application dependencies
+for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
+  go install $package
+done
+
+$(dirname $0)/drone-test "$@"
