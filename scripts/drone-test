@@ -15,9 +15,5 @@ export WARDEN_ROOTFS=/opt/warden/rootfs
 export EXTERNAL_ADDRESS=$(ip route get 8.8.8.8 | sed 's/.*src\s\(.*\)\s/\1/;tx;d;:x')
 
 pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/vizzini
-  if [ "$GINKGO_PARALLEL" = "true" ]; then
-    ginkgo -r -failOnPending -randomizeAllSpecs -trace -race -v -slowSpecThreshold=10 "$@"
-  else
-    ginkgo -r -failOnPending -randomizeAllSpecs -trace -race -slowSpecThreshold=10 "$@"
-  fi
+    ginkgo -r -failOnPending -randomizeAllSpecs -trace -v -slowSpecThreshold=10 "$@"
 popd

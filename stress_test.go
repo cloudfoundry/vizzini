@@ -45,9 +45,9 @@ var _ = Describe("Stress tests", func() {
 			nTasks := 100
 			for i := 0; i < nRounds; i++ {
 				totalResources, _ := c.TotalResources()
-				vizzini.Printf("Total resources: %s\n", format.Object(totalResources, 0))
+				vizzini.Printf("\nTotal resources: %s\n", format.Object(totalResources, 0))
 				remainingResources, _ := c.RemainingResources()
-				vizzini.Printf("Remaining resources: %s\n", format.Object(remainingResources, 0))
+				vizzini.Printf("\nRemaining resources: %s\n", format.Object(remainingResources, 0))
 
 				for j := 0; j < nTasks; j++ {
 					task := factories.BuildTaskWithRunAction(
@@ -66,7 +66,7 @@ var _ = Describe("Stress tests", func() {
 					resources, _ := c.RemainingResources()
 					tasks, _ := bbs.GetAllCompletedTasks()
 					vizzini.Printf("\nHave %d completed tasks\n", len(tasks))
-					vizzini.Printf("Remaining resources: %s\n", format.Object(resources, 0))
+					vizzini.Printf("\nRemaining resources: %s\n", format.Object(resources, 0))
 					return tasks
 				}, 120, 1).Should(HaveLen(nTasks))
 				Eventually(inigo_server.ReportingGuids, 120).Should(HaveLen((i + 1) * nTasks))
