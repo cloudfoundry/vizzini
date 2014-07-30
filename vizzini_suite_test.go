@@ -1,9 +1,5 @@
 package vizzini_test
 
-/*
-This is just inigo_suite_test and should always only every be inigo_suite_test
-*/
-
 import (
 	"encoding/json"
 	"fmt"
@@ -12,12 +8,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner"
 	"github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner"
 	"github.com/cloudfoundry-incubator/converger/converger_runner"
 	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
@@ -48,6 +44,11 @@ var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
 var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
 var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
 
+const CONVERGE_REPEAT_INTERVAL = time.Second
+const PENDING_AUCTION_KICK_THRESHOLD = time.Second
+const CLAIMED_AUCTION_REAP_THRESHOLD = 5 * time.Second
+const WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL = CONVERGE_REPEAT_INTERVAL * 3
+
 var wardenRunner *WardenRunner.Runner
 
 type sharedContextType struct {
@@ -56,7 +57,6 @@ type sharedContextType struct {
 	ConvergerPath     string
 	RepPath           string
 	StagerPath        string
-	AppManagerPath    string
 	NsyncListenerPath string
 	FileServerPath    string
 	LoggregatorPath   string
@@ -115,8 +115,7 @@ type suiteContextType struct {
 	RepRunner *reprunner.Runner
 	RepPort   int
 
-	StagerRunner     *stager_runner.StagerRunner
-	AppManagerRunner *app_manager_runner.AppManagerRunner
+	StagerRunner *stager_runner.StagerRunner
 
 	NsyncListenerRunner ifrit.Runner
 
@@ -145,7 +144,6 @@ func (context suiteContextType) Runners() []Runner {
 		context.ConvergerRunner,
 		context.RepRunner,
 		context.StagerRunner,
-		context.AppManagerRunner,
 		context.FileServerRunner,
 		context.LoggregatorRunner,
 		context.NatsRunner,
@@ -172,7 +170,7 @@ func beforeSuite(encodedSharedContext []byte) {
 		SharedContext:           sharedContext,
 		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
 		RepStack:                "lucid64",
-		ExecutorID:              "the-executor-id-" + string(config.GinkgoConfig.ParallelNode),
+		ExecutorID:              "the-executor-id-" + strconv.Itoa(config.GinkgoConfig.ParallelNode),
 		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
 		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
 		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
@@ -272,13 +270,8 @@ func beforeSuite(encodedSharedContext []byte) {
 		context.SharedContext.NsyncListenerPath,
 		"-etcdCluster", strings.Join(context.EtcdRunner.NodeURLS(), ","),
 		"-natsAddresses", fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
-	)
-
-	context.AppManagerRunner = app_manager_runner.New(
-		context.SharedContext.AppManagerPath,
-		context.EtcdRunner.NodeURLS(),
-		map[string]string{context.RepStack: "some-lifecycle-bundle.tgz"},
-		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
+		"-circuses", `{"`+context.RepStack+`":"some-lifecycle-bundle.tgz"}`,
+		"-repAddrRelativeToExecutor", fmt.Sprintf("127.0.0.1:%d", context.RepPort),
 	)
 
 	context.FileServerRunner = fileserver_runner.New(
@@ -335,7 +328,7 @@ func afterSuite() {
 	suiteContext.StopRunners()
 }
 
-func TestInigo(t *testing.T) {
+func TestVizzini(t *testing.T) {
 	registerDefaultTimeouts()
 
 	RegisterFailHandler(Fail)
@@ -373,7 +366,7 @@ func TestInigo(t *testing.T) {
 		Eventually(suiteContext.WardenProcess.Wait(), 10*time.Second).Should(Receive())
 	})
 
-	RunSpecs(t, "Vizzini Integration Suite")
+	RunSpecs(t, "Inigo Integration Suite")
 }
 
 func registerDefaultTimeouts() {
@@ -425,9 +418,6 @@ func (node *nodeOneType) CompileTestedExecutables() {
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.NsyncListenerPath, err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/listener", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.AppManagerPath, err = gexec.BuildIn(os.Getenv("APP_MANAGER_GOPATH"), "github.com/cloudfoundry-incubator/app-manager", "-race")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	node.context.FileServerPath, err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")

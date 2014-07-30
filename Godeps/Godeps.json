@@ -19,10 +19,6 @@
 			"Rev": "48be7df2c27e1cec821a3284a683ce6ef90d9052"
 		},
 		{
-			"ImportPath": "github.com/cloudfoundry-incubator/app-manager/integration/app_manager_runner",
-			"Rev": "e6d78cefcab5619351164a4b6b18971b661b989a"
-		},
-		{
 			"ImportPath": "github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner",
 			"Rev": "e985fe095f038e0a6b2222a7a311467173bc662f"
 		},
