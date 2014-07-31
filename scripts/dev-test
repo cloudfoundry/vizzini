@@ -2,6 +2,13 @@
 
 set -e -x
 
+#first off, make sure we compile
+go test -c
+rm vizzini.test
+
+DEV_GOPATH=$HOME/go
+STAGING_AREA=/tmp/vizzini
+
 REPOS="
   github.com/cloudfoundry-incubator/vizzini
   github.com/cloudfoundry-incubator/auctioneer
@@ -19,18 +26,10 @@ REPOS="
   github.com/cloudfoundry-incubator/tps
 "
 
-DEV_GOPATH=$(cd $HOME/go && pwd)
-TMP_GOPATH=/tmp/inigo
+mkdir -p ${STAGING_AREA}
+cp $(dirname $0)/build.yml ${STAGING_AREA}/build.yml
 
-mkdir -p ${TMP_GOPATH}
-
-cp $(dirname $0)/.drone.yml ${TMP_GOPATH}/.drone.yml
-cp $(dirname $0)/build.yml ${TMP_GOPATH}/build.yml
-
-go test -c
-rm vizzini.test
-
-pushd $TMP_GOPATH
+pushd $STAGING_AREA
   # make sure we have all our dependencies (any version)
   go get $(for repo in $REPOS; do echo -n " $repo/..."; done)
 
@@ -42,8 +41,8 @@ pushd $TMP_GOPATH
 popd
 
 function copy_to_gopath {
-  mkdir -p ${TMP_GOPATH}/src/${1}
-  rsync --del --exclude '.*' --exclude '*.test' -a ${DEV_GOPATH}/src/${1}/ ${TMP_GOPATH}/src/${1}/
+  mkdir -p ${STAGING_AREA}/src/${1}
+  rsync --del --exclude '.*' --exclude '*.test' -a ${DEV_GOPATH}/src/${1}/ ${STAGING_AREA}/src/${1}/
 }
 
 # grab and set up our components
@@ -56,14 +55,10 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   copy_to_gopath $package &
 done
 
-rsync --del --exclude '.*' -a ~/workspace/loggregator/ ${TMP_GOPATH}/loggregator/ &
+rsync --del --exclude '.*' -a ~/workspace/loggregator/ ${STAGING_AREA}/loggregator/ &
 
 wait
 
-cd $TMP_GOPATH
+cd $STAGING_AREA
 
-if [ -n "$GLIDER_URL" ]; then
-  fly -- bogus-argv-0 "$@"
-else
-  drone -privileged build
-fi
+fly -- bogus-argv-0 "$@"

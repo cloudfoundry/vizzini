@@ -31,4 +31,18 @@ for package in github.com/coreos/etcd github.com/apcera/gnatsd; do
   go install $package
 done
 
-$(dirname $0)/drone-test "$@"
+pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/warden-linux
+  make # compile wshd/etc.
+  export WARDEN_BINPATH=$PWD/linux_backend/bin
+popd
+
+go install github.com/onsi/ginkgo/ginkgo
+
+export WARDEN_ROOTFS=/opt/warden/rootfs
+
+# used for routing to apps; same logic that Warden uses.
+export EXTERNAL_ADDRESS=$(ip route get 8.8.8.8 | sed 's/.*src\s\(.*\)\s/\1/;tx;d;:x')
+
+pushd $GOPATH_ROOT/src/github.com/cloudfoundry-incubator/vizzini
+    ginkgo -r -failOnPending -randomizeAllSpecs -trace -v -slowSpecThreshold=10 "$@"
+popd
