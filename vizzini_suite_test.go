@@ -366,7 +366,7 @@ func TestVizzini(t *testing.T) {
 		Eventually(suiteContext.WardenProcess.Wait(), 10*time.Second).Should(Receive())
 	})
 
-	RunSpecs(t, "Inigo Integration Suite")
+	RunSpecs(t, "Vizzini Integration Suite")
 }
 
 func registerDefaultTimeouts() {

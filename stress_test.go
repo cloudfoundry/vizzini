@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
-	steno "github.com/cloudfoundry/gosteno"
+	"github.com/cloudfoundry-incubator/garden/warden"
+
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/pivotal-golang/lager"
 
 	"github.com/cloudfoundry-incubator/executor/client"
 	"github.com/cloudfoundry-incubator/inigo/inigo_server"
@@ -22,31 +26,41 @@ var _ = Describe("Stress tests", func() {
 	var bbs *Bbs.BBS
 
 	BeforeEach(func() {
-		logSink := steno.NewTestingSink()
-
-		steno.Init(&steno.Config{
-			Sinks: []steno.Sink{logSink},
-		})
-
-		logger := steno.NewLogger("the-logger")
-		steno.EnterTestMode()
-
-		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider(), logger)
+		bbs = Bbs.NewBBS(suiteContext.EtcdRunner.Adapter(), timeprovider.NewTimeProvider(), lager.NewLogger("vizzini"))
 	})
 
-	Describe("{serial} Handling many tasks", func() {
+	XDescribe("{serial} Handling many tasks", func() {
 		BeforeEach(func() {
 			suiteContext.ExecutorRunner.Start()
 			suiteContext.RepRunner.Start()
 		})
 
+		AfterEach(func() {
+			containers, err := suiteContext.WardenClient.Containers(nil)
+			Ω(err).ShouldNot(HaveOccurred())
+			wg := &sync.WaitGroup{}
+			for _, container := range containers {
+				wg.Add(1)
+				go func(container warden.Container) {
+					handle := container.Handle()
+					vizzini.Println("Deleting ", handle)
+					suiteContext.WardenClient.Destroy(handle)
+					vizzini.Println("Done ", handle)
+					wg.Done()
+				}(container)
+			}
+			wg.Wait()
+		})
+
 		It("should be able to gently ramp up to handle many tasks without issue", func() {
 			c := client.New(http.DefaultClient, fmt.Sprintf("http://127.0.0.1:%d", suiteContext.ExecutorPort))
-			nTasks := 100
 			totalResources, _ := c.TotalResources()
-			vizzini.Printf("\nTotal resources: %s\n", format.Object(totalResources, 0))
+			vizzini.Printf("Total resources: %s\n", format.Object(totalResources, 0))
 			remainingResources, _ := c.RemainingResources()
-			vizzini.Printf("\nRemaining resources: %s\n", format.Object(remainingResources, 0))
+			vizzini.Printf("Remaining resources: %s\n", format.Object(remainingResources, 0))
+			nTasks := totalResources.Containers - 1
+
+			t := time.Now()
 
 			for j := 0; j < nTasks; j++ {
 				guid := factories.GenerateGuid()
@@ -54,6 +68,7 @@ var _ = Describe("Stress tests", func() {
 					Guid:     guid,
 					MemoryMB: 10,
 					DiskMB:   10,
+					Domain:   "vizzini",
 					Actions: []models.ExecutorAction{
 						{Action: models.RunAction{
 							Path: "bash",
@@ -63,26 +78,26 @@ var _ = Describe("Stress tests", func() {
 					Stack: suiteContext.RepStack,
 				}
 
-				vizzini.Printf("Scheduling %d [%s]...\n", j+1, task.Guid)
+				vizzini.Printf("Scheduling %d [%s]...\n", j+1, guid)
 				err := bbs.DesireTask(task)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(inigo_server.ReportingGuids).Should(ContainElement(guid))
+				Eventually(inigo_server.ReportingGuids, DEFAULT_EVENTUALLY_TIMEOUT, 0.1).Should(ContainElement(guid))
 
 				remainingResources, _ := c.RemainingResources()
-				vizzini.Printf("\n...#%d is up.  Remaining resources: %s\n", j+1, format.Object(remainingResources, 0))
+				vizzini.Printf("...#%d is up [took %s].  Remaining resources: %s\n", j+1, time.Since(t), format.Object(remainingResources, 0))
 			}
 		})
 
 		It("should be able to run many tasks simultaneously without issue", func() {
 			c := client.New(http.DefaultClient, fmt.Sprintf("http://127.0.0.1:%d", suiteContext.ExecutorPort))
 			nRounds := 10
-			nTasks := 100
+			nTasks := 20
 			for i := 0; i < nRounds; i++ {
 				totalResources, _ := c.TotalResources()
-				vizzini.Printf("\nTotal resources: %s\n", format.Object(totalResources, 0))
+				vizzini.Printf("Total resources: %s\n", format.Object(totalResources, 0))
 				remainingResources, _ := c.RemainingResources()
-				vizzini.Printf("\nRemaining resources: %s\n", format.Object(remainingResources, 0))
+				vizzini.Printf("Remaining resources: %s\n", format.Object(remainingResources, 0))
 
 				for j := 0; j < nTasks; j++ {
 					guid := factories.GenerateGuid()
@@ -90,6 +105,7 @@ var _ = Describe("Stress tests", func() {
 						Guid:     guid,
 						MemoryMB: 10,
 						DiskMB:   10,
+						Domain:   "vizzini",
 						Actions: []models.ExecutorAction{
 							{Action: models.RunAction{
 								Path: "bash",
@@ -107,11 +123,10 @@ var _ = Describe("Stress tests", func() {
 				Eventually(func() interface{} {
 					resources, _ := c.RemainingResources()
 					tasks, _ := bbs.GetAllCompletedTasks()
-					vizzini.Printf("\nHave %d completed tasks\n", len(tasks))
-					vizzini.Printf("\nRemaining resources: %s\n", format.Object(resources, 0))
+					vizzini.Printf("Have %d completed tasks.  Remaining Resources: %s\n", len(tasks), format.Object(resources, 0))
 					return tasks
-				}, 120, 1).Should(HaveLen(nTasks))
-				Eventually(inigo_server.ReportingGuids, 120).Should(HaveLen((i + 1) * nTasks))
+				}, 5*time.Minute, 1).Should(HaveLen((i + 1) * nTasks))
+				Eventually(inigo_server.ReportingGuids).Should(HaveLen((i + 1) * nTasks))
 			}
 		})
 	})
