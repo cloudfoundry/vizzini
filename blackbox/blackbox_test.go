@@ -28,12 +28,12 @@ func graceIndices() map[string]int {
 			continue
 		}
 
-		response.Body.Close()
-
 		if response.StatusCode == http.StatusOK {
 			indexStr, _ := ioutil.ReadAll(response.Body)
 			counts[string(indexStr)] += 1
 		}
+
+		response.Body.Close()
 	}
 
 	return counts
@@ -55,6 +55,11 @@ func stats() {
 	Eventually(session).Should(gexec.Exit(0))
 	resources := session.Out.Contents()
 
+	session, err = gexec.Start(exec.Command("veritas", "executor-containers"), nil, nil)
+	Ω(err).ShouldNot(HaveOccurred())
+	Eventually(session).Should(gexec.Exit(0))
+	containers := session.Out.Contents()
+
 	say.Fprintln(GinkgoWriter, 0, ">>>>>>>>>>")
 	say.Fprintln(GinkgoWriter, 0, "Stats: %s", time.Since(t))
 	say.Fprintln(GinkgoWriter, 1, say.Green("BBS"))
@@ -63,6 +68,8 @@ func stats() {
 	say.Fprintln(GinkgoWriter, 2, string(vitals))
 	say.Fprintln(GinkgoWriter, 1, say.Green("Executor Resources"))
 	say.Fprintln(GinkgoWriter, 2, string(resources))
+	say.Fprintln(GinkgoWriter, 1, say.Green("Executor Containers"))
+	say.Fprintln(GinkgoWriter, 2, string(containers))
 	say.Fprintln(GinkgoWriter, 0, "<<<<<<<<<<")
 }
 
