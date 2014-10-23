@@ -7,9 +7,9 @@ import (
 	BBS "github.com/cloudfoundry-incubator/runtime-schema/bbs"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	"github.com/cloudfoundry/gunk/timeprovider"
+	"github.com/cloudfoundry/gunk/workpool"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/etcdstoreadapter"
-	"github.com/cloudfoundry/storeadapter/workerpool"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -20,7 +20,7 @@ var _ = Describe("Tasks", func() {
 	BeforeEach(func() {
 		store = etcdstoreadapter.NewETCDStoreAdapter([]string{
 			"http://10.244.16.2.xip.io:4001",
-		}, workerpool.NewWorkerPool(10))
+		}, workpool.NewWorkPool(10))
 		err := store.Connect()
 		Ω(err).ShouldNot(HaveOccurred())
 		bbs = BBS.NewBBS(store, timeprovider.NewTimeProvider(), lager.NewLogger("bbs"))
@@ -31,8 +31,8 @@ var _ = Describe("Tasks", func() {
 			It("should, eventually, be marked as failed", func() {
 				tasks, stop, _ := bbs.WatchForCompletedTask()
 				err := bbs.DesireTask(models.Task{
-					Guid:   "some-task-guid",
-					Domain: "vizzini",
+					TaskGuid: "some-task-guid",
+					Domain:   "vizzini",
 					Actions: []models.ExecutorAction{
 						{models.RunAction{Path: "touch", Args: []string{"/tmp/foo"}}},
 					},

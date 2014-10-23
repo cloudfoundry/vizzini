@@ -5,9 +5,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/cloudfoundry-incubator/garden/api"
 	"github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
-	"github.com/cloudfoundry-incubator/garden/warden"
 	"github.com/onsi/gomega/gbytes"
 
 	. "github.com/onsi/ginkgo"
@@ -50,7 +50,7 @@ Using this test is non-trivial.  You must:
 			if err != nil {
 				fmt.Println("CREATING CONTAINER")
 
-				_, err = gardenClient.Create(warden.ContainerSpec{
+				_, err = gardenClient.Create(api.ContainerSpec{
 					Handle: handle,
 					Env: []string{
 						"ROOT_ENV=A",
@@ -66,13 +66,13 @@ Using this test is non-trivial.  You must:
 			container, err := gardenClient.Lookup(handle)
 			Ω(err).ShouldNot(HaveOccurred())
 			buffer := gbytes.NewBuffer()
-			process, err := container.Run(warden.ProcessSpec{
+			process, err := container.Run(api.ProcessSpec{
 				Path: "bash",
 				Args: []string{"-c", "printenv"},
 				Env: []string{
 					"OVERWRITTEN_ENV=C",
 				},
-			}, warden.ProcessIO{
+			}, api.ProcessIO{
 				Stdout: io.MultiWriter(buffer, GinkgoWriter),
 				Stderr: io.MultiWriter(buffer, GinkgoWriter),
 			})
@@ -92,8 +92,61 @@ Using this test is non-trivial.  You must:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	Describe("things that now work", func() {
+		FDescribe("Properties (#81124130)", func() {
+			var handle string
+			var container api.Container
+
+			BeforeEach(func() {
+				var err error
+				handle = NewGuid()
+				container, err = gardenClient.Create(api.ContainerSpec{
+					Handle: handle,
+					Properties: api.Properties{
+						"A": "blaster",
+						"B": "lightsaber",
+					},
+				})
+
+				Ω(err).ShouldNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				Ω(gardenClient.Destroy(handle)).Should(Succeed())
+			})
+
+			It("should allow CRUDing properties", func() {
+				By("getting properties set on creation")
+				Ω(container.GetProperty("A")).Should(Equal("blaster"))
+				Ω(container.GetProperty("B")).Should(Equal("lightsaber"))
+
+				By("setting and getting new properties")
+				Ω(container.SetProperty("C", "x-wing")).Should(Succeed())
+				Ω(container.GetProperty("C")).Should(Equal("x-wing"))
+
+				By("modifying existing properties")
+				Ω(container.SetProperty("A", "phaser")).Should(Succeed())
+				Ω(container.GetProperty("A")).Should(Equal("phaser"))
+				Ω(container.SetProperty("C", "enterprise")).Should(Succeed())
+				Ω(container.GetProperty("C")).Should(Equal("enterprise"))
+
+				By("fetching non-existing properties")
+				property, err := container.GetProperty("D")
+				Ω(property).Should(BeZero())
+				Ω(err).Should(HaveOccurred())
+
+				By("removing properites")
+				Ω(container.RemoveProperty("A")).Should(Succeed())
+				Ω(container.RemoveProperty("C")).Should(Succeed())
+				_, err = container.GetProperty("A")
+				Ω(err).Should(HaveOccurred())
+				_, err = container.GetProperty("C")
+				Ω(err).Should(HaveOccurred())
+				Ω(container.GetProperty("B")).Should(Equal("lightsaber"))
+			})
+		})
+
 		It("should fail when attempting to delete a container twice (#76616270)", func() {
-			_, err := gardenClient.Create(warden.ContainerSpec{
+			_, err := gardenClient.Create(api.ContainerSpec{
 				Handle: "my-fun-handle",
 			})
 			Ω(err).ShouldNot(HaveOccurred())
@@ -115,7 +168,7 @@ Using this test is non-trivial.  You must:
 		})
 
 		It("should support setting environment variables on the container (#77303456)", func() {
-			container, err := gardenClient.Create(warden.ContainerSpec{
+			container, err := gardenClient.Create(api.ContainerSpec{
 				Handle: "cap'n-planet",
 				Env: []string{
 					"ROOT_ENV=A",
@@ -126,13 +179,13 @@ Using this test is non-trivial.  You must:
 			Ω(err).ShouldNot(HaveOccurred())
 
 			buffer := gbytes.NewBuffer()
-			process, err := container.Run(warden.ProcessSpec{
+			process, err := container.Run(api.ProcessSpec{
 				Path: "bash",
 				Args: []string{"-c", "printenv"},
 				Env: []string{
 					"OVERWRITTEN_ENV=C",
 				},
-			}, warden.ProcessIO{
+			}, api.ProcessIO{
 				Stdout: io.MultiWriter(buffer, GinkgoWriter),
 				Stderr: io.MultiWriter(buffer, GinkgoWriter),
 			})
@@ -152,7 +205,7 @@ Using this test is non-trivial.  You must:
 
 		It("should fail when creating a container shows rootfs does not have /bin/sh (#77771202)", func() {
 			handle := uniqueHandle()
-			_, err := gardenClient.Create(warden.ContainerSpec{
+			_, err := gardenClient.Create(api.ContainerSpec{
 				Handle:     handle,
 				RootFSPath: "docker:///cloudfoundry/empty",
 			})
@@ -165,7 +218,7 @@ Using this test is non-trivial.  You must:
 				err := gardenClient.Destroy(handle)
 				Ω(err).Should(HaveOccurred())
 
-				_, err = gardenClient.Create(warden.ContainerSpec{
+				_, err = gardenClient.Create(api.ContainerSpec{
 					Handle: handle,
 				})
 				Ω(err).ShouldNot(HaveOccurred())
@@ -183,12 +236,12 @@ Using this test is non-trivial.  You must:
 			It("should not allow creating an already existing container", func() {
 				handle := fmt.Sprintf("%d", time.Now().UnixNano())
 
-				_, err := gardenClient.Create(warden.ContainerSpec{
+				_, err := gardenClient.Create(api.ContainerSpec{
 					Handle: handle,
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				_, err = gardenClient.Create(warden.ContainerSpec{
+				_, err = gardenClient.Create(api.ContainerSpec{
 					Handle: handle,
 				})
 				Ω(err).Should(HaveOccurred(), "Expected an error when creating a Garden container with an existing handle")
@@ -199,15 +252,15 @@ Using this test is non-trivial.  You must:
 
 		Describe("mounting docker images", func() {
 			It("should mount an ubuntu docker image, just fine", func() {
-				container, err := gardenClient.Create(warden.ContainerSpec{
+				container, err := gardenClient.Create(api.ContainerSpec{
 					Handle:     "my-ubuntu-based-docker-image",
 					RootFSPath: "docker:///onsi/grace",
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				process, err := container.Run(warden.ProcessSpec{
+				process, err := container.Run(api.ProcessSpec{
 					Path: "ls",
-				}, warden.ProcessIO{
+				}, api.ProcessIO{
 					Stdout: GinkgoWriter,
 					Stderr: GinkgoWriter,
 				})
@@ -219,15 +272,15 @@ Using this test is non-trivial.  You must:
 			})
 
 			It("should mount a none-ubuntu docker image, just fine", func() {
-				container, err := gardenClient.Create(warden.ContainerSpec{
+				container, err := gardenClient.Create(api.ContainerSpec{
 					Handle:     "my-none-ubuntu-based-docker-image",
 					RootFSPath: "docker:///onsi/grace-busybox",
 				})
 				Ω(err).ShouldNot(HaveOccurred())
 
-				process, err := container.Run(warden.ProcessSpec{
+				process, err := container.Run(api.ProcessSpec{
 					Path: "ls",
-				}, warden.ProcessIO{
+				}, api.ProcessIO{
 					Stdout: GinkgoWriter,
 					Stderr: GinkgoWriter,
 				})
