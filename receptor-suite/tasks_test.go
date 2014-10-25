@@ -252,9 +252,6 @@ var _ = Describe("Tasks", func() {
 			It("should not be deleted, and should error", func() {
 				err := client.DeleteTask("floobeedoobee")
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotFound))
-
-				_, err = client.GetAllTasksByDomain(domain)
-				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})
 	})
