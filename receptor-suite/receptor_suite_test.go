@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"testing"
+	"time"
 
 	"github.com/cloudfoundry-incubator/receptor"
 )
@@ -28,10 +29,15 @@ func NewGuid() string {
 }
 
 var _ = BeforeSuite(func() {
+	SetDefaultEventuallyTimeout(3 * time.Second)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	client = receptor.NewClient("10.244.17.2:8888", "", "")
 	stack = "lucid64"
 
 	_, err := client.GetAllTasks()
 	Ω(err).ShouldNot(HaveOccurred())
+})
+
+var _ = SynchronizedAfterSuite(func() {}, func() {
+	Ω(client.GetAllTasks()).Should(BeEmpty())
 })
