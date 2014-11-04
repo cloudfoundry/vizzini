@@ -92,7 +92,7 @@ Using this test is non-trivial.  You must:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	Describe("things that now work", func() {
-		FDescribe("Properties (#81124130)", func() {
+		Describe("Properties (#81124130)", func() {
 			var handle string
 			var container api.Container
 

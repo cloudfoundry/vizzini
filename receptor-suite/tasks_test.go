@@ -1,7 +1,13 @@
 package receptor_suite_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
+	"regexp"
+
+	"github.com/onsi/gomega/ghttp"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -44,11 +50,11 @@ var _ = Describe("Tasks", func() {
 					},
 				},
 			},
-			Stack:      stack,
-			MemoryMB:   128,
-			DiskMB:     128,
-			CpuPercent: 100,
-			Log: models.LogConfig{
+			Stack:     stack,
+			MemoryMB:  128,
+			DiskMB:    128,
+			CPUWeight: 100,
+			Log: receptor.LogConfig{
 				Guid:       guid,
 				SourceName: "VIZ",
 			},
@@ -134,6 +140,38 @@ var _ = Describe("Tasks", func() {
 				taskCopy.Stack = ""
 				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
 			})
+		})
+
+		Context("when the CPUWeight is out of bounds", func() {
+			It("should fail", func() {
+				task.CPUWeight = 101
+				err := client.CreateTask(task)
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+			})
+		})
+	})
+
+	Describe("Creating a Docker-based Task", func() {
+		BeforeEach(func() {
+			task.RootFSPath = "docker:///onsi/grace-busybox"
+			task.Actions = []models.ExecutorAction{
+				{
+					models.RunAction{
+						Path: "sh",
+						Args: []string{"-c", "ls / > /tmp/bar"},
+					},
+				},
+			}
+
+			Ω(client.CreateTask(task)).Should(Succeed())
+		})
+
+		It("should succeed", func() {
+			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(receptor.TaskStateCompleted), "Docker can be quite slow to spin up....")
+
+			task, err := client.GetTask(guid)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(task.Result).Should(ContainSubstring("grace"))
 		})
 	})
 
@@ -228,7 +266,7 @@ var _ = Describe("Tasks", func() {
 			})
 		})
 
-		XContext("when the task is not in the completed state", func() {
+		Context("when the task is not in the completed state", func() {
 			It("should not be deleted, and should error", func() {
 				task.Actions = []models.ExecutorAction{
 					{
@@ -248,10 +286,110 @@ var _ = Describe("Tasks", func() {
 			})
 		})
 
-		XContext("when the task does not exist", func() {
+		Context("when the task does not exist", func() {
 			It("should not be deleted, and should error", func() {
 				err := client.DeleteTask("floobeedoobee")
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotFound))
+			})
+		})
+	})
+
+	Describe("Registering Completion Callbacks", func() {
+		var testRunnerURL string
+		var server *ghttp.Server
+		var port string
+		var status int
+		var done chan struct{}
+
+		BeforeEach(func() {
+			testRunnerURL = "192.168.220.1"
+
+			server = ghttp.NewUnstartedServer()
+			l, err := net.Listen("tcp", "0.0.0.0:0")
+			Ω(err).ShouldNot(HaveOccurred())
+			server.HTTPTestServer.Listener = l
+			server.HTTPTestServer.Start()
+
+			re := regexp.MustCompile(`:(\d+)$`)
+			port = re.FindStringSubmatch(server.URL())[1]
+			Ω(port).ShouldNot(BeZero())
+
+			done = make(chan struct{})
+			server.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/endpoint"),
+				ghttp.RespondWithPtr(&status, nil),
+				func(w http.ResponseWriter, req *http.Request) {
+					var receivedTask receptor.TaskResponse
+					json.NewDecoder(req.Body).Decode(&receivedTask)
+					Ω(receivedTask.TaskGuid).Should(Equal(guid))
+					close(done)
+				},
+			))
+
+			task.CompletionCallbackURL = "http://" + testRunnerURL + ":" + port + "/endpoint"
+		})
+
+		AfterEach(func() {
+			server.Close()
+		})
+
+		Context("when the server responds succesfully", func() {
+			BeforeEach(func() {
+				status = http.StatusOK
+			})
+
+			It("cleans up the task", func() {
+				Ω(client.CreateTask(task)).Should(Succeed())
+				Eventually(done).Should(BeClosed())
+				Eventually(func() bool {
+					_, err := client.GetTask(guid)
+					return err == nil
+				}).Should(BeFalse(), "Eventually, the task should be resolved")
+			})
+		})
+
+		Context("when the server responds in the 4XX range", func() {
+			BeforeEach(func() {
+				status = http.StatusNotFound
+			})
+
+			It("nonetheless, cleans up the task", func() {
+				Ω(client.CreateTask(task)).Should(Succeed())
+				Eventually(done).Should(BeClosed())
+				Eventually(func() bool {
+					_, err := client.GetTask(guid)
+					return err == nil
+				}).Should(BeFalse(), "Eventually, the task should be resolved")
+			})
+		})
+
+		Context("when the server responds with 503 repeatedly", func() {
+			var secondDone chan struct{}
+
+			BeforeEach(func() {
+				status = http.StatusServiceUnavailable
+
+				secondDone = make(chan struct{})
+				server.AppendHandlers(ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/endpoint"),
+					ghttp.RespondWith(http.StatusOK, nil),
+					func(w http.ResponseWriter, req *http.Request) {
+						var receivedTask receptor.TaskResponse
+						json.NewDecoder(req.Body).Decode(&receivedTask)
+						Ω(receivedTask.TaskGuid).Should(Equal(guid))
+						close(secondDone)
+					},
+				))
+			})
+
+			It("should retry", func() {
+				Ω(client.CreateTask(task)).Should(Succeed())
+				Eventually(done).Should(BeClosed())
+				Eventually(secondDone).Should(BeClosed())
+				Eventually(func() bool {
+					_, err := client.GetTask(guid)
+					return err == nil
+				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
 		})
 	})
