@@ -23,7 +23,7 @@ func TaskGetter(guid string) func() (receptor.TaskResponse, error) {
 	}
 }
 
-func ClearOutDomain(domain string) {
+func ClearOutTasksInDomain(domain string) {
 	tasks, err := client.GetAllTasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
@@ -64,7 +64,7 @@ var _ = Describe("Tasks", func() {
 	})
 
 	AfterEach(func() {
-		ClearOutDomain(domain)
+		ClearOutTasksInDomain(domain)
 	})
 
 	Describe("Creating Tasks", func() {
@@ -151,7 +151,41 @@ var _ = Describe("Tasks", func() {
 		})
 	})
 
-	Describe("Creating a Docker-based Task", func() {
+	Describe("Specifying environment variables", func() {
+		BeforeEach(func() {
+			task.EnvironmentVariables = []receptor.EnvironmentVariable{
+				{"CONTAINER_LEVEL", "A"},
+				{"OVERRIDE", "B"},
+			}
+			task.Actions = []models.ExecutorAction{
+				{
+					models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "env > /tmp/bar"},
+						Env: []models.EnvironmentVariable{
+							{"ACTION_LEVEL", "C"},
+							{"OVERRIDE", "D"},
+						},
+					},
+				},
+			}
+		})
+
+		It("should be possible to specify environment variables on both the Task and the RunAction", func() {
+			Ω(client.CreateTask(task)).Should(Succeed())
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+
+			task, err := client.GetTask(guid)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(task.Result).Should(ContainSubstring("CONTAINER_LEVEL=A"))
+			Ω(task.Result).Should(ContainSubstring("ACTION_LEVEL=C"))
+			Ω(task.Result).Should(ContainSubstring("OVERRIDE=D"))
+			Ω(task.Result).ShouldNot(ContainSubstring("OVERRIDE=B"))
+		})
+	})
+
+	PDescribe("Creating a Docker-based Task -- PENDING AS THIS CAN FAIL AND DESTABILIZE EVERYTHING RIGHT NOW", func() {
 		BeforeEach(func() {
 			task.RootFSPath = "docker:///onsi/grace-busybox"
 			task.Actions = []models.ExecutorAction{
@@ -217,7 +251,7 @@ var _ = Describe("Tasks", func() {
 		})
 
 		AfterEach(func() {
-			ClearOutDomain(otherDomain)
+			ClearOutTasksInDomain(otherDomain)
 		})
 
 		It("should fetch tasks in the given domain", func() {
