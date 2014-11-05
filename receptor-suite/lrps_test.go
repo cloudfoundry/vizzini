@@ -117,7 +117,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 				models.ExecutorAction{
 					models.RunAction{
 						Path: "./grace",
-						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 					},
 				},
 				models.ExecutorAction{
@@ -242,6 +242,73 @@ var _ = Describe("LRPs", func() {
 				err := client.CreateDesiredLRP(lrp)
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
 			})
+		})
+	})
+
+	Describe("Specifying environment variables", func() {
+		BeforeEach(func() {
+			lrp.EnvironmentVariables = []receptor.EnvironmentVariable{
+				{"CONTAINER_LEVEL", "AARDVARK"},
+				{"OVERRIDE", "BANANA"},
+			}
+
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+		})
+
+		It("should be possible to specify environment variables on both the DesiredLRP and the RunAction", func() {
+			resp, err := http.Get(url)
+			Ω(err).ShouldNot(HaveOccurred())
+			body, err := ioutil.ReadAll(resp.Body)
+			Ω(err).ShouldNot(HaveOccurred())
+			resp.Body.Close()
+
+			Ω(body).Should(ContainSubstring("AARDVARK"))
+			Ω(body).Should(ContainSubstring("COYOTE"))
+			Ω(body).Should(ContainSubstring("DAQUIRI"))
+			Ω(body).ShouldNot(ContainSubstring("BANANA"))
+		})
+	})
+
+	Describe("Creating a Docker-based LRP", func() {
+		BeforeEach(func() {
+			lrp.RootFSPath = "docker:///onsi/grace-busybox"
+			lrp.Actions = []models.ExecutorAction{
+				{
+					models.DownloadAction{
+						From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
+						To:       "/tmp/circus",
+						CacheKey: "linux-circus",
+					},
+				},
+				models.Parallel(
+					models.ExecutorAction{
+						models.RunAction{
+							Path: "/grace",
+							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+						},
+					},
+					models.ExecutorAction{
+						models.MonitorAction{
+							Action: models.ExecutorAction{
+								models.RunAction{
+									Path: "/tmp/circus/spy",
+									Args: []string{"-addr=:8080"},
+								},
+							},
+							HealthyHook:        models.HealthRequest{Method: "PUT", URL: "http://127.0.0.1:20515/lrp_running/" + guid + "/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID"},
+							HealthyThreshold:   1,
+							UnhealthyThreshold: 1,
+						},
+					},
+				),
+			}
+
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+		})
+
+		It("should succeed", func() {
+			Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
 		})
 	})
 
