@@ -42,7 +42,7 @@ func NewGuid() string {
 var _ = BeforeSuite(func() {
 	SetDefaultEventuallyTimeout(10 * time.Second)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
-	client = receptor.NewClient("10.244.17.2:8888", "", "")
+	client = receptor.NewClient("receptor.10.244.0.34.xip.io", "", "")
 	stack = "lucid64"
 
 	_, err := client.GetAllTasks()

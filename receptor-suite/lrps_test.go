@@ -93,8 +93,8 @@ func RouteForGuid(guid string) string {
 	return fmt.Sprintf("%s.10.244.0.34.xip.io", guid)
 }
 
-func DesiredLRPWithGuid(guid string) receptor.CreateDesiredLRPRequest {
-	return receptor.CreateDesiredLRPRequest{
+func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
+	return receptor.DesiredLRPCreateRequest{
 		ProcessGuid: guid,
 		Domain:      domain,
 		Instances:   1,
@@ -154,7 +154,7 @@ func DesiredLRPWithGuid(guid string) receptor.CreateDesiredLRPRequest {
 }
 
 var _ = Describe("LRPs", func() {
-	var lrp receptor.CreateDesiredLRPRequest
+	var lrp receptor.DesiredLRPCreateRequest
 	var guid, url string
 
 	BeforeEach(func() {

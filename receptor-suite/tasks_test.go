@@ -34,12 +34,12 @@ func ClearOutTasksInDomain(domain string) {
 }
 
 var _ = Describe("Tasks", func() {
-	var task receptor.CreateTaskRequest
+	var task receptor.TaskCreateRequest
 	var guid string
 
 	BeforeEach(func() {
 		guid = NewGuid()
-		task = receptor.CreateTaskRequest{
+		task = receptor.TaskCreateRequest{
 			TaskGuid: guid,
 			Domain:   domain,
 			Actions: []models.ExecutorAction{
@@ -185,7 +185,7 @@ var _ = Describe("Tasks", func() {
 		})
 	})
 
-	PDescribe("Creating a Docker-based Task -- PENDING AS THIS CAN FAIL AND DESTABILIZE EVERYTHING RIGHT NOW", func() {
+	Describe("Creating a Docker-based Task", func() {
 		BeforeEach(func() {
 			task.RootFSPath = "docker:///onsi/grace-busybox"
 			task.Actions = []models.ExecutorAction{
