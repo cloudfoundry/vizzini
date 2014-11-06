@@ -1,7 +1,6 @@
 package receptor_suite_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,43 +13,15 @@ import (
 
 func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
 	return func() (receptor.DesiredLRPResponse, error) {
-		return GetDesiredLRP(guid)
+		return client.GetDesiredLRP(guid)
 	}
-}
-
-func GetDesiredLRP(guid string) (receptor.DesiredLRPResponse, error) {
-	lrps, err := client.GetAllDesiredLRPs()
-	if err != nil {
-		return receptor.DesiredLRPResponse{}, err
-	}
-	for _, lrp := range lrps {
-		if lrp.ProcessGuid == guid {
-			return lrp, nil
-		}
-	}
-	return receptor.DesiredLRPResponse{}, errors.New("no lrp found")
-}
-
-func GetDesiredLRPsInDomain(domain string) ([]receptor.DesiredLRPResponse, error) {
-	lrps, err := client.GetAllDesiredLRPs()
-	if err != nil {
-		return nil, err
-	}
-	filteredLRPs := []receptor.DesiredLRPResponse{}
-	for _, lrp := range lrps {
-		if lrp.Domain == domain {
-			filteredLRPs = append(filteredLRPs, lrp)
-		}
-	}
-
-	return filteredLRPs, nil
 }
 
 func ClearOutDesiredLRPsInDomain(domain string) {
-	lrps, err := GetDesiredLRPsInDomain(domain)
+	lrps, err := client.GetAllDesiredLRPsByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, lrp := range lrps {
-		Ω(temporaryBBS.RemoveDesiredLRPByProcessGuid(lrp.ProcessGuid)).Should(Succeed())
+		Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
 	}
 }
 
@@ -176,7 +147,7 @@ var _ = Describe("LRPs", func() {
 			It("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-				fetchedLRP, err := GetDesiredLRP(guid)
+				fetchedLRP, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(fetchedLRP.Annotation).Should(Equal("arbitrary-data"))
 			})
@@ -313,12 +284,12 @@ var _ = Describe("LRPs", func() {
 	})
 
 	Describe("Updating an existing DesiredLRP", func() {
-		Context("By redesiring it", func() {
-			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-			})
+		BeforeEach(func() {
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+		})
 
+		Context("By redesiring it", func() {
 			It("allows updating instances", func() {
 				lrp.Instances = 2
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -336,7 +307,7 @@ var _ = Describe("LRPs", func() {
 			It("allows updating annotations", func() {
 				lrp.Annotation = "my new annotation"
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				lrp, err := GetDesiredLRP(guid)
+				lrp, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(lrp.Annotation).Should(Equal("my new annotation"))
 			})
@@ -355,11 +326,100 @@ var _ = Describe("LRPs", func() {
 		})
 
 		Context("By explicitly updating it", func() {
+			Context("when the LRP exists", func() {
+				It("allows updating instances", func() {
+					two := 2
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Instances: &two,
+					})).Should(Succeed())
+					Eventually(IndexCounter(guid)).Should(Equal(2))
+				})
 
+				It("does not allow scaling down to 0", func() {
+					zero := 0
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Instances: &zero,
+					})).ShouldNot(Succeed())
+					Eventually(IndexCounter(guid)).Should(Equal(1))
+				})
+
+				It("allows updating routes", func() {
+					newRoute := RouteForGuid(NewGuid())
+					routes := append(lrp.Routes, newRoute)
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Routes: routes,
+					})).Should(Succeed())
+					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
+					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+				})
+
+				It("allows updating annotations", func() {
+					annotation := "my new annotation"
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Annotation: &annotation,
+					})).Should(Succeed())
+					lrp, err := client.GetDesiredLRP(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(lrp.Annotation).Should(Equal("my new annotation"))
+				})
+
+				It("allows multiple simultaneous updates", func() {
+					two := 2
+					annotation := "my new annotation"
+					newRoute := RouteForGuid(NewGuid())
+					routes := append(lrp.Routes, newRoute)
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Instances:  &two,
+						Routes:     routes,
+						Annotation: &annotation,
+					})).Should(Succeed())
+
+					Eventually(IndexCounter(guid)).Should(Equal(2))
+
+					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
+					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+
+					lrp, err := client.GetDesiredLRP(guid)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(lrp.Annotation).Should(Equal("my new annotation"))
+				})
+			})
+
+			Context("when the LRP does not exit", func() {
+				It("errors", func() {
+					two := 2
+					err := client.UpdateDesiredLRP("flooberdoobey", receptor.DesiredLRPUpdateRequest{
+						Instances: &two,
+					})
+					Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+				})
+			})
 		})
 	})
 
-	Describe("Getting All LRPs and Getting LRPs by Domain", func() {
+	Describe("Getting a DesiredLRP", func() {
+		Context("when the DesiredLRP exists", func() {
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			})
+
+			It("should succeed", func() {
+				lrp, err := client.GetDesiredLRP(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(lrp.ProcessGuid).Should(Equal(guid))
+			})
+		})
+
+		Context("when the DesiredLRP does not exist", func() {
+			It("should error", func() {
+				lrp, err := client.GetDesiredLRP("floobeedoo")
+				Ω(lrp).Should(BeZero())
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+			})
+		})
+	})
+
+	Describe("Getting All DesiredLRPs and Getting DesiredLRPs by Domain", func() {
 		var otherGuids []string
 		var otherDomain string
 
@@ -371,6 +431,7 @@ var _ = Describe("LRPs", func() {
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherLRP := DesiredLRPWithGuid(otherGuid)
+				otherLRP.Domain = otherDomain
 				Ω(client.CreateDesiredLRP(otherLRP)).Should(Succeed())
 				url := "http://" + RouteForGuid(otherGuid) + "/env"
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
@@ -381,10 +442,22 @@ var _ = Describe("LRPs", func() {
 			ClearOutDesiredLRPsInDomain(otherDomain)
 		})
 
-		PIt("should fetch desired lrps in the given domain", func() {
+		It("should fetch desired lrps in the given domain", func() {
+			defaultDomain, err := client.GetAllDesiredLRPsByDomain(domain)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			otherDomain, err := client.GetAllDesiredLRPsByDomain(otherDomain)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(defaultDomain).Should(HaveLen(1))
+			Ω(otherDomain).Should(HaveLen(2))
+			Ω([]string{otherDomain[0].ProcessGuid, otherDomain[1].ProcessGuid}).Should(ConsistOf(otherGuids))
 		})
 
-		PIt("should not error if a domain is empty", func() {
+		It("should not error if a domain is empty", func() {
+			domain, err := client.GetAllDesiredLRPsByDomain("farfignoogan")
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(domain).Should(BeEmpty())
 		})
 
 		It("should fetch all desired lrps", func() {
@@ -400,6 +473,27 @@ var _ = Describe("LRPs", func() {
 			Ω(lrpGuids).Should(ContainElement(guid))
 			Ω(lrpGuids).Should(ContainElement(otherGuids[0]))
 			Ω(lrpGuids).Should(ContainElement(otherGuids[1]))
+		})
+	})
+
+	Describe("Deleting DesiredLRPs", func() {
+		Context("when the DesiredLRP exists", func() {
+			It("should be deleted", func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+
+				Ω(client.DeleteDesiredLRP(guid)).Should(Succeed())
+				_, err := client.GetDesiredLRP(guid)
+				Ω(err).Should(HaveOccurred())
+				Eventually(EndpointCurler(url)).ShouldNot(Equal(http.StatusOK))
+			})
+		})
+
+		Context("when the DesiredLRP does not exist", func() {
+			It("should not be deleted, and should error", func() {
+				err := client.DeleteDesiredLRP("floobeedoobee")
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+			})
 		})
 	})
 })
