@@ -1,468 +1,57 @@
 package vizzini_test
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"reflect"
-	"strconv"
-	"strings"
-	"syscall"
+	"log"
+
+	"github.com/nu7hatch/gouuid"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"testing"
 	"time"
 
-	"github.com/cloudfoundry-incubator/auctioneer/integration/auctioneer_runner"
-	"github.com/cloudfoundry-incubator/converger/converger_runner"
-	"github.com/cloudfoundry-incubator/executor/integration/executor_runner"
-	"github.com/cloudfoundry-incubator/garden/warden"
-	"github.com/cloudfoundry-incubator/nsync/integration/runner"
-	"github.com/cloudfoundry-incubator/rep/reprunner"
-	"github.com/cloudfoundry-incubator/route-emitter/integration/route_emitter_runner"
-	"github.com/cloudfoundry-incubator/tps/integration/tpsrunner"
-	WardenRunner "github.com/cloudfoundry-incubator/warden-linux/integration/runner"
-	gorouterconfig "github.com/cloudfoundry/gorouter/config"
-	"github.com/cloudfoundry/gunk/natsrunner"
-	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
-	"github.com/tedsuo/ifrit"
-
-	"github.com/cloudfoundry-incubator/inigo/fake_cc"
-	"github.com/cloudfoundry-incubator/inigo/fileserver_runner"
-	"github.com/cloudfoundry-incubator/inigo/inigo_server"
-	"github.com/cloudfoundry-incubator/inigo/loggregator_runner"
-	"github.com/cloudfoundry-incubator/inigo/router_runner"
-	"github.com/cloudfoundry-incubator/stager/integration/stager_runner"
+	"github.com/cloudfoundry-incubator/receptor"
 )
 
-var DEFAULT_EVENTUALLY_TIMEOUT = 15 * time.Second
-var DEFAULT_CONSISTENTLY_DURATION = 5 * time.Second
-var AUCTION_MAX_ROUNDS = 3 //we limit this to prevent overwhelming numbers of auctioneer logs.  it should not impact the behavior of the tests.
+var client receptor.Client
+var domain string
+var stack string
 
-const CONVERGE_REPEAT_INTERVAL = time.Second
-const PENDING_AUCTION_KICK_THRESHOLD = time.Second
-const CLAIMED_AUCTION_REAP_THRESHOLD = 5 * time.Second
-const WAIT_FOR_MULTIPLE_CONVERGE_INTERVAL = CONVERGE_REPEAT_INTERVAL * 3
+var receptorAddress, receptorUsername, receptorPassword string
 
-var wardenRunner *WardenRunner.Runner
+func init() {
+	flag.StringVar(&receptorAddress, "receptor-address", "receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
+	flag.StringVar(&receptorUsername, "receptor-username", "", "receptor username")
+	flag.StringVar(&receptorUsername, "receptor-password", "", "receptor password")
+	flag.Parse()
 
-type sharedContextType struct {
-	AuctioneerPath    string
-	ExecutorPath      string
-	ConvergerPath     string
-	RepPath           string
-	StagerPath        string
-	NsyncListenerPath string
-	FileServerPath    string
-	LoggregatorPath   string
-	RouteEmitterPath  string
-	RouterPath        string
-	CircusZipPath     string
-	TPSPath           string
-	WardenPath        string
-}
-
-func DecodeSharedContext(data []byte) sharedContextType {
-	var context sharedContextType
-	err := json.Unmarshal(data, &context)
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return context
-}
-
-func (d sharedContextType) Encode() []byte {
-	data, err := json.Marshal(d)
-	Ω(err).ShouldNot(HaveOccurred())
-	return data
-}
-
-type Runner interface {
-	KillWithFire()
-}
-
-type suiteContextType struct {
-	SharedContext sharedContextType
-
-	ExternalAddress string
-
-	RepStack   string
-	ExecutorID string
-	EtcdRunner *etcdstorerunner.ETCDClusterRunner
-
-	WardenProcess ifrit.Process
-	WardenClient  warden.Client
-
-	NatsRunner *natsrunner.NATSRunner
-	NatsPort   int
-
-	LoggregatorRunner       *loggregator_runner.LoggregatorRunner
-	LoggregatorInPort       int
-	LoggregatorOutPort      int
-	LoggregatorSharedSecret string
-
-	AuctioneerRunner *auctioneer_runner.AuctioneerRunner
-
-	ExecutorRunner *executor_runner.ExecutorRunner
-	ExecutorPort   int
-
-	ConvergerRunner *converger_runner.ConvergerRunner
-
-	RepRunner *reprunner.Runner
-	RepPort   int
-
-	StagerRunner *stager_runner.StagerRunner
-
-	NsyncListenerRunner ifrit.Runner
-
-	FakeCC        *fake_cc.FakeCC
-	FakeCCAddress string
-
-	FileServerRunner *fileserver_runner.FileServerRunner
-	FileServerPort   int
-
-	RouteEmitterRunner *route_emitter_runner.Runner
-
-	RouterRunner *router_runner.Runner
-	RouterPort   int
-
-	TPSRunner            ifrit.Runner
-	TPSAddress           string
-	TPSHeartbeatInterval time.Duration
-
-	EtcdPort int
-}
-
-func (context suiteContextType) Runners() []Runner {
-	return []Runner{
-		context.AuctioneerRunner,
-		context.ExecutorRunner,
-		context.ConvergerRunner,
-		context.RepRunner,
-		context.StagerRunner,
-		context.FileServerRunner,
-		context.LoggregatorRunner,
-		context.NatsRunner,
-		context.EtcdRunner,
-		context.RouteEmitterRunner,
-		context.RouterRunner,
+	if receptorAddress == "" {
+		log.Fatal("i need a receptor-address to talk to Diego...")
 	}
 }
 
-func (context suiteContextType) StopRunners() {
-	for _, stoppable := range context.Runners() {
-		if !reflect.ValueOf(stoppable).IsNil() {
-			stoppable.KillWithFire()
-		}
-	}
-}
-
-var suiteContext suiteContextType
-
-func beforeSuite(encodedSharedContext []byte) {
-	sharedContext := DecodeSharedContext(encodedSharedContext)
-
-	context := suiteContextType{
-		SharedContext:           sharedContext,
-		ExternalAddress:         os.Getenv("EXTERNAL_ADDRESS"),
-		RepStack:                "lucid64",
-		ExecutorID:              "the-executor-id-" + strconv.Itoa(config.GinkgoConfig.ParallelNode),
-		NatsPort:                4222 + config.GinkgoConfig.ParallelNode,
-		ExecutorPort:            1700 + config.GinkgoConfig.ParallelNode,
-		RepPort:                 20515 + config.GinkgoConfig.ParallelNode,
-		LoggregatorInPort:       3456 + config.GinkgoConfig.ParallelNode,
-		LoggregatorOutPort:      8083 + config.GinkgoConfig.ParallelNode,
-		LoggregatorSharedSecret: "conspiracy",
-		FileServerPort:          12760 + config.GinkgoConfig.ParallelNode,
-		EtcdPort:                5001 + config.GinkgoConfig.ParallelNode,
-		RouterPort:              9090 + config.GinkgoConfig.ParallelNode,
-		TPSAddress:              fmt.Sprintf("127.0.0.1:%d", 1518+config.GinkgoConfig.ParallelNode),
-		TPSHeartbeatInterval:    5 * time.Second,
-	}
-
-	Ω(context.ExternalAddress).ShouldNot(BeEmpty())
-
-	wardenBinPath := os.Getenv("WARDEN_BINPATH")
-	wardenRootfs := os.Getenv("WARDEN_ROOTFS")
-
-	if wardenBinPath == "" || wardenRootfs == "" {
-		println("Please define either WARDEN_NETWORK and WARDEN_ADDR (for a running Warden), or")
-		println("WARDEN_BINPATH and WARDEN_ROOTFS (for the tests to start it)")
-		println("")
-
-		Fail("warden is not set up")
-	}
-
-	wardenAddress := fmt.Sprintf("/tmp/warden_%d.sock", config.GinkgoConfig.ParallelNode)
-	wardenRunner = WardenRunner.New(
-		"unix",
-		wardenAddress,
-		context.SharedContext.WardenPath,
-		wardenBinPath,
-		wardenRootfs,
-	)
-
-	context.FakeCC = fake_cc.New()
-	context.FakeCCAddress = context.FakeCC.Start()
-
-	context.EtcdRunner = etcdstorerunner.NewETCDClusterRunner(context.EtcdPort, 1)
-
-	context.NatsRunner = natsrunner.NewNATSRunner(context.NatsPort)
-
-	context.LoggregatorRunner = loggregator_runner.New(
-		context.SharedContext.LoggregatorPath,
-		loggregator_runner.Config{
-			IncomingPort:           context.LoggregatorInPort,
-			OutgoingPort:           context.LoggregatorOutPort,
-			MaxRetainedLogMessages: 1000,
-			SharedSecret:           context.LoggregatorSharedSecret,
-			NatsHost:               "127.0.0.1",
-			NatsPort:               context.NatsPort,
-		},
-	)
-
-	context.AuctioneerRunner = auctioneer_runner.New(
-		context.SharedContext.AuctioneerPath,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-	)
-
-	context.ExecutorRunner = executor_runner.New(
-		context.SharedContext.ExecutorPath,
-		fmt.Sprintf("127.0.0.1:%d", context.ExecutorPort),
-		"unix",
-		wardenAddress,
-		fmt.Sprintf("127.0.0.1:%d", context.LoggregatorInPort),
-		context.LoggregatorSharedSecret,
-	)
-
-	context.ConvergerRunner = converger_runner.New(
-		context.SharedContext.ConvergerPath,
-		strings.Join(context.EtcdRunner.NodeURLS(), ","),
-		"debug",
-	)
-
-	context.RepRunner = reprunner.New(
-		context.SharedContext.RepPath,
-		context.ExecutorID,
-		context.RepStack,
-		context.ExternalAddress,
-		fmt.Sprintf("127.0.0.1:%d", context.RepPort),
-		fmt.Sprintf("http://127.0.0.1:%d", context.ExecutorPort),
-		strings.Join(context.EtcdRunner.NodeURLS(), ","),
-		fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
-		"debug",
-		time.Second,
-	)
-
-	context.StagerRunner = stager_runner.New(
-		context.SharedContext.StagerPath,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-	)
-
-	context.NsyncListenerRunner = runner.NewRunner(
-		"nsync.listener.started",
-		context.SharedContext.NsyncListenerPath,
-		"-etcdCluster", strings.Join(context.EtcdRunner.NodeURLS(), ","),
-		"-natsAddresses", fmt.Sprintf("127.0.0.1:%d", context.NatsPort),
-		"-circuses", `{"`+context.RepStack+`":"some-lifecycle-bundle.tgz"}`,
-		"-repAddrRelativeToExecutor", fmt.Sprintf("127.0.0.1:%d", context.RepPort),
-	)
-
-	context.FileServerRunner = fileserver_runner.New(
-		context.SharedContext.FileServerPath,
-		context.FileServerPort,
-		context.EtcdRunner.NodeURLS(),
-		context.FakeCCAddress,
-		fake_cc.CC_USERNAME,
-		fake_cc.CC_PASSWORD,
-	)
-
-	context.RouteEmitterRunner = route_emitter_runner.New(
-		context.SharedContext.RouteEmitterPath,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-	)
-
-	context.RouterRunner = router_runner.New(
-		context.SharedContext.RouterPath,
-		&gorouterconfig.Config{
-			Port: uint16(context.RouterPort),
-
-			PruneStaleDropletsIntervalInSeconds: 5,
-			DropletStaleThresholdInSeconds:      10,
-			PublishActiveAppsIntervalInSeconds:  0,
-			StartResponseDelayIntervalInSeconds: 1,
-
-			Nats: []gorouterconfig.NatsConfig{
-				{
-					Host: "127.0.0.1",
-					Port: uint16(context.NatsPort),
-				},
-			},
-			Logging: gorouterconfig.LoggingConfig{
-				File:  "/dev/stdout",
-				Level: "info",
-			},
-		},
-	)
-
-	context.TPSRunner = tpsrunner.New(
-		context.SharedContext.TPSPath,
-		context.TPSAddress,
-		context.EtcdRunner.NodeURLS(),
-		[]string{fmt.Sprintf("127.0.0.1:%d", context.NatsPort)},
-		context.TPSHeartbeatInterval,
-	)
-
-	// make context available to all tests
-	suiteContext = context
-}
-
-func afterSuite() {
-	suiteContext.StopRunners()
-}
-
-func TestVizzini(t *testing.T) {
-	registerDefaultTimeouts()
-
+func TestReceptorSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	nodeOne := &nodeOneType{}
-
-	SynchronizedBeforeSuite(func() []byte {
-		nodeOne.CompileTestedExecutables()
-
-		return nodeOne.context.Encode()
-	}, beforeSuite)
-
-	BeforeEach(func() {
-		suiteContext.FakeCC.Reset()
-		suiteContext.EtcdRunner.Start()
-		suiteContext.NatsRunner.Start()
-		suiteContext.LoggregatorRunner.Start()
-
-		suiteContext.WardenClient = wardenRunner.NewClient()
-		suiteContext.WardenProcess = ifrit.Envoke(wardenRunner)
-		Eventually(wardenRunner.TryDial, 10).ShouldNot(HaveOccurred())
-
-		inigo_server.Start(suiteContext.WardenClient)
-
-		currentTestDescription := CurrentGinkgoTestDescription()
-		fmt.Fprintf(GinkgoWriter, "\n%s\n%s\n\n", strings.Repeat("~", 50), currentTestDescription.FullTestText)
-	})
-
-	AfterEach(func() {
-		suiteContext.StopRunners()
-
-		inigo_server.Stop(suiteContext.WardenClient)
-
-		suiteContext.WardenProcess.Signal(syscall.SIGKILL)
-		Eventually(suiteContext.WardenProcess.Wait(), 10*time.Second).Should(Receive())
-	})
-
-	RunSpecs(t, "Vizzini Integration Suite")
+	RunSpecs(t, "ReceptorSuite Suite")
 }
 
-func registerDefaultTimeouts() {
-	var err error
-	if os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT") != "" {
-		DEFAULT_EVENTUALLY_TIMEOUT, err = time.ParseDuration(os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT"))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if os.Getenv("DEFAULT_CONSISTENTLY_DURATION") != "" {
-		DEFAULT_CONSISTENTLY_DURATION, err = time.ParseDuration(os.Getenv("DEFAULT_CONSISTENTLY_DURATION"))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	SetDefaultEventuallyTimeout(DEFAULT_EVENTUALLY_TIMEOUT)
-	SetDefaultConsistentlyDuration(DEFAULT_CONSISTENTLY_DURATION)
+func NewGuid() string {
+	u, err := uuid.NewV4()
+	Ω(err).ShouldNot(HaveOccurred())
+	return u.String()
 }
 
-type nodeOneType struct {
-	context sharedContextType
-}
+var _ = BeforeSuite(func() {
+	SetDefaultEventuallyTimeout(10 * time.Second)
+	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
+	stack = "lucid64"
 
-func (node *nodeOneType) CompileTestedExecutables() {
-	var err error
+	client = receptor.NewClient(receptorAddress, receptorUsername, receptorPassword)
+})
 
-	node.context.WardenPath, err = gexec.BuildIn(os.Getenv("WARDEN_LINUX_GOPATH"), "github.com/cloudfoundry-incubator/warden-linux", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.LoggregatorPath, err = gexec.BuildIn(os.Getenv("LOGGREGATOR_GOPATH"), "loggregator")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.AuctioneerPath, err = gexec.BuildIn(os.Getenv("AUCTIONEER_GOPATH"), "github.com/cloudfoundry-incubator/auctioneer", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.ExecutorPath, err = gexec.BuildIn(os.Getenv("EXECUTOR_GOPATH"), "github.com/cloudfoundry-incubator/executor", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.ConvergerPath, err = gexec.BuildIn(os.Getenv("CONVERGER_GOPATH"), "github.com/cloudfoundry-incubator/converger", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.RepPath, err = gexec.BuildIn(os.Getenv("REP_GOPATH"), "github.com/cloudfoundry-incubator/rep", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.StagerPath, err = gexec.BuildIn(os.Getenv("STAGER_GOPATH"), "github.com/cloudfoundry-incubator/stager", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.NsyncListenerPath, err = gexec.BuildIn(os.Getenv("NSYNC_GOPATH"), "github.com/cloudfoundry-incubator/nsync/listener", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.FileServerPath, err = gexec.BuildIn(os.Getenv("FILE_SERVER_GOPATH"), "github.com/cloudfoundry-incubator/file-server", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.RouteEmitterPath, err = gexec.BuildIn(os.Getenv("ROUTE_EMITTER_GOPATH"), "github.com/cloudfoundry-incubator/route-emitter", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.RouterPath, err = gexec.BuildIn(os.Getenv("ROUTER_GOPATH"), "github.com/cloudfoundry/gorouter", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.TPSPath, err = gexec.BuildIn(os.Getenv("TPS_GOPATH"), "github.com/cloudfoundry-incubator/tps", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	node.context.CircusZipPath = node.compileAndZipUpCircus()
-}
-
-func (node *nodeOneType) compileAndZipUpCircus() string {
-	tailorPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/tailor", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	spyPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/spy", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	soldierPath, err := gexec.BuildIn(os.Getenv("LINUX_CIRCUS_GOPATH"), "github.com/cloudfoundry-incubator/linux-circus/soldier", "-race")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	circusDir, err := ioutil.TempDir("", "circus-dir")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(tailorPath, filepath.Join(circusDir, "tailor"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(spyPath, filepath.Join(circusDir, "spy"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	err = os.Rename(soldierPath, filepath.Join(circusDir, "soldier"))
-	Ω(err).ShouldNot(HaveOccurred())
-
-	cmd := exec.Command("zip", "-v", "circus.zip", "tailor", "soldier", "spy")
-	cmd.Stderr = GinkgoWriter
-	cmd.Stdout = GinkgoWriter
-	cmd.Dir = circusDir
-	err = cmd.Run()
-	Ω(err).ShouldNot(HaveOccurred())
-
-	return filepath.Join(circusDir, "circus.zip")
-}
+var _ = AfterSuite(func() {
+	Ω(client.GetAllTasksByDomain(domain)).Should(BeEmpty())
+	Ω(client.GetAllDesiredLRPsByDomain(domain)).Should(BeEmpty())
+})

@@ -1,4 +1,4 @@
-package receptor_suite_test
+package vizzini_test
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
-	. "github.com/pivotal-cf-experimental/vizzini/receptor-suite/matchers"
+	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

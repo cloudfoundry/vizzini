@@ -1,4 +1,4 @@
-package receptor_suite_test
+package vizzini_test
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
 func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
@@ -147,6 +148,8 @@ var _ = Describe("LRPs", func() {
 			It("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+
 				fetchedLRP, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(fetchedLRP.Annotation).Should(Equal("arbitrary-data"))
@@ -280,6 +283,7 @@ var _ = Describe("LRPs", func() {
 
 		It("should succeed", func() {
 			Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
+			Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
 		})
 	})
 
@@ -294,6 +298,8 @@ var _ = Describe("LRPs", func() {
 				lrp.Instances = 2
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
+				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 1)))
 			})
 
 			It("allows updating routes", func() {
@@ -494,6 +500,20 @@ var _ = Describe("LRPs", func() {
 				err := client.DeleteDesiredLRP("floobeedoobee")
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
 			})
+		})
+	})
+
+	Describe("Getting all ActualLRPs", func() {
+		BeforeEach(func() {
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+		})
+
+		It("should fetch all Actual LRPs", func() {
+			actualLRPs, err := client.GetAllActualLRPs()
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(len(actualLRPs)).Should(BeNumerically(">=", 1))
+			Ω(actualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
 		})
 	})
 })
