@@ -1,6 +1,8 @@
 package acceptance_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -22,7 +24,7 @@ var _ = Describe("Garden Acceptance Tests", func() {
 	var gardenClient client.Client
 
 	BeforeEach(func() {
-		conn := connection.New("tcp", "10.244.17.2.xip.io:7777")
+		conn := connection.New(gardenNet, gardenAddr)
 		gardenClient = client.New(conn)
 	})
 
@@ -87,6 +89,61 @@ Using this test is non-trivial.  You must:
 			Ω(buffer.Contents()).ShouldNot(ContainSubstring("HOME=/nowhere"))
 			Ω(buffer.Contents()).Should(ContainSubstring("ROOT_ENV=A"))
 		})
+	})
+
+	Describe("Streaming things into a container repeatedly", func() {
+		/*
+			Turns out... this *is* slow.
+			But it's not Garden
+			It's not AUFS
+			It's linux: https://bugzilla.kernel.org/show_bug.cgi?id=12309
+		*/
+		var tarBuffer []byte
+		var fileSize int64
+
+		var handle string
+		var container api.Container
+
+		BeforeEach(func() {
+			fileSize = 700 * 1024 * 1024
+			tarBufferWriter := &bytes.Buffer{}
+
+			tarWriter := tar.NewWriter(tarBufferWriter)
+			Ω(tarWriter.WriteHeader(&tar.Header{
+				Name: "big-file",
+				Size: fileSize,
+			})).Should(Succeed())
+
+			writtenSize, err := io.CopyN(tarWriter, NewRandbo(), fileSize)
+			Ω(writtenSize).Should(Equal(fileSize))
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(tarWriter.Close()).Should(Succeed())
+
+			tarBuffer = tarBufferWriter.Bytes()
+
+			handle = NewGuid()
+			container, err = gardenClient.Create(api.ContainerSpec{
+				Handle: handle,
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			Ω(gardenClient.Destroy(handle)).Should(Succeed())
+		})
+
+		Measure("should not be slow", func(b Benchmarker) {
+			dt := b.Time("streaming in all files", func() {
+				for i := 0; i < 14; i++ {
+					dt := b.Time("streaming in individual files", func() {
+						Ω(container.StreamIn(fmt.Sprintf("/tmp/tarball-%d", i), bytes.NewReader(tarBuffer))).Should(Succeed())
+					})
+
+					fmt.Printf("streaming in %d/14 took %s\n", i+1, dt)
+				}
+			})
+			fmt.Printf("streaming them all in took %s\n", dt)
+		}, 2)
 	})
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
