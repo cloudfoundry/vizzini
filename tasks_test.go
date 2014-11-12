@@ -185,7 +185,7 @@ var _ = Describe("Tasks", func() {
 		})
 	})
 
-	Describe("Creating a Docker-based Task", func() {
+	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
 			task.RootFSPath = "docker:///onsi/grace-busybox"
 			task.Actions = []models.ExecutorAction{

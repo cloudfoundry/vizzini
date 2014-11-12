@@ -244,7 +244,7 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
-	Describe("Creating a Docker-based LRP", func() {
+	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFSPath = "docker:///onsi/grace-busybox"
 			lrp.Actions = []models.ExecutorAction{
