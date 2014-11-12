@@ -28,9 +28,9 @@ func (matcher *HaveTaskStateMatcher) Match(actual interface{}) (success bool, er
 }
 
 func (matcher *HaveTaskStateMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto have state %d", format.Object(actual, 1), matcher.State)
+	return fmt.Sprintf("Expected\n%s\nto have state %s", format.Object(actual, 1), matcher.State)
 }
 
 func (matcher *HaveTaskStateMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to have state %d", format.Object(actual, 1), matcher.State)
+	return fmt.Sprintf("Expected\n%s\nnot to have state %s", format.Object(actual, 1), matcher.State)
 }

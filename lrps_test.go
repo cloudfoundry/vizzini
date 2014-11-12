@@ -516,4 +516,94 @@ var _ = Describe("LRPs", func() {
 			Ω(actualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
 		})
 	})
+
+	Describe("Getting ActualLRPs by Domain", func() {
+		Context("when the domain is empty", func() {
+			It("returns an empty list", func() {
+				Ω(client.GetAllActualLRPsByDomain("floobidoo")).Should(BeEmpty())
+			})
+		})
+
+		Context("when the domain contains instances", func() {
+			var secondDomain string
+			var secondDomainLRP1 receptor.DesiredLRPCreateRequest
+			var secondDomainLRP2 receptor.DesiredLRPCreateRequest
+
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				secondDomain = NewGuid()
+
+				secondDomainLRP1 = DesiredLRPWithGuid(NewGuid())
+				secondDomainLRP1.Instances = 2
+				secondDomainLRP1.Domain = secondDomain
+				Ω(client.CreateDesiredLRP(secondDomainLRP1)).Should(Succeed())
+
+				secondDomainLRP2 = DesiredLRPWithGuid(NewGuid())
+				secondDomainLRP2.Domain = secondDomain
+				Ω(client.CreateDesiredLRP(secondDomainLRP2)).Should(Succeed())
+
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+				Eventually(IndexCounter(secondDomainLRP1.ProcessGuid)).Should(Equal(2))
+				Eventually(IndexCounter(secondDomainLRP2.ProcessGuid)).Should(Equal(1))
+			})
+
+			AfterEach(func() {
+				ClearOutDesiredLRPsInDomain(secondDomain)
+			})
+
+			It("returns said instances", func() {
+				actualLRPs, err := client.GetAllActualLRPsByDomain(domain)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(actualLRPs).Should(HaveLen(1))
+				Ω(actualLRPs).Should(ConsistOf(BeActualLRP(guid, 0)))
+
+				actualLRPs, err = client.GetAllActualLRPsByDomain(secondDomain)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(actualLRPs).Should(HaveLen(3))
+
+				Ω(actualLRPs).Should(ConsistOf(
+					BeActualLRP(secondDomainLRP1.ProcessGuid, 0),
+					BeActualLRP(secondDomainLRP1.ProcessGuid, 1),
+					BeActualLRP(secondDomainLRP2.ProcessGuid, 0),
+				))
+			})
+		})
+	})
+
+	Describe("Getting ActualLRPs by ProcessGuid", func() {
+		Context("when there are none", func() {
+			It("returns an empty list", func() {
+				Ω(client.GetAllActualLRPsByProcessGuid("floobeedoo")).Should(BeEmpty())
+			})
+		})
+
+		Context("when there are ActualLRPs for a given ProcessGuid", func() {
+			BeforeEach(func() {
+				lrp.Instances = 2
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(IndexCounter(guid)).Should(Equal(2))
+			})
+
+			It("returns the ActualLRPs", func() {
+				Ω(client.GetAllActualLRPsByProcessGuid(guid)).Should(ConsistOf(
+					BeActualLRP(guid, 0),
+					BeActualLRP(guid, 1),
+				))
+			})
+		})
+	})
+
+	PDescribe("Getting ActualLRPs at a given index for a ProcessGuid", func() {
+		Context("when there are none", func() {
+			It("should return an empty list", func() {
+
+			})
+		})
+
+		Context("when there are some", func() {
+			It("returns them", func() {
+				//validate things like state, instance guid, index, etc.
+			})
+		})
+	})
 })
