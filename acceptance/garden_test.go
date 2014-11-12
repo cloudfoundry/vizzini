@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/garden/api"
-	"github.com/cloudfoundry-incubator/garden/client"
+	gc "github.com/cloudfoundry-incubator/garden/client"
 	"github.com/cloudfoundry-incubator/garden/client/connection"
 	"github.com/onsi/gomega/gbytes"
 
@@ -21,11 +21,11 @@ func uniqueHandle() string {
 }
 
 var _ = Describe("Garden Acceptance Tests", func() {
-	var gardenClient client.Client
+	var gardenClient gc.Client
 
 	BeforeEach(func() {
 		conn := connection.New(gardenNet, gardenAddr)
-		gardenClient = client.New(conn)
+		gardenClient = gc.New(conn)
 	})
 
 	XDescribe("Bugs with snapshotting (#77767958)", func() {
