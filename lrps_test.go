@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -58,6 +59,26 @@ func IndexCounter(guid string) func() (int, error) {
 			counts[string(content)] = true
 		}
 		return len(counts), nil
+	}
+}
+
+func StartedAtGetter(guid string) func() (int64, error) {
+	url := "http://" + RouteForGuid(guid) + "/started-at"
+	return func() (int64, error) {
+		resp, err := http.Get(url)
+		if err != nil {
+			return 0, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return 0, err
+		}
+		content, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return 0, err
+		}
+		return strconv.ParseInt(string(content), 10, 64)
 	}
 }
 
@@ -117,10 +138,8 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		Routes: []string{
 			RouteForGuid(guid),
 		},
-		Log: receptor.LogConfig{
-			Guid:       guid,
-			SourceName: "VIZ",
-		},
+		LogGuid:    guid,
+		LogSource:  "VIZ",
 		Annotation: "arbitrary-data",
 	}
 }
@@ -593,16 +612,67 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
-	PDescribe("Getting ActualLRPs at a given index for a ProcessGuid", func() {
-		Context("when there are none", func() {
+	Describe("Getting ActualLRPs at a given index for a ProcessGuid", func() {
+		Context("when there is no matching ProcessGuid", func() {
 			It("should return an empty list", func() {
-
+				Ω(client.GetAllActualLRPsByProcessGuidAndIndex("floobeedoo", 0)).Should(BeEmpty())
 			})
 		})
 
-		Context("when there are some", func() {
+		Context("when there are no ActualLRPs at the given index", func() {
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(IndexCounter(guid)).Should(Equal(1))
+			})
+
+			It("should return an empty list", func() {
+				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 1)).Should(BeEmpty())
+			})
+		})
+
+		Context("when there are ActualLRPs at the given index", func() {
+			BeforeEach(func() {
+				lrp.Instances = 2
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(IndexCounter(guid)).Should(Equal(2))
+			})
+
 			It("returns them", func() {
-				//validate things like state, instance guid, index, etc.
+				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 0)).Should(ConsistOf(BeActualLRP(guid, 0)))
+				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 1)).Should(ConsistOf(BeActualLRP(guid, 1)))
+			})
+		})
+	})
+
+	Describe("Restarting an ActualLRP", func() {
+		Context("when there is no matching ProcessGuid", func() {
+			It("returns an error", func() {
+				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
+			})
+		})
+
+		Context("when there is no ActualLRP at the given index", func() {
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+			})
+
+			It("returns an error", func() {
+				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
+			})
+		})
+
+		Context("when an ActualLRP exists at the given ProcessGuid and index", func() {
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+			})
+
+			It("restarts the actual lrp", func() {
+				initialTime, err := StartedAtGetter(guid)()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 0)).Should(Succeed())
+				Eventually(StartedAtGetter(guid)).Should(BeNumerically(">", initialTime))
 			})
 		})
 	})

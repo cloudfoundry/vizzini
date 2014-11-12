@@ -28,14 +28,12 @@ var _ = Describe("Privileged", func() {
 					},
 				},
 			},
-			Stack:     stack,
-			MemoryMB:  128,
-			DiskMB:    128,
-			CPUWeight: 100,
-			Log: receptor.LogConfig{
-				Guid:       guid,
-				SourceName: "VIZ",
-			},
+			Stack:      stack,
+			MemoryMB:   128,
+			DiskMB:     128,
+			CPUWeight:  100,
+			LogGuid:    guid,
+			LogSource:  "VIZ",
 			ResultFile: "/tmp/bar",
 			Annotation: "arbitrary-data",
 		}
@@ -48,7 +46,7 @@ var _ = Describe("Privileged", func() {
 		ClearOutTasksInDomain(domain)
 	})
 
-	Context("when running a privileged action", func() {
+	Context("{PRIVILEGED} when running a privileged action", func() {
 		BeforeEach(func() {
 			privileged = true
 		})
@@ -56,7 +54,7 @@ var _ = Describe("Privileged", func() {
 		It("should run as root", func() {
 			completedTask, err := client.GetTask(guid)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"))
+			Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
 		})
 	})
 
