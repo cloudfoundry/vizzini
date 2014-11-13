@@ -647,7 +647,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Restarting an ActualLRP", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("returns an error", func() {
-				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
+				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
 			})
 		})
 
@@ -658,11 +658,11 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
+				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
 			})
 		})
 
-		Context("when an ActualLRP exists at the given ProcessGuid and index", func() {
+		Context("{SLOW} when an ActualLRP exists at the given ProcessGuid and index", func() {
 			BeforeEach(func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
@@ -671,8 +671,9 @@ var _ = Describe("LRPs", func() {
 			It("restarts the actual lrp", func() {
 				initialTime, err := StartedAtGetter(guid)()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(client.StopActualLRPsByProcessGuidAndIndex(guid, 0)).Should(Succeed())
-				Eventually(StartedAtGetter(guid)).Should(BeNumerically(">", initialTime))
+				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 0)).Should(Succeed())
+				//This needs a large timeout as the converger needs to run for it to return
+				Eventually(StartedAtGetter(guid), 35).Should(BeNumerically(">", initialTime))
 			})
 		})
 	})
