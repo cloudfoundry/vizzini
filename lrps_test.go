@@ -92,42 +92,37 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		RootFSPath:  rootFS,
 		Domain:      domain,
 		Instances:   1,
-		Actions: []models.ExecutorAction{
-			{
-				models.DownloadAction{
-					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-					To:       ".",
-					CacheKey: "grace",
-				},
-			},
-			{
-				models.DownloadAction{
-					From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-					To:       "/tmp/circus",
-					CacheKey: "linux-circus",
-				},
-			},
-			models.Parallel(
-				models.ExecutorAction{
-					models.RunAction{
-						Path: "./grace",
-						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
-					},
-				},
-				models.ExecutorAction{
-					models.MonitorAction{
-						Action: models.ExecutorAction{
-							models.RunAction{
-								Path: "/tmp/circus/spy",
-								Args: []string{"-addr=:8080"},
-							},
+		Setup: &models.ExecutorAction{
+			models.SerialAction{
+				Actions: []models.ExecutorAction{
+					{
+						models.DownloadAction{
+							From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+							To:       ".",
+							CacheKey: "grace",
 						},
-						HealthyHook:        models.HealthRequest{Method: "PUT", URL: "http://127.0.0.1:20515/lrp_running/" + guid + "/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID"},
-						HealthyThreshold:   1,
-						UnhealthyThreshold: 1,
+					},
+					{
+						models.DownloadAction{
+							From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
+							To:       "/tmp/circus",
+							CacheKey: "linux-circus",
+						},
 					},
 				},
-			),
+			},
+		},
+		Action: models.ExecutorAction{
+			models.RunAction{
+				Path: "./grace",
+				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
+			},
+		},
+		Monitor: &models.ExecutorAction{
+			models.RunAction{
+				Path: "/tmp/circus/spy",
+				Args: []string{"-addr=:8080"},
+			},
 		},
 		Stack:     stack,
 		MemoryMB:  128,
@@ -216,11 +211,9 @@ var _ = Describe("LRPs", func() {
 				lrpCopy.Domain = ""
 				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
 
-				By("not having any actions")
+				By("not having an action")
 				lrpCopy = lrp
-				lrpCopy.Actions = nil
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
-				lrpCopy.Actions = []models.ExecutorAction{}
+				lrpCopy.Action = models.ExecutorAction{}
 				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("not having a stack")
@@ -267,35 +260,24 @@ var _ = Describe("LRPs", func() {
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFSPath = "docker:///onsi/grace-busybox"
-			lrp.Actions = []models.ExecutorAction{
-				{
-					models.DownloadAction{
-						From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-						To:       "/tmp/circus",
-						CacheKey: "linux-circus",
-					},
+			lrp.Setup = &models.ExecutorAction{
+				models.DownloadAction{
+					From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
+					To:       "/tmp/circus",
+					CacheKey: "linux-circus",
 				},
-				models.Parallel(
-					models.ExecutorAction{
-						models.RunAction{
-							Path: "/grace",
-							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-						},
-					},
-					models.ExecutorAction{
-						models.MonitorAction{
-							Action: models.ExecutorAction{
-								models.RunAction{
-									Path: "/tmp/circus/spy",
-									Args: []string{"-addr=:8080"},
-								},
-							},
-							HealthyHook:        models.HealthRequest{Method: "PUT", URL: "http://127.0.0.1:20515/lrp_running/" + guid + "/PLACEHOLDER_INSTANCE_INDEX/PLACEHOLDER_INSTANCE_GUID"},
-							HealthyThreshold:   1,
-							UnhealthyThreshold: 1,
-						},
-					},
-				),
+			}
+			lrp.Action = models.ExecutorAction{
+				models.RunAction{
+					Path: "/grace",
+					Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+				},
+			}
+			lrp.Monitor = &models.ExecutorAction{
+				models.RunAction{
+					Path: "/tmp/circus/spy",
+					Args: []string{"-addr=:8080"},
+				},
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())

@@ -20,13 +20,11 @@ var _ = Describe("Privileged", func() {
 			TaskGuid:   guid,
 			Domain:     domain,
 			RootFSPath: rootFS,
-			Actions: []models.ExecutorAction{
-				{
-					models.RunAction{
-						Path:       "bash",
-						Args:       []string{"-c", "id > /tmp/bar"},
-						Privileged: privileged,
-					},
+			Action: models.ExecutorAction{
+				models.RunAction{
+					Path:       "bash",
+					Args:       []string{"-c", "id > /tmp/bar"},
+					Privileged: privileged,
 				},
 			},
 			Stack:      stack,
