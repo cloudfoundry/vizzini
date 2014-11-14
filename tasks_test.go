@@ -40,8 +40,9 @@ var _ = Describe("Tasks", func() {
 	BeforeEach(func() {
 		guid = NewGuid()
 		task = receptor.TaskCreateRequest{
-			TaskGuid: guid,
-			Domain:   domain,
+			TaskGuid:   guid,
+			Domain:     domain,
+			RootFSPath: rootFS,
 			Actions: []models.ExecutorAction{
 				{
 					models.RunAction{

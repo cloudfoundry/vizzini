@@ -18,14 +18,21 @@ import (
 var client receptor.Client
 var domain string
 var stack string
+var rootFS string
 
 var receptorAddress, receptorUsername, receptorPassword string
 
 func init() {
+	var onEdge bool
 	flag.StringVar(&receptorAddress, "receptor-address", "receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
 	flag.StringVar(&receptorUsername, "receptor-username", "", "receptor username")
-	flag.StringVar(&receptorUsername, "receptor-password", "", "receptor password")
+	flag.StringVar(&receptorPassword, "receptor-password", "", "receptor password")
+	flag.BoolVar(&onEdge, "edge", false, "if true, will use a docker-image based rootfs for Diego-Edge")
 	flag.Parse()
+
+	if onEdge {
+		rootFS = "docker:///cloudfoundry/lucid64"
+	}
 
 	if receptorAddress == "" {
 		log.Fatal("i need a receptor-address to talk to Diego...")

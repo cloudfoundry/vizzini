@@ -89,6 +89,7 @@ func RouteForGuid(guid string) string {
 func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 	return receptor.DesiredLRPCreateRequest{
 		ProcessGuid: guid,
+		RootFSPath:  rootFS,
 		Domain:      domain,
 		Instances:   1,
 		Actions: []models.ExecutorAction{
