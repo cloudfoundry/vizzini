@@ -1,6 +1,7 @@
 package vizzini_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +17,25 @@ import (
 func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
 	return func() (receptor.DesiredLRPResponse, error) {
 		return client.GetDesiredLRP(guid)
+	}
+}
+
+func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, error) {
+	return func() (receptor.ActualLRPResponse, error) {
+		actuals, err := client.GetAllActualLRPsByProcessGuidAndIndex(guid, index)
+		if err != nil {
+			return receptor.ActualLRPResponse{}, err
+		}
+
+		if len(actuals) == 0 {
+			return receptor.ActualLRPResponse{}, nil
+		}
+
+		if len(actuals) != 1 {
+			return receptor.ActualLRPResponse{}, errors.New("found too many ActualLRPs")
+		}
+
+		return actuals[0], nil
 	}
 }
 
@@ -71,7 +91,7 @@ func StartedAtGetter(guid string) func() (int64, error) {
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return 0, err
+			return 0, errors.New(fmt.Sprintf("invalid status code: %d", resp.StatusCode))
 		}
 		content, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()

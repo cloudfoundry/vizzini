@@ -15,9 +15,18 @@ func BeActualLRP(processGuid string, index int) gomega.OmegaMatcher {
 	}
 }
 
+func BeActualLRPWithState(processGuid string, index int, state string) gomega.OmegaMatcher {
+	return &BeActualLRPMatcher{
+		ProcessGuid: processGuid,
+		Index:       index,
+		State:       state,
+	}
+}
+
 type BeActualLRPMatcher struct {
 	ProcessGuid string
 	Index       int
+	State       string
 }
 
 func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err error) {
@@ -26,7 +35,12 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 		return false, fmt.Errorf("BeActualLRP matcher expects a receptor.ActualLRPResponse.  Got:\n%s", format.Object(actual, 1))
 	}
 
-	return lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
+	matchesState := true
+	if matcher.State != "" {
+		matchesState = matcher.State == lrp.State
+	}
+
+	return matchesState && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
 }
 
 func (matcher *BeActualLRPMatcher) FailureMessage(actual interface{}) (message string) {
