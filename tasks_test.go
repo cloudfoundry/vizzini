@@ -208,6 +208,50 @@ var _ = Describe("Tasks", func() {
 		})
 	})
 
+	Describe("Cancelling tasks", func() {
+		Context("when the task exists", func() {
+			BeforeEach(func() {
+				task.Action = models.ExecutorAction{
+					models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "sleep 1000"},
+					},
+				}
+				Ω(client.CreateTask(task)).Should(Succeed())
+			})
+
+			It("should cancel the task marking it completed immediately", func() {
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
+
+				Ω(client.CancelTask(guid)).Should(Succeed())
+				task, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(task.State).Should(Equal(receptor.TaskStateCompleted))
+				Ω(task.Failed).Should(BeTrue())
+				Ω(task.FailureReason).Should(Equal("task was cancelled"))
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
+			})
+		})
+
+		Context("when the task does not exist", func() {
+			It("should fail", func() {
+				Ω(client.CancelTask("floobeedoo")).ShouldNot(Succeed())
+			})
+		})
+
+		Context("when the task is already completed", func() {
+			BeforeEach(func() {
+				Ω(client.CreateTask(task)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			})
+
+			It("should fail", func() {
+				Ω(client.CancelTask(guid)).ShouldNot(Succeed())
+			})
+		})
+	})
+
 	Describe("Getting a task", func() {
 		Context("when the task exists", func() {
 			BeforeEach(func() {
