@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/onsi/gomega/ghttp"
 
@@ -24,13 +25,13 @@ func TaskGetter(guid string) func() (receptor.TaskResponse, error) {
 }
 
 func ClearOutTasksInDomain(domain string) {
-	tasks, err := client.GetAllTasksByDomain(domain)
+	tasks, err := client.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
 		Eventually(TaskGetter(task.TaskGuid), 5).Should(HaveTaskState(receptor.TaskStateCompleted))
 		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
 	}
-	Ω(client.GetAllTasksByDomain(domain)).Should(BeEmpty())
+	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
 }
 
 var _ = Describe("Tasks", func() {
@@ -144,6 +145,14 @@ var _ = Describe("Tasks", func() {
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
 			})
 		})
+
+		Context("when the annotation is too large", func() {
+			It("should fail", func() {
+				task.Annotation = strings.Repeat("7", 1024*10+1)
+				err := client.CreateTask(task)
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+			})
+		})
 	})
 
 	Describe("Specifying environment variables", func() {
@@ -245,10 +254,10 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("should fetch tasks in the given domain", func() {
-			defaultDomain, err := client.GetAllTasksByDomain(domain)
+			defaultDomain, err := client.TasksByDomain(domain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			otherDomain, err := client.GetAllTasksByDomain(otherDomain)
+			otherDomain, err := client.TasksByDomain(otherDomain)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(defaultDomain).Should(HaveLen(1))
@@ -257,13 +266,13 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("should not error if a domain is empty", func() {
-			domain, err := client.GetAllTasksByDomain("farfignoogan")
+			domain, err := client.TasksByDomain("farfignoogan")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(domain).Should(BeEmpty())
 		})
 
 		It("should fetch all tasks", func() {
-			allTasks, err := client.GetAllTasks()
+			allTasks, err := client.Tasks()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
@@ -303,7 +312,7 @@ var _ = Describe("Tasks", func() {
 				err := client.DeleteTask(guid)
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotDeletable))
 
-				_, err = client.GetAllTasksByDomain(domain)
+				_, err = client.TasksByDomain(domain)
 				Ω(err).ShouldNot(HaveOccurred())
 			})
 		})

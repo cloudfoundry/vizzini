@@ -59,6 +59,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	Ω(client.GetAllTasksByDomain(domain)).Should(BeEmpty())
-	Ω(client.GetAllDesiredLRPsByDomain(domain)).Should(BeEmpty())
+	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
+	Ω(client.DesiredLRPsByDomain(domain)).Should(BeEmpty())
 })

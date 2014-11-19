@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -22,7 +23,7 @@ func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
 
 func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, error) {
 	return func() (receptor.ActualLRPResponse, error) {
-		actuals, err := client.GetAllActualLRPsByProcessGuidAndIndex(guid, index)
+		actuals, err := client.ActualLRPsByProcessGuidAndIndex(guid, index)
 		if err != nil {
 			return receptor.ActualLRPResponse{}, err
 		}
@@ -40,7 +41,7 @@ func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, er
 }
 
 func ClearOutDesiredLRPsInDomain(domain string) {
-	lrps, err := client.GetAllDesiredLRPsByDomain(domain)
+	lrps, err := client.DesiredLRPsByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, lrp := range lrps {
 		Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
@@ -148,9 +149,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		MemoryMB:  128,
 		DiskMB:    128,
 		CPUWeight: 100,
-		Ports: []receptor.PortMapping{
-			{ContainerPort: 8080},
-		},
+		Ports:     []uint32{8080},
 		Routes: []string{
 			RouteForGuid(guid),
 		},
@@ -183,7 +182,7 @@ var _ = Describe("LRPs", func() {
 			It("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
 
 				fetchedLRP, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -250,6 +249,14 @@ var _ = Describe("LRPs", func() {
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
 			})
 		})
+
+		Context("when the annotation is too large", func() {
+			It("should fail", func() {
+				lrp.Annotation = strings.Repeat("7", 1024*10+1)
+				err := client.CreateDesiredLRP(lrp)
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
+			})
+		})
 	})
 
 	Describe("Specifying environment variables", func() {
@@ -305,7 +312,7 @@ var _ = Describe("LRPs", func() {
 
 		It("should succeed", func() {
 			Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
-			Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+			Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
 		})
 	})
 
@@ -320,8 +327,8 @@ var _ = Describe("LRPs", func() {
 				lrp.Instances = 2
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
-				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
-				Eventually(client.GetAllActualLRPs).Should(ContainElement(BeActualLRP(guid, 1)))
+				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 1)))
 			})
 
 			It("allows updating routes", func() {
@@ -471,10 +478,10 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should fetch desired lrps in the given domain", func() {
-			defaultDomain, err := client.GetAllDesiredLRPsByDomain(domain)
+			defaultDomain, err := client.DesiredLRPsByDomain(domain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			otherDomain, err := client.GetAllDesiredLRPsByDomain(otherDomain)
+			otherDomain, err := client.DesiredLRPsByDomain(otherDomain)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(defaultDomain).Should(HaveLen(1))
@@ -483,13 +490,13 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should not error if a domain is empty", func() {
-			domain, err := client.GetAllDesiredLRPsByDomain("farfignoogan")
+			domain, err := client.DesiredLRPsByDomain("farfignoogan")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(domain).Should(BeEmpty())
 		})
 
 		It("should fetch all desired lrps", func() {
-			allDesiredLRPs, err := client.GetAllDesiredLRPs()
+			allDesiredLRPs, err := client.DesiredLRPs()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
@@ -532,7 +539,7 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should fetch all Actual LRPs", func() {
-			actualLRPs, err := client.GetAllActualLRPs()
+			actualLRPs, err := client.ActualLRPs()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(actualLRPs)).Should(BeNumerically(">=", 1))
 			Ω(actualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
@@ -542,7 +549,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting ActualLRPs by Domain", func() {
 		Context("when the domain is empty", func() {
 			It("returns an empty list", func() {
-				Ω(client.GetAllActualLRPsByDomain("floobidoo")).Should(BeEmpty())
+				Ω(client.ActualLRPsByDomain("floobidoo")).Should(BeEmpty())
 			})
 		})
 
@@ -574,12 +581,12 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns said instances", func() {
-				actualLRPs, err := client.GetAllActualLRPsByDomain(domain)
+				actualLRPs, err := client.ActualLRPsByDomain(domain)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(actualLRPs).Should(HaveLen(1))
 				Ω(actualLRPs).Should(ConsistOf(BeActualLRP(guid, 0)))
 
-				actualLRPs, err = client.GetAllActualLRPsByDomain(secondDomain)
+				actualLRPs, err = client.ActualLRPsByDomain(secondDomain)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(actualLRPs).Should(HaveLen(3))
 
@@ -595,7 +602,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting ActualLRPs by ProcessGuid", func() {
 		Context("when there are none", func() {
 			It("returns an empty list", func() {
-				Ω(client.GetAllActualLRPsByProcessGuid("floobeedoo")).Should(BeEmpty())
+				Ω(client.ActualLRPsByProcessGuid("floobeedoo")).Should(BeEmpty())
 			})
 		})
 
@@ -607,7 +614,7 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns the ActualLRPs", func() {
-				Ω(client.GetAllActualLRPsByProcessGuid(guid)).Should(ConsistOf(
+				Ω(client.ActualLRPsByProcessGuid(guid)).Should(ConsistOf(
 					BeActualLRP(guid, 0),
 					BeActualLRP(guid, 1),
 				))
@@ -618,7 +625,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting ActualLRPs at a given index for a ProcessGuid", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("should return an empty list", func() {
-				Ω(client.GetAllActualLRPsByProcessGuidAndIndex("floobeedoo", 0)).Should(BeEmpty())
+				Ω(client.ActualLRPsByProcessGuidAndIndex("floobeedoo", 0)).Should(BeEmpty())
 			})
 		})
 
@@ -629,7 +636,7 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("should return an empty list", func() {
-				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 1)).Should(BeEmpty())
+				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 1)).Should(BeEmpty())
 			})
 		})
 
@@ -641,8 +648,8 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns them", func() {
-				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 0)).Should(ConsistOf(BeActualLRP(guid, 0)))
-				Ω(client.GetAllActualLRPsByProcessGuidAndIndex(guid, 1)).Should(ConsistOf(BeActualLRP(guid, 1)))
+				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 0)).Should(ConsistOf(BeActualLRP(guid, 0)))
+				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 1)).Should(ConsistOf(BeActualLRP(guid, 1)))
 			})
 		})
 	})
