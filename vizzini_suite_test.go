@@ -20,13 +20,11 @@ var domain string
 var stack string
 var rootFS string
 
-var receptorAddress, receptorUsername, receptorPassword string
+var receptorAddress string
 
 func init() {
 	var onEdge bool
-	flag.StringVar(&receptorAddress, "receptor-address", "receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
-	flag.StringVar(&receptorUsername, "receptor-username", "", "receptor username")
-	flag.StringVar(&receptorPassword, "receptor-password", "", "receptor password")
+	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
 	flag.BoolVar(&onEdge, "edge", false, "if true, will use a docker-image based rootfs for Diego-Edge")
 	flag.Parse()
 
@@ -55,7 +53,7 @@ var _ = BeforeSuite(func() {
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	stack = "lucid64"
 
-	client = receptor.NewClient(receptorAddress, receptorUsername, receptorPassword)
+	client = receptor.NewClient(receptorAddress)
 })
 
 var _ = AfterSuite(func() {

@@ -55,7 +55,7 @@ var _ = Describe("The container environment", func() {
 		})
 	})
 
-	Describe("InstanceGuid and InstanceIndex", func() {
+	Describe("Instance IP and PORT", func() {
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url), 40).Should(Equal(http.StatusOK))
@@ -67,7 +67,7 @@ var _ = Describe("The container environment", func() {
 			actualLRP := actualLRPs[0]
 
 			envs := getEnvs(url)
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Host}))
+			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Host}), "If this fails, then your executor may not be configured to expose ip:port to the container")
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Host, actualLRP.Ports[0].HostPort)}))
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORTS", fmt.Sprintf("%d:%d,%d:%d", actualLRP.Ports[0].HostPort, actualLRP.Ports[0].ContainerPort, actualLRP.Ports[1].HostPort, actualLRP.Ports[1].ContainerPort)}))
