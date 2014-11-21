@@ -112,7 +112,11 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			})
 
 			It("never enters the running state", func() {
-				Consistently(ActualGetter(guid, 0), 2).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+			})
+
+			PIt("[BLOCKED:#79618114] it gets removed after a timeout", func() {
+
 			})
 
 			Context("when the process dies with exit code 0", func() {
@@ -126,10 +130,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 				It("does not get removed from the BBS, as it has presumably daemonized and we are waiting on the health check", func() {
 					Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
-				})
-
-				PIt("it gets removed after a timeout", func() {
-
 				})
 			})
 
@@ -145,6 +145,25 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				It("gets removed from the BBS", func() {
 					Eventually(ActualGetter(guid, 0)).Should(BeZero())
 				})
+			})
+		})
+
+		XContext("[FAILING:#79899606,#83231270] when the monitor is wrapped in a timeout, and the monitor takes longer than the timeout to come back", func() {
+			BeforeEach(func() {
+				lrp.Monitor = &models.TimeoutAction{
+					Action: &models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", "sleep 2"},
+					},
+					Timeout: time.Duration(time.Second),
+				}
+
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+			})
+
+			It("never enters the running state", func() {
+				Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
 			})
 		})
 
