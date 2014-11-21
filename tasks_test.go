@@ -44,11 +44,9 @@ var _ = Describe("Tasks", func() {
 			TaskGuid:   guid,
 			Domain:     domain,
 			RootFSPath: rootFS,
-			Action: models.ExecutorAction{
-				models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", "echo 'some output' > /tmp/bar"},
-				},
+			Action: &models.RunAction{
+				Path: "bash",
+				Args: []string{"-c", "echo 'some output' > /tmp/bar"},
 			},
 			Stack:      stack,
 			MemoryMB:   128,
@@ -128,7 +126,7 @@ var _ = Describe("Tasks", func() {
 
 				By("not having any actions")
 				taskCopy = task
-				taskCopy.Action = models.ExecutorAction{}
+				taskCopy.Action = nil
 				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
 
 				By("not having a stack")
@@ -161,14 +159,12 @@ var _ = Describe("Tasks", func() {
 				{"CONTAINER_LEVEL", "A"},
 				{"OVERRIDE", "B"},
 			}
-			task.Action = models.ExecutorAction{
-				models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", "env > /tmp/bar"},
-					Env: []models.EnvironmentVariable{
-						{"ACTION_LEVEL", "C"},
-						{"OVERRIDE", "D"},
-					},
+			task.Action = &models.RunAction{
+				Path: "bash",
+				Args: []string{"-c", "env > /tmp/bar"},
+				Env: []models.EnvironmentVariable{
+					{"ACTION_LEVEL", "C"},
+					{"OVERRIDE", "D"},
 				},
 			}
 		})
@@ -190,11 +186,9 @@ var _ = Describe("Tasks", func() {
 	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
 			task.RootFSPath = "docker:///onsi/grace-busybox"
-			task.Action = models.ExecutorAction{
-				models.RunAction{
-					Path: "sh",
-					Args: []string{"-c", "ls / > /tmp/bar"},
-				},
+			task.Action = &models.RunAction{
+				Path: "sh",
+				Args: []string{"-c", "ls / > /tmp/bar"},
 			}
 			Ω(client.CreateTask(task)).Should(Succeed())
 		})
@@ -211,11 +205,9 @@ var _ = Describe("Tasks", func() {
 	Describe("Cancelling tasks", func() {
 		Context("when the task exists", func() {
 			BeforeEach(func() {
-				task.Action = models.ExecutorAction{
-					models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "sleep 1000"},
-					},
+				task.Action = &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "sleep 1000"},
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
@@ -345,11 +337,9 @@ var _ = Describe("Tasks", func() {
 
 		Context("when the task is not in the completed state", func() {
 			It("should not be deleted, and should error", func() {
-				task.Action = models.ExecutorAction{
-					models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
-					},
+				task.Action = &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))

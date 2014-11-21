@@ -57,11 +57,9 @@ var _ = Describe("{CRASHES} Crashes", func() {
 		guid = NewGuid()
 		url = fmt.Sprintf("http://%s", RouteForGuid(guid))
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Action = models.ExecutorAction{
-			models.RunAction{
-				Path: "./grace",
-				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-			},
+		lrp.Action = &models.RunAction{
+			Path: "./grace",
+			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 		}
 		lrp.Monitor = nil
 	})
@@ -105,10 +103,8 @@ var _ = Describe("{CRASHES} Crashes", func() {
 	Context("with a monitor action", func() {
 		Context("when the monitor never succeeds", func() {
 			JustBeforeEach(func() {
-				lrp.Monitor = &models.ExecutorAction{
-					models.RunAction{
-						Path: "false",
-					},
+				lrp.Monitor = &models.RunAction{
+					Path: "false",
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -121,12 +117,10 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 			Context("when the process dies with exit code 0", func() {
 				BeforeEach(func() {
-					lrp.Action = models.ExecutorAction{
-						models.RunAction{
-							Path: "./grace",
-							Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
-							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-						},
+					lrp.Action = &models.RunAction{
+						Path: "./grace",
+						Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
+						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 					}
 				})
 
@@ -141,12 +135,10 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 			Context("when the process dies with exit code 1", func() {
 				BeforeEach(func() {
-					lrp.Action = models.ExecutorAction{
-						models.RunAction{
-							Path: "./grace",
-							Args: []string{"-exitAfter=2s", "-exitAfterCode=1"},
-							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-						},
+					lrp.Action = &models.RunAction{
+						Path: "./grace",
+						Args: []string{"-exitAfter=2s", "-exitAfterCode=1"},
+						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 					}
 				})
 
@@ -158,19 +150,15 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 		Context("when the monitor eventually succeeds", func() {
 			BeforeEach(func() {
-				lrp.Action = models.ExecutorAction{
-					models.RunAction{
-						Path: "./grace",
-						Args: []string{"-upFile=up"},
-						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-					},
+				lrp.Action = &models.RunAction{
+					Path: "./grace",
+					Args: []string{"-upFile=up"},
+					Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 				}
 
-				lrp.Monitor = &models.ExecutorAction{
-					models.RunAction{
-						Path: "cat",
-						Args: []string{"/tmp/up"},
-					},
+				lrp.Monitor = &models.RunAction{
+					Path: "cat",
+					Args: []string{"/tmp/up"},
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())

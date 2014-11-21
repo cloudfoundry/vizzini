@@ -113,37 +113,27 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		RootFSPath:  rootFS,
 		Domain:      domain,
 		Instances:   1,
-		Setup: &models.ExecutorAction{
-			models.SerialAction{
-				Actions: []models.ExecutorAction{
-					{
-						models.DownloadAction{
-							From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-							To:       ".",
-							CacheKey: "grace",
-						},
-					},
-					{
-						models.DownloadAction{
-							From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-							To:       "/tmp/circus",
-							CacheKey: "linux-circus",
-						},
-					},
+		Setup: &models.SerialAction{
+			Actions: []models.Action{
+				&models.DownloadAction{
+					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+					To:       ".",
+					CacheKey: "grace",
+				},
+				&models.DownloadAction{
+					From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
+					To:       "/tmp/circus",
+					CacheKey: "linux-circus",
 				},
 			},
 		},
-		Action: models.ExecutorAction{
-			models.RunAction{
-				Path: "./grace",
-				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
-			},
+		Action: &models.RunAction{
+			Path: "./grace",
+			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 		},
-		Monitor: &models.ExecutorAction{
-			models.RunAction{
-				Path: "/tmp/circus/spy",
-				Args: []string{"-addr=:8080"},
-			},
+		Monitor: &models.RunAction{
+			Path: "/tmp/circus/spy",
+			Args: []string{"-addr=:8080"},
 		},
 		Stack:     stack,
 		MemoryMB:  128,
@@ -232,7 +222,7 @@ var _ = Describe("LRPs", func() {
 
 				By("not having an action")
 				lrpCopy = lrp
-				lrpCopy.Action = models.ExecutorAction{}
+				lrpCopy.Action = nil
 				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("not having a stack")
@@ -287,24 +277,18 @@ var _ = Describe("LRPs", func() {
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFSPath = "docker:///onsi/grace-busybox"
-			lrp.Setup = &models.ExecutorAction{
-				models.DownloadAction{
-					From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-					To:       "/tmp/circus",
-					CacheKey: "linux-circus",
-				},
+			lrp.Setup = &models.DownloadAction{
+				From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
+				To:       "/tmp/circus",
+				CacheKey: "linux-circus",
 			}
-			lrp.Action = models.ExecutorAction{
-				models.RunAction{
-					Path: "/grace",
-					Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-				},
+			lrp.Action = &models.RunAction{
+				Path: "/grace",
+				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			}
-			lrp.Monitor = &models.ExecutorAction{
-				models.RunAction{
-					Path: "/tmp/circus/spy",
-					Args: []string{"-addr=:8080"},
-				},
+			lrp.Monitor = &models.RunAction{
+				Path: "/tmp/circus/spy",
+				Args: []string{"-addr=:8080"},
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
