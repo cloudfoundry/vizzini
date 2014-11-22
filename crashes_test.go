@@ -103,6 +103,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 	Context("with a monitor action", func() {
 		Context("when the monitor never succeeds", func() {
 			JustBeforeEach(func() {
+				lrp.StartTimeout = 5
 				lrp.Monitor = &models.RunAction{
 					Path: "false",
 				}
@@ -112,11 +113,12 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			})
 
 			It("never enters the running state", func() {
-				Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
 			})
 
-			PIt("[BLOCKED:#79618114] it gets removed after a timeout", func() {
-
+			It("it gets removed after a timeout", func() {
+				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Eventually(ActualGetter(guid, 0)).Should(BeZero())
 			})
 
 			Context("when the process dies with exit code 0", func() {
