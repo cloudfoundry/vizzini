@@ -20,9 +20,8 @@ var _ = Describe("Actions", func() {
 		BeforeEach(func() {
 			guid = NewGuid()
 			task = receptor.TaskCreateRequest{
-				TaskGuid:   guid,
-				Domain:     domain,
-				RootFSPath: rootFS,
+				TaskGuid: guid,
+				Domain:   domain,
 				Action: &models.TimeoutAction{
 					Action: &models.RunAction{
 						Path: "bash",
@@ -30,14 +29,7 @@ var _ = Describe("Actions", func() {
 					},
 					Timeout: 2 * time.Second,
 				},
-				Stack:      stack,
-				MemoryMB:   128,
-				DiskMB:     128,
-				CPUWeight:  100,
-				LogGuid:    guid,
-				LogSource:  "VIZ",
-				ResultFile: "/tmp/bar",
-				Annotation: "arbitrary-data",
+				Stack: stack,
 			}
 
 			Ω(client.CreateTask(task)).Should(Succeed())
@@ -56,6 +48,34 @@ var _ = Describe("Actions", func() {
 			Ω(task.FailureReason).Should(ContainSubstring("timeout"))
 
 			Ω(client.DeleteTask(guid)).Should(Succeed())
+		})
+	})
+
+	Describe("Run action", func() {
+		BeforeEach(func() {
+			guid = NewGuid()
+			task = receptor.TaskCreateRequest{
+				TaskGuid: guid,
+				Domain:   domain,
+				Action: &models.RunAction{
+					Path: "bash",
+					Dir:  "/etc",
+					Args: []string{"-c", "echo $PWD > /tmp/bar"},
+				},
+				Stack:      stack,
+				ResultFile: "/tmp/bar",
+			}
+
+			Ω(client.CreateTask(task)).Should(Succeed())
+
+		})
+
+		It("should be possible to specify a working directory", func() {
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			task, err := client.GetTask(guid)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(task.Failed).Should(BeFalse())
+			Ω(task.Result).Should(ContainSubstring("/etc"))
 		})
 	})
 })
