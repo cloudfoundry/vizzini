@@ -43,14 +43,13 @@ var _ = Describe("The container environment", func() {
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
-			actualLRPs, err := client.ActualLRPsByProcessGuidAndIndex(guid, 0)
+			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			actualLRP := actualLRPs[0]
 
 			envs := getEnvs(url)
 
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_INDEX", "0"}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_GUID", actualLRP.InstanceGuid}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_INDEX", "0"}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_GUID", actualLRP.InstanceGuid}))
 
 		})
 	})
@@ -62,15 +61,14 @@ var _ = Describe("The container environment", func() {
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
-			actualLRPs, err := client.ActualLRPsByProcessGuidAndIndex(guid, 0)
+			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			actualLRP := actualLRPs[0]
 
 			envs := getEnvs(url)
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Host}), "If this fails, then your executor may not be configured to expose ip:port to the container")
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Host, actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORTS", fmt.Sprintf("%d:%d,%d:%d", actualLRP.Ports[0].HostPort, actualLRP.Ports[0].ContainerPort, actualLRP.Ports[1].HostPort, actualLRP.Ports[1].ContainerPort)}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_IP", actualLRP.Host}), "If this fails, then your executor may not be configured to expose ip:port to the container")
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Host, actualLRP.Ports[0].HostPort)}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_PORTS", fmt.Sprintf("%d:%d,%d:%d", actualLRP.Ports[0].HostPort, actualLRP.Ports[0].ContainerPort, actualLRP.Ports[1].HostPort, actualLRP.Ports[1].ContainerPort)}))
 		})
 	})
 })

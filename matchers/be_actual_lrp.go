@@ -15,7 +15,7 @@ func BeActualLRP(processGuid string, index int) gomega.OmegaMatcher {
 	}
 }
 
-func BeActualLRPWithState(processGuid string, index int, state string) gomega.OmegaMatcher {
+func BeActualLRPWithState(processGuid string, index int, state receptor.ActualLRPState) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
@@ -26,7 +26,7 @@ func BeActualLRPWithState(processGuid string, index int, state string) gomega.Om
 type BeActualLRPMatcher struct {
 	ProcessGuid string
 	Index       int
-	State       string
+	State       receptor.ActualLRPState
 }
 
 func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err error) {

@@ -23,20 +23,7 @@ func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
 
 func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, error) {
 	return func() (receptor.ActualLRPResponse, error) {
-		actuals, err := client.ActualLRPsByProcessGuidAndIndex(guid, index)
-		if err != nil {
-			return receptor.ActualLRPResponse{}, err
-		}
-
-		if len(actuals) == 0 {
-			return receptor.ActualLRPResponse{}, nil
-		}
-
-		if len(actuals) != 1 {
-			return receptor.ActualLRPResponse{}, errors.New("found too many ActualLRPs")
-		}
-
-		return actuals[0], nil
+		return client.ActualLRPByProcessGuidAndIndex(guid, index)
 	}
 }
 
@@ -201,10 +188,15 @@ var _ = Describe("LRPs", func() {
 		})
 
 		Context("when the LRP's # of instances is <= 0", func() {
-			It("should fail to create", func() {
+			It("should create the LRP and allow the user to subsequently scale up", func() {
 				lrp.Instances = 0
-				err := client.CreateDesiredLRP(lrp)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+
+				two := 2
+				Ω(client.UpdateDesiredLRP(lrp.ProcessGuid, receptor.DesiredLRPUpdateRequest{
+					Instances: &two,
+				})).Should(Succeed())
+				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
 		})
 
@@ -354,12 +346,12 @@ var _ = Describe("LRPs", func() {
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 				})
 
-				It("does not allow scaling down to 0", func() {
+				It("allows scaling down to 0", func() {
 					zero := 0
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
 						Instances: &zero,
-					})).ShouldNot(Succeed())
-					Eventually(IndexCounter(guid)).Should(Equal(1))
+					})).Should(Succeed())
+					Eventually(IndexCounter(guid)).Should(Equal(0))
 				})
 
 				It("allows updating routes", func() {
@@ -410,7 +402,7 @@ var _ = Describe("LRPs", func() {
 					err := client.UpdateDesiredLRP("flooberdoobey", receptor.DesiredLRPUpdateRequest{
 						Instances: &two,
 					})
-					Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+					Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
 				})
 			})
 		})
@@ -433,7 +425,7 @@ var _ = Describe("LRPs", func() {
 			It("should error", func() {
 				lrp, err := client.GetDesiredLRP("floobeedoo")
 				Ω(lrp).Should(BeZero())
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
 			})
 		})
 	})
@@ -511,7 +503,7 @@ var _ = Describe("LRPs", func() {
 		Context("when the DesiredLRP does not exist", func() {
 			It("should not be deleted, and should error", func() {
 				err := client.DeleteDesiredLRP("floobeedoobee")
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.LRPNotFound))
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
 			})
 		})
 	})
@@ -606,10 +598,12 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
-	Describe("Getting ActualLRPs at a given index for a ProcessGuid", func() {
+	Describe("Getting the ActualLRP at a given index for a ProcessGuid", func() {
 		Context("when there is no matching ProcessGuid", func() {
-			It("should return an empty list", func() {
-				Ω(client.ActualLRPsByProcessGuidAndIndex("floobeedoo", 0)).Should(BeEmpty())
+			It("should return a missing ActualLRP error", func() {
+				actualLRP, err := client.ActualLRPByProcessGuidAndIndex("floobeedoo", 0)
+				Ω(actualLRP).Should(BeZero())
+				Ω(err).Should(HaveOccurred())
 			})
 		})
 
@@ -619,12 +613,14 @@ var _ = Describe("LRPs", func() {
 				Eventually(IndexCounter(guid)).Should(Equal(1))
 			})
 
-			It("should return an empty list", func() {
-				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 1)).Should(BeEmpty())
+			It("should return a missing ActualLRP error", func() {
+				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 1)
+				Ω(actualLRP).Should(BeZero())
+				Ω(err).Should(HaveOccurred())
 			})
 		})
 
-		Context("when there are ActualLRPs at the given index", func() {
+		Context("when there is an ActualLRP at the given index", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -632,8 +628,8 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns them", func() {
-				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 0)).Should(ConsistOf(BeActualLRP(guid, 0)))
-				Ω(client.ActualLRPsByProcessGuidAndIndex(guid, 1)).Should(ConsistOf(BeActualLRP(guid, 1)))
+				Ω(client.ActualLRPByProcessGuidAndIndex(guid, 0)).Should(BeActualLRP(guid, 0))
+				Ω(client.ActualLRPByProcessGuidAndIndex(guid, 1)).Should(BeActualLRP(guid, 1))
 			})
 		})
 	})
@@ -641,7 +637,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Restarting an ActualLRP", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("returns an error", func() {
-				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
+				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
 			})
 		})
 
@@ -652,7 +648,7 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns an error", func() {
-				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
+				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
 			})
 		})
 
@@ -665,7 +661,7 @@ var _ = Describe("LRPs", func() {
 			It("restarts the actual lrp", func() {
 				initialTime, err := StartedAtGetter(guid)()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(client.KillActualLRPsByProcessGuidAndIndex(guid, 0)).Should(Succeed())
+				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).Should(Succeed())
 				//This needs a large timeout as the converger needs to run for it to return
 				Eventually(StartedAtGetter(guid), 35).Should(BeNumerically(">", initialTime))
 			})

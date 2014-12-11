@@ -68,7 +68,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 		ClearOutDesiredLRPsInDomain(domain)
 	})
 
-	XContext("[FAILING:#83228668] with no monitor action", func() {
+	Context("with no monitor action", func() {
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
@@ -109,15 +109,15 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 			})
 
 			It("never enters the running state", func() {
-				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 			})
 
 			It("it gets removed after a timeout", func() {
-				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 				Eventually(ActualGetter(guid, 0)).Should(BeZero())
 			})
 
@@ -131,7 +131,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				})
 
 				It("does not get removed from the BBS, as it has presumably daemonized and we are waiting on the health check", func() {
-					Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+					Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 				})
 			})
 
@@ -161,11 +161,11 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 			})
 
 			It("never enters the running state", func() {
-				Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateStarting))
+				Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 			})
 		})
 
