@@ -27,6 +27,12 @@ func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, er
 	}
 }
 
+func ActualByDomainGetter(domain string) func() ([]receptor.ActualLRPResponse, error) {
+	return func() ([]receptor.ActualLRPResponse, error) {
+		return client.ActualLRPsByDomain(domain)
+	}
+}
+
 func ClearOutDesiredLRPsInDomain(domain string) {
 	lrps, err := client.DesiredLRPsByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
@@ -46,28 +52,41 @@ func EndpointCurler(endpoint string) func() (int, error) {
 	}
 }
 
-func IndexCounter(guid string) func() (int, error) {
-	url := "http://" + RouteForGuid(guid) + "/index"
+func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() (int, error) {
 	return func() (int, error) {
-		counts := map[string]bool{}
-		for i := 0; i < 40; i++ {
-			resp, err := http.Get(url)
+		counts := map[int]bool{}
+		for i := 0; i < 100; i++ {
+			index, err := GetIndexFromEndpointFor(guid, optionalHttpClient...)
 			if err != nil {
 				return 0, err
 			}
-			if resp.StatusCode != http.StatusOK {
-				resp.Body.Close()
-				return 0, err
-			}
-			content, err := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				return 0, err
-			}
-			counts[string(content)] = true
+			counts[index] = true
 		}
 		return len(counts), nil
 	}
+}
+
+func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) (int, error) {
+	httpClient := http.DefaultClient
+	if len(optionalHttpClient) == 1 {
+		httpClient = optionalHttpClient[0]
+	}
+	url := "http://" + RouteForGuid(guid) + "/index"
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return 0, err
+	}
+	content, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(string(content))
 }
 
 func StartedAtGetter(guid string) func() (int64, error) {
