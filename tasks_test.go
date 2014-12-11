@@ -458,4 +458,21 @@ var _ = Describe("Tasks", func() {
 			})
 		})
 	})
+
+	Describe("when the Task cannot be allocated (e.g. it's too large)", func() {
+		BeforeEach(func() {
+			task.MemoryMB = 1024 * 1024
+		})
+
+		It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
+			Ω(client.CreateTask(task)).Should(Succeed())
+			Eventually(TaskGetter(task.TaskGuid), 5).Should(HaveTaskState(receptor.TaskStateCompleted))
+
+			retreivedTask, err := client.GetTask(task.TaskGuid)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Ω(retreivedTask.Failed).Should(BeTrue())
+			Ω(retreivedTask.FailureReason).Should(ContainSubstring("insufficient resources"))
+		})
+	})
 })
