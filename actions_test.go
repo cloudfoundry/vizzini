@@ -78,4 +78,28 @@ var _ = Describe("Actions", func() {
 			Ω(task.Result).Should(ContainSubstring("/etc"))
 		})
 	})
+
+	Describe("Cancelling Downloads", func() {
+		var desiredLRP receptor.DesiredLRPCreateRequest
+		BeforeEach(func() {
+			guid = NewGuid()
+			desiredLRP = receptor.DesiredLRPCreateRequest{
+				ProcessGuid: guid,
+				Domain:      domain,
+				Instances:   1,
+				Action: &models.DownloadAction{
+					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
+					To:   "/tmp",
+				},
+				Stack: stack,
+			}
+		})
+
+		It("should cancel the download", func() {
+			Ω(client.CreateDesiredLRP(desiredLRP)).Should(Succeed())
+			time.Sleep(3 * time.Second)
+			Ω(client.DeleteDesiredLRP(desiredLRP.ProcessGuid)).Should(Succeed())
+			Eventually(ActualGetter(desiredLRP.ProcessGuid, 0), 5).Should(BeZero())
+		})
+	})
 })

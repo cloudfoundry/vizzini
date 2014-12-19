@@ -60,6 +60,9 @@ func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() (int, 
 			if err != nil {
 				return 0, err
 			}
+			if index == -1 {
+				continue
+			}
 			counts[index] = true
 		}
 		return len(counts), nil
@@ -78,7 +81,7 @@ func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) (i
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return 0, err
+		return -1, nil
 	}
 	content, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()

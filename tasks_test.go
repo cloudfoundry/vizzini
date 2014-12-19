@@ -457,6 +457,17 @@ var _ = Describe("Tasks", func() {
 				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
 		})
+
+		Context("[Regression: #84595244] when there's no room for the Task", func() {
+			BeforeEach(func() {
+				task.MemoryMB = 1024 * 1024
+			})
+
+			It("should hit the callback", func() {
+				Ω(client.CreateTask(task)).Should(Succeed())
+				Eventually(done).Should(BeClosed())
+			})
+		})
 	})
 
 	Describe("when the Task cannot be allocated (e.g. it's too large)", func() {
