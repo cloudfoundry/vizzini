@@ -368,6 +368,7 @@ var _ = Describe("Tasks", func() {
 
 		BeforeEach(func() {
 			testRunnerURL = "192.168.220.1"
+			status = http.StatusOK
 
 			server = ghttp.NewUnstartedServer()
 			l, err := net.Listen("tcp", "0.0.0.0:0")
