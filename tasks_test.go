@@ -367,7 +367,7 @@ var _ = Describe("Tasks", func() {
 		var done chan struct{}
 
 		BeforeEach(func() {
-			testRunnerURL = "192.168.220.1"
+			testRunnerURL = "10.0.2.2"
 			status = http.StatusOK
 
 			server = ghttp.NewUnstartedServer()
