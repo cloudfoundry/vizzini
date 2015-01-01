@@ -65,9 +65,9 @@ var _ = Describe("The container environment", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			envs := getEnvs(url)
-			Ω(envs).Should(ContainElement([]string{"INSTANCE_IP", actualLRP.Host}), "If this fails, then your executor may not be configured to expose ip:port to the container")
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
 			Ω(envs).Should(ContainElement([]string{"INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Host, actualLRP.Ports[0].HostPort)}))
+			Ω(envs).Should(ContainElement([]string{"INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
 			Ω(envs).Should(ContainElement([]string{"INSTANCE_PORTS", fmt.Sprintf("%d:%d,%d:%d", actualLRP.Ports[0].HostPort, actualLRP.Ports[0].ContainerPort, actualLRP.Ports[1].HostPort, actualLRP.Ports[1].ContainerPort)}))
 		})
 	})

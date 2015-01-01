@@ -44,7 +44,7 @@ func DirectURL(guid string, index int) string {
 	actualLRP, err := ActualGetter(guid, 0)()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(actualLRP).ShouldNot(BeZero())
-	return fmt.Sprintf("http://%s:%d", actualLRP.Host, actualLRP.Ports[0].HostPort)
+	return fmt.Sprintf("http://%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)
 }
 
 const HealthyCheckInterval = 30 * time.Second
