@@ -28,7 +28,7 @@ func ClearOutTasksInDomain(domain string) {
 	tasks, err := client.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
-		Eventually(TaskGetter(task.TaskGuid), 5).Should(HaveTaskState(receptor.TaskStateCompleted))
+		Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
 		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
 	}
 	Ω(client.TasksByDomain(domain)).Should(BeEmpty())

@@ -13,6 +13,7 @@ var _ = Describe("Freshness", func() {
 			It("should create a fresh domain that never disappears", func() {
 				Ω(client.UpsertDomain(domain, 0)).Should(Succeed())
 				Consistently(client.Domains, 3).Should(ContainElement(domain))
+				client.UpsertDomain(domain, 1*time.Second) //to clear it out
 			})
 		})
 

@@ -59,6 +59,7 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	ClearOutDesiredLRPsInDomain(domain)
 	ClearOutTasksInDomain(domain)
+	client.UpsertDomain(domain, 1*time.Second) //clear out the domain
 
 	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
 	Ω(client.DesiredLRPsByDomain(domain)).Should(BeEmpty())
