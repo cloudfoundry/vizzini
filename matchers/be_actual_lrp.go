@@ -44,9 +44,17 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 }
 
 func (matcher *BeActualLRPMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+	if matcher.State == "" {
+		return fmt.Sprintf("Expected\n%s\nto have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+	} else {
+		return fmt.Sprintf("Expected\n%s\nto have ProcessGuid %s, Index %d and State %s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
+	}
 }
 
 func (matcher *BeActualLRPMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+	if matcher.State == "" {
+		return fmt.Sprintf("Expected\n%s\nnot to have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+	} else {
+		return fmt.Sprintf("Expected\n%s\nnot to have ProcessGuid %s, Index %d and State %s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
+	}
 }

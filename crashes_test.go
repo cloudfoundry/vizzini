@@ -150,7 +150,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			})
 		})
 
-		XContext("[FAILING:#79899606,#83231270] when the monitor is wrapped in a timeout, and the monitor takes longer than the timeout to come back", func() {
+		Context("when the monitor is wrapped in a timeout, and the monitor takes longer than the timeout to come back", func() {
 			BeforeEach(func() {
 				lrp.Monitor = &models.TimeoutAction{
 					Action: &models.RunAction{
