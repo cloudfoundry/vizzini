@@ -50,6 +50,8 @@ func NewGuid() string {
 
 var _ = BeforeSuite(func() {
 	SetDefaultEventuallyTimeout(10 * time.Second)
+	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
+	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	stack = "lucid64"
 

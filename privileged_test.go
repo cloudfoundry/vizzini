@@ -12,7 +12,8 @@ import (
 var _ = Describe("Privileged", func() {
 	var task receptor.TaskCreateRequest
 	var guid string
-	var privileged bool
+	var runPrivileged bool
+	var containerPrivileged bool
 
 	JustBeforeEach(func() {
 		guid = NewGuid()
@@ -20,10 +21,11 @@ var _ = Describe("Privileged", func() {
 			TaskGuid:   guid,
 			Domain:     domain,
 			RootFSPath: rootFS,
+			Privileged: containerPrivileged,
 			Action: &models.RunAction{
 				Path:       "bash",
-				Args:       []string{"-c", "id > /tmp/bar"},
-				Privileged: privileged,
+				Args:       []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
+				Privileged: runPrivileged,
 			},
 			Stack:      stack,
 			MemoryMB:   128,
@@ -43,27 +45,71 @@ var _ = Describe("Privileged", func() {
 		ClearOutTasksInDomain(domain)
 	})
 
-	Context("{PRIVILEGED} when running a privileged action", func() {
+	Context("with a privileged container", func() {
 		BeforeEach(func() {
-			privileged = true
+			containerPrivileged = true
 		})
 
-		It("should run as root", func() {
-			completedTask, err := client.GetTask(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
+		Context("{PRIVILEGED} when running a privileged action", func() {
+			BeforeEach(func() {
+				runPrivileged = true
+			})
+
+			It("should run as root", func() {
+				completedTask, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
+				Ω(completedTask.Result).Should(ContainSubstring("groups=0(root)"))
+				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=0"))
+			})
+		})
+
+		Context("when running a non-privileged action", func() {
+			BeforeEach(func() {
+				runPrivileged = false
+			})
+
+			It("should run as non-root", func() {
+				completedTask, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{5}\(vcap\)`))
+				Ω(completedTask.Result).Should(ContainSubstring("groups=0(root)"))
+				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+			})
 		})
 	})
 
-	Context("when running a non-privileged action", func() {
+	Context("with an unprivileged container", func() {
 		BeforeEach(func() {
-			privileged = false
+			containerPrivileged = false
 		})
 
-		It("should run as non-root", func() {
-			completedTask, err := client.GetTask(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{5}\(vcap\)`))
+		Context("{PRIVILEGED} when running a privileged action", func() {
+			BeforeEach(func() {
+				runPrivileged = true
+			})
+
+			It("should run as root", func() {
+				completedTask, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
+				Ω(completedTask.Result).Should(ContainSubstring("groups=65534(nogroup)"))
+				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+			})
+		})
+
+		Context("when running a non-privileged action", func() {
+			BeforeEach(func() {
+				runPrivileged = false
+			})
+
+			It("should run as non-root", func() {
+				completedTask, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{5}\(vcap\)`))
+				Ω(completedTask.Result).Should(ContainSubstring("groups=65534(nogroup)"))
+				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+			})
 		})
 	})
 })
