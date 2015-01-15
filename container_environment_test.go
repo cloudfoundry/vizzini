@@ -12,17 +12,12 @@ import (
 
 var _ = Describe("The container environment", func() {
 	var lrp receptor.DesiredLRPCreateRequest
-	var guid, url string
+	var url string
 
 	BeforeEach(func() {
-		guid = NewGuid()
 		url = "http://" + RouteForGuid(guid) + "/env?json=true"
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Ports = []uint32{8080, 5000}
-	})
-
-	AfterEach(func() {
-		ClearOutDesiredLRPsInDomain(domain)
 	})
 
 	getEnvs := func(url string) [][]string {

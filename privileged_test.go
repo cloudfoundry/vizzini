@@ -11,38 +11,20 @@ import (
 
 var _ = Describe("Privileged", func() {
 	var task receptor.TaskCreateRequest
-	var guid string
 	var runPrivileged bool
 	var containerPrivileged bool
 
 	JustBeforeEach(func() {
-		guid = NewGuid()
-		task = receptor.TaskCreateRequest{
-			TaskGuid:   guid,
-			Domain:     domain,
-			RootFSPath: rootFS,
-			Privileged: containerPrivileged,
-			Action: &models.RunAction{
-				Path:       "bash",
-				Args:       []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
-				Privileged: runPrivileged,
-			},
-			Stack:      stack,
-			MemoryMB:   128,
-			DiskMB:     128,
-			CPUWeight:  100,
-			LogGuid:    guid,
-			LogSource:  "VIZ",
-			ResultFile: "/tmp/bar",
-			Annotation: "arbitrary-data",
+		task = TaskWithGuid(guid)
+		task.Privileged = containerPrivileged
+		task.Action = &models.RunAction{
+			Path:       "bash",
+			Args:       []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
+			Privileged: runPrivileged,
 		}
 
 		Ω(client.CreateTask(task)).Should(Succeed())
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-	})
-
-	AfterEach(func() {
-		ClearOutTasksInDomain(domain)
 	})
 
 	Context("with a privileged container", func() {

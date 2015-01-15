@@ -18,19 +18,17 @@ import (
 var client receptor.Client
 var domain string
 var stack string
-var rootFS string
+var guid string
 
 var receptorAddress string
+var routableDomainSuffix string
+var hostAddress string
 
 func init() {
-	var onEdge bool
 	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
-	flag.BoolVar(&onEdge, "edge", false, "if true, will use a docker-image based rootfs for Diego-Edge")
+	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "10.244.0.34.xip.io", "suffix to use when constructing FQDN")
+	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.Parse()
-
-	if onEdge {
-		rootFS = "docker:///cloudfoundry/lucid64"
-	}
 
 	if receptorAddress == "" {
 		log.Fatal("i need a receptor-address to talk to Diego...")
@@ -56,6 +54,15 @@ var _ = BeforeSuite(func() {
 	stack = "lucid64"
 
 	client = receptor.NewClient(receptorAddress)
+})
+
+var _ = BeforeEach(func() {
+	guid = NewGuid()
+})
+
+var _ = AfterEach(func() {
+	ClearOutTasksInDomain(domain)
+	ClearOutDesiredLRPsInDomain(domain)
 })
 
 var _ = AfterSuite(func() {

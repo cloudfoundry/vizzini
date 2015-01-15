@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,14 +16,6 @@ import (
 func MakeGraceExit(baseURL string, status int) {
 	url := fmt.Sprintf("%s/exit/%d", baseURL, status)
 	resp, err := http.Post(url, "application/octet-stream", nil)
-	Ω(err).ShouldNot(HaveOccurred())
-	resp.Body.Close()
-	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
-}
-
-func TellGraceToMakeFile(baseURL string, filename string, content string) {
-	url := fmt.Sprintf("%s/file/%s", baseURL, filename)
-	resp, err := http.Post(url, "application/octet-stream", bytes.NewBufferString(content))
 	Ω(err).ShouldNot(HaveOccurred())
 	resp.Body.Close()
 	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
@@ -51,10 +42,9 @@ const HealthyCheckInterval = 30 * time.Second
 
 var _ = Describe("{CRASHES} Crashes", func() {
 	var lrp receptor.DesiredLRPCreateRequest
-	var guid, url string
+	var url string
 
 	BeforeEach(func() {
-		guid = NewGuid()
 		url = fmt.Sprintf("http://%s", RouteForGuid(guid))
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Action = &models.RunAction{
@@ -62,10 +52,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 		}
 		lrp.Monitor = nil
-	})
-
-	AfterEach(func() {
-		ClearOutDesiredLRPsInDomain(domain)
 	})
 
 	Context("with no monitor action", func() {

@@ -11,7 +11,6 @@ import (
 
 var _ = Describe("Router Related Tests", func() {
 	var lrp receptor.DesiredLRPCreateRequest
-	var guid string
 
 	Describe("sticky sessions", func() {
 		var httpClient *http.Client
@@ -24,16 +23,11 @@ var _ = Describe("Router Related Tests", func() {
 				Jar: jar,
 			}
 
-			guid = NewGuid()
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(IndexCounter(guid, httpClient)).Should(Equal(3))
-		})
-
-		AfterEach(func() {
-			ClearOutDesiredLRPsInDomain(domain)
 		})
 
 		It("should only route to the stuck instance", func() {

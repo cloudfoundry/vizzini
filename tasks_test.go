@@ -18,49 +18,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TaskGetter(guid string) func() (receptor.TaskResponse, error) {
-	return func() (receptor.TaskResponse, error) {
-		return client.GetTask(guid)
-	}
-}
-
-func ClearOutTasksInDomain(domain string) {
-	tasks, err := client.TasksByDomain(domain)
-	Ω(err).ShouldNot(HaveOccurred())
-	for _, task := range tasks {
-		Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
-	}
-	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
-}
-
 var _ = Describe("Tasks", func() {
 	var task receptor.TaskCreateRequest
-	var guid string
 
 	BeforeEach(func() {
-		guid = NewGuid()
-		task = receptor.TaskCreateRequest{
-			TaskGuid:   guid,
-			Domain:     domain,
-			RootFSPath: rootFS,
-			Action: &models.RunAction{
-				Path: "bash",
-				Args: []string{"-c", "echo 'some output' > /tmp/bar"},
-			},
-			Stack:      stack,
-			MemoryMB:   128,
-			DiskMB:     128,
-			CPUWeight:  100,
-			LogGuid:    guid,
-			LogSource:  "VIZ",
-			ResultFile: "/tmp/bar",
-			Annotation: "arbitrary-data",
-		}
-	})
-
-	AfterEach(func() {
-		ClearOutTasksInDomain(domain)
+		task = TaskWithGuid(guid)
 	})
 
 	Describe("Creating Tasks", func() {
@@ -360,14 +322,12 @@ var _ = Describe("Tasks", func() {
 	})
 
 	Describe("Registering Completion Callbacks", func() {
-		var testRunnerURL string
 		var server *ghttp.Server
 		var port string
 		var status int
 		var done chan struct{}
 
 		BeforeEach(func() {
-			testRunnerURL = "10.0.2.2"
 			status = http.StatusOK
 
 			server = ghttp.NewUnstartedServer()
@@ -392,7 +352,7 @@ var _ = Describe("Tasks", func() {
 				},
 			))
 
-			task.CompletionCallbackURL = "http://" + testRunnerURL + ":" + port + "/endpoint"
+			task.CompletionCallbackURL = "http://" + hostAddress + ":" + port + "/endpoint"
 		})
 
 		AfterEach(func() {

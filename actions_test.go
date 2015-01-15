@@ -14,29 +14,20 @@ import (
 
 var _ = Describe("Actions", func() {
 	var task receptor.TaskCreateRequest
-	var guid string
 
 	Describe("Timeout action", func() {
 		BeforeEach(func() {
-			guid = NewGuid()
-			task = receptor.TaskCreateRequest{
-				TaskGuid: guid,
-				Domain:   domain,
-				Action: &models.TimeoutAction{
-					Action: &models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", "sleep 1000"},
-					},
-					Timeout: 2 * time.Second,
+			task = TaskWithGuid(guid)
+			task.Action = &models.TimeoutAction{
+				Action: &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "sleep 1000"},
 				},
-				Stack: stack,
+				Timeout: 2 * time.Second,
 			}
+			task.ResultFile = ""
 
 			Ω(client.CreateTask(task)).Should(Succeed())
-		})
-
-		AfterEach(func() {
-			ClearOutTasksInDomain(domain)
 		})
 
 		It("should fail the Task within the timeout window", func() {
@@ -53,21 +44,14 @@ var _ = Describe("Actions", func() {
 
 	Describe("Run action", func() {
 		BeforeEach(func() {
-			guid = NewGuid()
-			task = receptor.TaskCreateRequest{
-				TaskGuid: guid,
-				Domain:   domain,
-				Action: &models.RunAction{
-					Path: "bash",
-					Dir:  "/etc",
-					Args: []string{"-c", "echo $PWD > /tmp/bar"},
-				},
-				Stack:      stack,
-				ResultFile: "/tmp/bar",
+			task = TaskWithGuid(guid)
+			task.Action = &models.RunAction{
+				Path: "bash",
+				Dir:  "/etc",
+				Args: []string{"-c", "echo $PWD > /tmp/bar"},
 			}
 
 			Ω(client.CreateTask(task)).Should(Succeed())
-
 		})
 
 		It("should be possible to specify a working directory", func() {
@@ -82,7 +66,6 @@ var _ = Describe("Actions", func() {
 	Describe("Cancelling Downloads", func() {
 		var desiredLRP receptor.DesiredLRPCreateRequest
 		BeforeEach(func() {
-			guid = NewGuid()
 			desiredLRP = receptor.DesiredLRPCreateRequest{
 				ProcessGuid: guid,
 				Domain:      domain,
