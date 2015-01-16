@@ -65,6 +65,12 @@ func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, er
 	}
 }
 
+func ActualByProcessGuidGetter(guid string) func() ([]receptor.ActualLRPResponse, error) {
+	return func() ([]receptor.ActualLRPResponse, error) {
+		return client.ActualLRPsByProcessGuid(guid)
+	}
+}
+
 func ActualByDomainGetter(domain string) func() ([]receptor.ActualLRPResponse, error) {
 	return func() ([]receptor.ActualLRPResponse, error) {
 		return client.ActualLRPsByDomain(domain)
