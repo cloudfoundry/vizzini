@@ -83,6 +83,7 @@ func ClearOutDesiredLRPsInDomain(domain string) {
 	for _, lrp := range lrps {
 		Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
 	}
+	Eventually(ActualByDomainGetter(domain)).Should(BeEmpty())
 }
 
 func EndpointCurler(endpoint string) func() (int, error) {

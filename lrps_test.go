@@ -111,6 +111,17 @@ var _ = Describe("LRPs", func() {
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
 			})
 		})
+
+		Context("when the DesiredLRP already exists", func() {
+			BeforeEach(func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			})
+
+			It("should fail", func() {
+				err := client.CreateDesiredLRP(lrp)
+				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPAlreadyExists))
+			})
+		})
 	})
 
 	Describe("Specifying environment variables", func() {
@@ -168,44 +179,6 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-		})
-
-		Context("By redesiring it", func() {
-			It("allows updating instances", func() {
-				lrp.Instances = 2
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(IndexCounter(guid)).Should(Equal(2))
-				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
-				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 1)))
-			})
-
-			It("allows updating routes", func() {
-				newRoute := RouteForGuid(NewGuid())
-				lrp.Routes = append(lrp.Routes, newRoute)
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
-				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-			})
-
-			It("allows updating annotations", func() {
-				lrp.Annotation = "my new annotation"
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				lrp, err := client.GetDesiredLRP(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(lrp.Annotation).Should(Equal("my new annotation"))
-			})
-
-			It("disallows updating anything else", func() {
-				lrpCopy := lrp
-				lrpCopy.Domain = NewGuid()
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
-
-				lrpCopy.Stack = ".net"
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
-
-				lrpCopy.MemoryMB = 256
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
-			})
 		})
 
 		Context("By explicitly updating it", func() {
