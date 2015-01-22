@@ -42,8 +42,8 @@ var _ = Describe("EventStream", func() {
 
 	It("should receive events as the LRP goes through its lifecycle", func() {
 		client.CreateDesiredLRP(desiredLRP)
-		Eventually(events).Should(Receive(MatchDesiredLRPChangedEvent(guid)))
-		Eventually(events).Should(Receive(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateUnclaimed)))
+		Eventually(events).Should(Receive(MatchDesiredLRPCreatedEvent(guid)))
+		Eventually(events).Should(Receive(MatchActualLRPCreatedEvent(guid, 0)))
 		Eventually(events).Should(Receive(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateClaimed)))
 		Eventually(events).Should(Receive(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateRunning)))
 		client.DeleteDesiredLRP(guid)

@@ -115,6 +115,7 @@ var _ = Describe("LRPs", func() {
 		Context("when the DesiredLRP already exists", func() {
 			BeforeEach(func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should fail", func() {
@@ -163,7 +164,7 @@ var _ = Describe("LRPs", func() {
 			}
 			lrp.Monitor = &models.RunAction{
 				Path: "/tmp/circus/spy",
-				Args: []string{"-addr=:8080"},
+				Args: []string{"-port=8080"},
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -257,6 +258,7 @@ var _ = Describe("LRPs", func() {
 		Context("when the DesiredLRP exists", func() {
 			BeforeEach(func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should succeed", func() {
@@ -342,6 +344,16 @@ var _ = Describe("LRPs", func() {
 				_, err := client.GetDesiredLRP(guid)
 				Ω(err).Should(HaveOccurred())
 				Eventually(EndpointCurler(url)).ShouldNot(Equal(http.StatusOK))
+			})
+		})
+
+		XContext("when the DesiredLRP is deleted after it is claimed but before it is running #86668966", func() {
+			It("should succesfully remove any ActualLRP", func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid), 2, 0.05).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, receptor.ActualLRPStateClaimed)))
+				//note: we don't wait for the ActualLRP to start running
+				Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
+				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(BeEmpty())
 			})
 		})
 

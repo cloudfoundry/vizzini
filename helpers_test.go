@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	. "github.com/onsi/gomega"
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -26,7 +25,7 @@ func ClearOutTasksInDomain(domain string) {
 	tasks, err := client.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
-		Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+		client.CancelTask(task.TaskGuid)
 		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
 	}
 	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
@@ -173,11 +172,6 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 					To:       ".",
 					CacheKey: "grace",
 				},
-				&models.DownloadAction{
-					From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-					To:       "/tmp/circus",
-					CacheKey: "linux-circus",
-				},
 			},
 		},
 		Action: &models.RunAction{
@@ -185,8 +179,8 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 		},
 		Monitor: &models.RunAction{
-			Path: "/tmp/circus/spy",
-			Args: []string{"-addr=:8080"},
+			Path: "nc",
+			Args: []string{"-z", "0.0.0.0", "8080"},
 		},
 		Stack:     stack,
 		MemoryMB:  128,

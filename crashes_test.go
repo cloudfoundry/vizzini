@@ -40,7 +40,7 @@ func DirectURL(guid string, index int) string {
 
 const HealthyCheckInterval = 30 * time.Second
 
-var _ = Describe("{CRASHES} Crashes", func() {
+var _ = XDescribe("{CRASHES} Crashes", func() {
 	var lrp receptor.DesiredLRPCreateRequest
 	var url string
 
