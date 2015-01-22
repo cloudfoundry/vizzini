@@ -21,14 +21,20 @@ func TaskGetter(guid string) func() (receptor.TaskResponse, error) {
 	}
 }
 
+func TasksByDomainGetter(domain string) func() ([]receptor.TaskResponse, error) {
+	return func() ([]receptor.TaskResponse, error) {
+		return client.TasksByDomain(domain)
+	}
+}
+
 func ClearOutTasksInDomain(domain string) {
 	tasks, err := client.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
 		client.CancelTask(task.TaskGuid)
-		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
+		client.DeleteTask(task.TaskGuid)
 	}
-	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
+	Eventually(TasksByDomainGetter(domain), 2).Should(BeEmpty())
 }
 
 func TaskWithGuid(guid string) receptor.TaskCreateRequest {
