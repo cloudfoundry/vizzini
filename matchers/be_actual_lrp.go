@@ -2,6 +2,7 @@ package matchers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/onsi/gomega"
@@ -12,6 +13,7 @@ func BeActualLRP(processGuid string, index int) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
+		CrashCount:  -1,
 	}
 }
 
@@ -20,6 +22,24 @@ func BeActualLRPWithState(processGuid string, index int, state receptor.ActualLR
 		ProcessGuid: processGuid,
 		Index:       index,
 		State:       state,
+		CrashCount:  -1,
+	}
+}
+
+func BeActualLRPWithCrashCount(processGuid string, index int, crashCount int) gomega.OmegaMatcher {
+	return &BeActualLRPMatcher{
+		ProcessGuid: processGuid,
+		Index:       index,
+		CrashCount:  crashCount,
+	}
+}
+
+func BeActualLRPWithStateAndCrashCount(processGuid string, index int, state receptor.ActualLRPState, crashCount int) gomega.OmegaMatcher {
+	return &BeActualLRPMatcher{
+		ProcessGuid: processGuid,
+		Index:       index,
+		State:       state,
+		CrashCount:  crashCount,
 	}
 }
 
@@ -27,6 +47,7 @@ type BeActualLRPMatcher struct {
 	ProcessGuid string
 	Index       int
 	State       receptor.ActualLRPState
+	CrashCount  int
 }
 
 func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err error) {
@@ -39,22 +60,33 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 	if matcher.State != "" {
 		matchesState = matcher.State == lrp.State
 	}
+	matchesCrashCount := true
+	if matcher.CrashCount != -1 {
+		matchesCrashCount = matcher.CrashCount == lrp.CrashCount
+	}
 
-	return matchesState && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
+	return matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
+}
+
+func (matcher *BeActualLRPMatcher) expectedContents() string {
+	expectedContents := []string{
+		fmt.Sprintf("ProcessGuid: %s", matcher.ProcessGuid),
+		fmt.Sprintf("Index: %d", matcher.Index),
+	}
+	if matcher.State != "" {
+		expectedContents = append(expectedContents, fmt.Sprintf("State: %s", matcher.State))
+	}
+	if matcher.CrashCount != -1 {
+		expectedContents = append(expectedContents, fmt.Sprintf("CrashCount: %d", matcher.CrashCount))
+	}
+
+	return strings.Join(expectedContents, "\n")
 }
 
 func (matcher *BeActualLRPMatcher) FailureMessage(actual interface{}) (message string) {
-	if matcher.State == "" {
-		return fmt.Sprintf("Expected\n%s\nto have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
-	} else {
-		return fmt.Sprintf("Expected\n%s\nto have ProcessGuid %s, Index %d and State %s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
-	}
+	return fmt.Sprintf("Expected\n%s\nto have:\n%s", format.Object(actual, 1), matcher.expectedContents())
 }
 
 func (matcher *BeActualLRPMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	if matcher.State == "" {
-		return fmt.Sprintf("Expected\n%s\nnot to have ProcessGuid %s and Index %d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
-	} else {
-		return fmt.Sprintf("Expected\n%s\nnot to have ProcessGuid %s, Index %d and State %s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
-	}
+	return fmt.Sprintf("Expected\n%s\nnot to have:\n%s", format.Object(actual, 1), matcher.expectedContents())
 }

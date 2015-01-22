@@ -37,7 +37,7 @@ var _ = Describe("EventStream", func() {
 
 	AfterEach(func() {
 		eventSource.Close()
-		Eventually(done).Should(BeClosed(), "This fails right now.... #84607000")
+		Eventually(done).Should(BeClosed())
 	})
 
 	It("should receive events as the LRP goes through its lifecycle", func() {
