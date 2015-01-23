@@ -524,4 +524,40 @@ var _ = Describe("LRPs", func() {
 			})
 		})
 	})
+
+	Describe("when an ActualLRP cannot be allocated", func() {
+		Context("because it's too large", func() {
+			BeforeEach(func() {
+				lrp.MemoryMB = 1024 * 1024
+			})
+
+			It("should report this fact on the UNCLAIMED ActualLRP", func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(ActualGetter(guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
+
+				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(actualLRP.State).Should(Equal(receptor.ActualLRPStateUnclaimed))
+				Ω(actualLRP.PlacementError).Should(ContainSubstring("insufficient resources"))
+			})
+		})
+
+		Context("because of a stack mismatch", func() {
+			BeforeEach(func() {
+				lrp.Stack = "banana-pancakes"
+			})
+
+			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(ActualGetter(guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
+
+				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Ω(actualLRP.State).Should(Equal(receptor.ActualLRPStateUnclaimed))
+				Ω(actualLRP.PlacementError).Should(ContainSubstring("found no compatible cell"))
+			})
+		})
+	})
 })

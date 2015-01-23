@@ -17,6 +17,16 @@ func BeActualLRP(processGuid string, index int) gomega.OmegaMatcher {
 	}
 }
 
+func BeUnclaimedActualLRPWithPlacementError(processGuid string, index int) gomega.OmegaMatcher {
+	return &BeActualLRPMatcher{
+		ProcessGuid:       processGuid,
+		Index:             index,
+		CrashCount:        -1,
+		State:             receptor.ActualLRPStateUnclaimed,
+		HasPlacementError: true,
+	}
+}
+
 func BeActualLRPWithState(processGuid string, index int, state receptor.ActualLRPState) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
@@ -44,10 +54,11 @@ func BeActualLRPWithStateAndCrashCount(processGuid string, index int, state rece
 }
 
 type BeActualLRPMatcher struct {
-	ProcessGuid string
-	Index       int
-	State       receptor.ActualLRPState
-	CrashCount  int
+	ProcessGuid       string
+	Index             int
+	State             receptor.ActualLRPState
+	CrashCount        int
+	HasPlacementError bool
 }
 
 func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err error) {
@@ -64,8 +75,12 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 	if matcher.CrashCount != -1 {
 		matchesCrashCount = matcher.CrashCount == lrp.CrashCount
 	}
+	matchesPlacementErrorRequirement := true
+	if matcher.HasPlacementError {
+		matchesPlacementErrorRequirement = lrp.PlacementError != ""
+	}
 
-	return matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
+	return matchesPlacementErrorRequirement && matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
 }
 
 func (matcher *BeActualLRPMatcher) expectedContents() string {
@@ -78,6 +93,9 @@ func (matcher *BeActualLRPMatcher) expectedContents() string {
 	}
 	if matcher.CrashCount != -1 {
 		expectedContents = append(expectedContents, fmt.Sprintf("CrashCount: %d", matcher.CrashCount))
+	}
+	if matcher.HasPlacementError {
+		expectedContents = append(expectedContents, fmt.Sprintf("PlacementError Exists"))
 	}
 
 	return strings.Join(expectedContents, "\n")
