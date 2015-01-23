@@ -14,11 +14,17 @@ import (
 )
 
 func MakeGraceExit(baseURL string, status int) {
-	url := fmt.Sprintf("%s/exit/%d", baseURL, status)
-	resp, err := http.Post(url, "application/octet-stream", nil)
-	Ω(err).ShouldNot(HaveOccurred())
-	resp.Body.Close()
-	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+	for i := 0; i < 3; i++ {
+		url := fmt.Sprintf("%s/exit/%d", baseURL, status)
+		resp, err := http.Post(url, "application/octet-stream", nil)
+		Ω(err).ShouldNot(HaveOccurred())
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	Fail("failed to make grace exit")
 }
 
 func TellGraceToDeleteFile(baseURL string, filename string) {
@@ -85,7 +91,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
 		})
 
-		XIt("deletes the crashed ActualLRP when scaling down CURRENTLY FAILING, SHOULD PASS WHEN CRASHES ARE COMPLETE", func() {
+		It("deletes the crashed ActualLRP when scaling down CURRENTLY FAILING, SHOULD PASS WHEN CRASHES ARE COMPLETE", func() {
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
 			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
@@ -100,7 +106,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 			By("deleting the DesiredLRP")
 			Ω(client.DeleteDesiredLRP(guid)).Should(Succeed())
-			Eventually(ActualGetter(guid, 0)).Should(BeEmpty())
+			Eventually(ActualByProcessGuidGetter(guid)).Should(BeEmpty())
 		})
 	})
 
