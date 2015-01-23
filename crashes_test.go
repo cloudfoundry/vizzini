@@ -91,7 +91,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
 		})
 
-		It("deletes the crashed ActualLRP when scaling down CURRENTLY FAILING, SHOULD PASS WHEN CRASHES ARE COMPLETE", func() {
+		It("deletes the crashed ActualLRP when scaling down", func() {
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
 			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
@@ -266,7 +266,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				})
 
 				It("gets marked as crashed (immediately)", func() {
-					Eventually(ActualGetter(guid, 0), 3).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 					fmt.Println("DELETE THIS NEXT TWO LINES ONCE #86668966/CRASHES LANDS")
 					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
