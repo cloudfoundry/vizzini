@@ -125,7 +125,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				MakeGraceExit(url, 0)
 			})
 
-			XIt("gets restarted immediately FAILING: #86721858", func() {
+			It("gets restarted immediately", func() {
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
 			})
 		})
