@@ -186,9 +186,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				It("{SLOW} is marked as crashed", func() {
 					Consistently(ActualGetter(guid, 0), 2).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning), "Banking on the fact that the health check runs every thirty seconds and is unlikely to run immediately")
 					Eventually(ActualGetter(guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-					fmt.Println("DELETE THIS NEXT LINE ONCE #86668966/CRASHES LANDS")
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 				})
 			})
 
@@ -199,9 +196,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 				It("is marked as crashed (immediately)", func() {
 					Eventually(ActualGetter(guid, 0), HealthyCheckInterval/3).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-					fmt.Println("DELETE THIS NEXT LINE ONCE #86668966/CRASHES LANDS")
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 				})
 			})
 
@@ -225,9 +219,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 					By("tearing down the process -- this reaches out to the container's direct address and ensures we can't reach it")
 					_, err = httpClient.Get(directURL + "/env")
 					Ω(err).Should(HaveOccurred())
-
-					fmt.Println("DELETE THIS NEXT LINE ONCE #86668966/CRASHES LANDS")
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 				})
 			})
 		})
@@ -267,10 +258,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 				It("gets marked as crashed (immediately)", func() {
 					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-					fmt.Println("DELETE THIS NEXT TWO LINES ONCE #86668966/CRASHES LANDS")
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
-					time.Sleep(time.Second)
 				})
 			})
 
@@ -282,10 +269,6 @@ var _ = Describe("{CRASHES} Crashes", func() {
 				It("never enters the running state and is marked as crashed after the StartTimeout", func() {
 					Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
 					Eventually(ActualGetter(guid, 0), lrp.StartTimeout).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-					fmt.Println("DELETE THIS NEXT LINE ONCE #86668966/CRASHES LANDS")
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
-					time.Sleep(time.Second)
 				})
 			})
 
