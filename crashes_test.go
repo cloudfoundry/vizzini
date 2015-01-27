@@ -268,7 +268,7 @@ var _ = Describe("{CRASHES} Crashes", func() {
 
 				It("never enters the running state and is marked as crashed after the StartTimeout", func() {
 					Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
-					Eventually(ActualGetter(guid, 0), lrp.StartTimeout).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
