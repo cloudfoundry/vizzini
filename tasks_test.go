@@ -38,6 +38,7 @@ var _ = Describe("Tasks", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.TaskGuid).Should(Equal(guid))
 
+				Ω(task.Failed).Should(BeFalse())
 				Ω(task.Result).Should(ContainSubstring("some output"))
 			})
 		})
@@ -111,6 +112,27 @@ var _ = Describe("Tasks", func() {
 				task.Annotation = strings.Repeat("7", 1024*10+1)
 				err := client.CreateTask(task)
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+			})
+		})
+
+		Context("Upon failure", func() {
+			BeforeEach(func() {
+				task.Action = &models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "echo 'some output' > /tmp/bar && exit 1"},
+				}
+				Ω(client.CreateTask(task)).Should(Succeed())
+			})
+
+			It("should be marked as failed and should not return the result file", func() {
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+
+				task, err := client.GetTask(guid)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(task.TaskGuid).Should(Equal(guid))
+				Ω(task.Failed).Should(BeTrue())
+
+				Ω(task.Result).Should(BeEmpty())
 			})
 		})
 	})
