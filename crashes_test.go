@@ -48,7 +48,7 @@ const HealthyCheckInterval = 30 * time.Second
 const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
-var _ = Describe("{CRASHES} Crashes", func() {
+var _ = Describe("Crashes", func() {
 	var lrp receptor.DesiredLRPCreateRequest
 	var url string
 
