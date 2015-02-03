@@ -343,7 +343,7 @@ var _ = Describe("Tasks", func() {
 		})
 	})
 
-	Describe("Registering Completion Callbacks", func() {
+	Describe("{LOCAL} Registering Completion Callbacks", func() {
 		var server *ghttp.Server
 		var port string
 		var status int
