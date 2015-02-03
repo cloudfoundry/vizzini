@@ -87,7 +87,7 @@ var _ = Describe("Crashes", func() {
 			By("eventually restarting #3 (slow)")
 			MakeGraceExit(url, 1)
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
-			Consistently(ActualGetter(guid, 0), CrashRestartTimeout).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
+			Consistently(ActualGetter(guid, 0), CrashRestartTimeout-5*time.Second).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
 		})
 
@@ -144,6 +144,7 @@ var _ = Describe("Crashes", func() {
 	Context("with a monitor action", func() {
 		Context("when the monitor eventually succeeds", func() {
 			var directURL string
+			var indirectURL string
 			BeforeEach(func() {
 				lrp.Action = &models.RunAction{
 					Path: "./grace",
@@ -159,6 +160,7 @@ var _ = Describe("Crashes", func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 				directURL = DirectURL(guid, 0)
+				indirectURL = "http://" + RouteForGuid(guid)
 			})
 
 			It("enters the running state", func() {
@@ -167,7 +169,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("when the process dies with exit code 0", func() {
 				BeforeEach(func() {
-					MakeGraceExit(directURL, 0)
+					MakeGraceExit(indirectURL, 0)
 				})
 
 				It("does not get marked as crashed (may have daemonized)", func() {
@@ -180,7 +182,7 @@ var _ = Describe("Crashes", func() {
 					//tell grace to delete the file then exit, it's highly unlikely that the health check will run
 					//between these two lines so the test should actually be covering the edge case in question
 					TellGraceToDeleteFile(url, "up")
-					MakeGraceExit(directURL, 0)
+					MakeGraceExit(indirectURL, 0)
 				})
 
 				It("{SLOW} is marked as crashed", func() {
@@ -191,7 +193,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("when the process dies with exit code 1", func() {
 				BeforeEach(func() {
-					MakeGraceExit(directURL, 1)
+					MakeGraceExit(indirectURL, 1)
 				})
 
 				It("is marked as crashed (immediately)", func() {
@@ -199,9 +201,11 @@ var _ = Describe("Crashes", func() {
 				})
 			})
 
-			Context("when the monitor subsequently fails", func() {
+			//{LOCAL} because: this test attempts to communicate with the container *directly* to ensure the process has been torn down
+			//this is not possible against a remote installation as it entails connecting directly into the VPC
+			Context("{LOCAL} when the monitor subsequently fails", func() {
 				BeforeEach(func() {
-					TellGraceToDeleteFile(directURL, "up")
+					TellGraceToDeleteFile(indirectURL, "up")
 				})
 
 				It("{SLOW} is marked as crashed (and reaped)", func() {

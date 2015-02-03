@@ -43,7 +43,7 @@ func TestReceptorSuite(t *testing.T) {
 func NewGuid() string {
 	u, err := uuid.NewV4()
 	Ω(err).ShouldNot(HaveOccurred())
-	return u.String()
+	return domain + "-" + u.String()[:8]
 }
 
 var _ = BeforeSuite(func() {

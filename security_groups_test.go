@@ -11,7 +11,10 @@ import (
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
-var _ = Describe("Security groups", func() {
+//{LOCAL} because: the tests fail if a container attempts to talk to another container *on the same host* it will fail even with the
+//EgressRules as permissive as possible.  I've started a thread with the Garden team around whether or not it will be possible
+//to fix this.
+var _ = Describe("{LOCAL} Security groups", func() {
 	var listener receptor.DesiredLRPCreateRequest
 	var listenerGuid string
 	var protectedURL string

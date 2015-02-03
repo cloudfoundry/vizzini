@@ -8,7 +8,8 @@ import (
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
-var _ = Describe("EventStream", func() {
+//{LOCAL} because: the eventstream is lossy.  Especially so when running many tests in parallel.  Makes for flakey tests.
+var _ = Describe("{LOCAL}{FLAKEY} EventStream", func() {
 	var desiredLRP receptor.DesiredLRPCreateRequest
 	var eventSource receptor.EventSource
 	var events chan receptor.Event

@@ -154,16 +154,16 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			lrp.RootFSPath = "docker:///onsi/grace-busybox"
 			lrp.Setup = &models.DownloadAction{
-				From:     "http://file_server.service.dc1.consul:8080/v1/static/linux-circus/linux-circus.tgz",
-				To:       "/tmp/circus",
-				CacheKey: "linux-circus",
+				From:     "http://file_server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
+				To:       "/tmp/lifecycle",
+				CacheKey: "docker-app-lifecycle",
 			}
 			lrp.Action = &models.RunAction{
 				Path: "/grace",
 				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			}
 			lrp.Monitor = &models.RunAction{
-				Path: "/tmp/circus/spy",
+				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080"},
 			}
 

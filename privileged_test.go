@@ -32,7 +32,8 @@ var _ = Describe("Privileged", func() {
 			containerPrivileged = true
 		})
 
-		Context("{PRIVILEGED} when running a privileged action", func() {
+		//{LOCAL} because: privileged may not be allowed in the remote environment
+		Context("{LOCAL} when running a privileged action", func() {
 			BeforeEach(func() {
 				runPrivileged = true
 			})
@@ -66,7 +67,8 @@ var _ = Describe("Privileged", func() {
 			containerPrivileged = false
 		})
 
-		Context("{PRIVILEGED} when running a privileged action", func() {
+		//{LOCAL} because: privileged may not be allowed in the remote environment
+		Context("{LOCAL} when running a privileged action", func() {
 			BeforeEach(func() {
 				runPrivileged = true
 			})
