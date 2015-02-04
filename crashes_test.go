@@ -88,7 +88,7 @@ var _ = Describe("Crashes", func() {
 			MakeGraceExit(url, 1)
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			Consistently(ActualGetter(guid, 0), CrashRestartTimeout-5*time.Second).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
-			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
+			Eventually(ActualGetter(guid, 0), ConvergerInterval*2).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
 		})
 
 		It("deletes the crashed ActualLRP when scaling down", func() {
@@ -159,6 +159,7 @@ var _ = Describe("Crashes", func() {
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				directURL = DirectURL(guid, 0)
 				indirectURL = "http://" + RouteForGuid(guid)
 			})
