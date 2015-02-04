@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -285,7 +284,6 @@ var _ = Describe("LRPs", func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
-			otherDomain = fmt.Sprintf("New-Domain-%d", GinkgoParallelNode())
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherLRP := DesiredLRPWithGuid(otherGuid)
@@ -296,20 +294,16 @@ var _ = Describe("LRPs", func() {
 			}
 		})
 
-		AfterEach(func() {
-			ClearOutDesiredLRPsInDomain(otherDomain)
-		})
-
 		It("should fetch desired lrps in the given domain", func() {
-			defaultDomain, err := client.DesiredLRPsByDomain(domain)
+			lrpsInDomain, err := client.DesiredLRPsByDomain(domain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			otherDomain, err := client.DesiredLRPsByDomain(otherDomain)
+			lrpsInOtherDomain, err := client.DesiredLRPsByDomain(otherDomain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(defaultDomain).Should(HaveLen(1))
-			Ω(otherDomain).Should(HaveLen(2))
-			Ω([]string{otherDomain[0].ProcessGuid, otherDomain[1].ProcessGuid}).Should(ConsistOf(otherGuids))
+			Ω(lrpsInDomain).Should(HaveLen(1))
+			Ω(lrpsInOtherDomain).Should(HaveLen(2))
+			Ω([]string{lrpsInOtherDomain[0].ProcessGuid, lrpsInOtherDomain[1].ProcessGuid}).Should(ConsistOf(otherGuids))
 		})
 
 		It("should not error if a domain is empty", func() {
@@ -387,30 +381,24 @@ var _ = Describe("LRPs", func() {
 		})
 
 		Context("when the domain contains instances", func() {
-			var secondDomain string
-			var secondDomainLRP1 receptor.DesiredLRPCreateRequest
-			var secondDomainLRP2 receptor.DesiredLRPCreateRequest
+			var otherDomainLRP1 receptor.DesiredLRPCreateRequest
+			var otherDomainLRP2 receptor.DesiredLRPCreateRequest
 
 			BeforeEach(func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				secondDomain = NewGuid()
 
-				secondDomainLRP1 = DesiredLRPWithGuid(NewGuid())
-				secondDomainLRP1.Instances = 2
-				secondDomainLRP1.Domain = secondDomain
-				Ω(client.CreateDesiredLRP(secondDomainLRP1)).Should(Succeed())
+				otherDomainLRP1 = DesiredLRPWithGuid(NewGuid())
+				otherDomainLRP1.Instances = 2
+				otherDomainLRP1.Domain = otherDomain
+				Ω(client.CreateDesiredLRP(otherDomainLRP1)).Should(Succeed())
 
-				secondDomainLRP2 = DesiredLRPWithGuid(NewGuid())
-				secondDomainLRP2.Domain = secondDomain
-				Ω(client.CreateDesiredLRP(secondDomainLRP2)).Should(Succeed())
+				otherDomainLRP2 = DesiredLRPWithGuid(NewGuid())
+				otherDomainLRP2.Domain = otherDomain
+				Ω(client.CreateDesiredLRP(otherDomainLRP2)).Should(Succeed())
 
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-				Eventually(IndexCounter(secondDomainLRP1.ProcessGuid)).Should(Equal(2))
-				Eventually(IndexCounter(secondDomainLRP2.ProcessGuid)).Should(Equal(1))
-			})
-
-			AfterEach(func() {
-				ClearOutDesiredLRPsInDomain(secondDomain)
+				Eventually(IndexCounter(otherDomainLRP1.ProcessGuid)).Should(Equal(2))
+				Eventually(IndexCounter(otherDomainLRP2.ProcessGuid)).Should(Equal(1))
 			})
 
 			It("returns said instances", func() {
@@ -419,14 +407,14 @@ var _ = Describe("LRPs", func() {
 				Ω(actualLRPs).Should(HaveLen(1))
 				Ω(actualLRPs).Should(ConsistOf(BeActualLRP(guid, 0)))
 
-				actualLRPs, err = client.ActualLRPsByDomain(secondDomain)
+				actualLRPs, err = client.ActualLRPsByDomain(otherDomain)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(actualLRPs).Should(HaveLen(3))
 
 				Ω(actualLRPs).Should(ConsistOf(
-					BeActualLRP(secondDomainLRP1.ProcessGuid, 0),
-					BeActualLRP(secondDomainLRP1.ProcessGuid, 1),
-					BeActualLRP(secondDomainLRP2.ProcessGuid, 0),
+					BeActualLRP(otherDomainLRP1.ProcessGuid, 0),
+					BeActualLRP(otherDomainLRP1.ProcessGuid, 1),
+					BeActualLRP(otherDomainLRP2.ProcessGuid, 0),
 				))
 			})
 		})

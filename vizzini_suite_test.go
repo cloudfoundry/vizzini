@@ -18,6 +18,7 @@ import (
 
 var client receptor.Client
 var domain string
+var otherDomain string
 var stack string
 var guid string
 
@@ -60,6 +61,7 @@ var _ = BeforeSuite(func() {
 	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
+	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 	stack = "lucid64"
 
 	client = receptor.NewClient(receptorAddress)
@@ -70,17 +72,19 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	ClearOutTasksInDomain(domain)
-	ClearOutDesiredLRPsInDomain(domain)
+	for _, domain := range []string{domain, otherDomain} {
+		ClearOutTasksInDomain(domain)
+		ClearOutDesiredLRPsInDomain(domain)
+	}
 })
 
 var _ = AfterSuite(func() {
-	client.UpsertDomain(domain, 0) //leave the domain around forever so that Diego cleans up if need be
+	for _, domain := range []string{domain, otherDomain} {
+		client.UpsertDomain(domain, 0) //leave the domain around forever so that Diego cleans up if need be
+	}
 
-	ClearOutDesiredLRPsInDomain(domain)
-	ClearOutTasksInDomain(domain)
-
-	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
-	Ω(client.DesiredLRPsByDomain(domain)).Should(BeEmpty())
-	Eventually(ActualByDomainGetter(domain)).Should(BeEmpty())
+	for _, domain := range []string{domain, otherDomain} {
+		ClearOutDesiredLRPsInDomain(domain)
+		ClearOutTasksInDomain(domain)
+	}
 })

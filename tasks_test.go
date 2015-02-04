@@ -2,7 +2,6 @@ package vizzini_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"regexp"
@@ -70,7 +69,7 @@ var _ = Describe("Tasks", func() {
 				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskGuidAlreadyExists))
 
 				By("even when the domain is different")
-				task.Domain = "some-other-domain"
+				task.Domain = otherDomain
 				Ω(client.CreateTask(task)).ShouldNot(Succeed())
 			})
 		})
@@ -258,7 +257,6 @@ var _ = Describe("Tasks", func() {
 			Ω(client.CreateTask(task)).Should(Succeed())
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
 
-			otherDomain = fmt.Sprintf("New-Domain-%d", GinkgoParallelNode())
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherTask := task
@@ -269,20 +267,16 @@ var _ = Describe("Tasks", func() {
 			}
 		})
 
-		AfterEach(func() {
-			ClearOutTasksInDomain(otherDomain)
-		})
-
 		It("should fetch tasks in the given domain", func() {
-			defaultDomain, err := client.TasksByDomain(domain)
+			tasksInDomain, err := client.TasksByDomain(domain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			otherDomain, err := client.TasksByDomain(otherDomain)
+			tasksInOtherDomain, err := client.TasksByDomain(otherDomain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			Ω(defaultDomain).Should(HaveLen(1))
-			Ω(otherDomain).Should(HaveLen(2))
-			Ω([]string{otherDomain[0].TaskGuid, otherDomain[1].TaskGuid}).Should(ConsistOf(otherGuids))
+			Ω(tasksInDomain).Should(HaveLen(1))
+			Ω(tasksInOtherDomain).Should(HaveLen(2))
+			Ω([]string{tasksInOtherDomain[0].TaskGuid, tasksInOtherDomain[1].TaskGuid}).Should(ConsistOf(otherGuids))
 		})
 
 		It("should not error if a domain is empty", func() {
