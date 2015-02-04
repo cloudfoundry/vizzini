@@ -252,7 +252,7 @@ var _ = Describe("Tasks", func() {
 
 	Describe("Getting All Tasks and Getting Tasks by Domain", func() {
 		var otherGuids []string
-		var otherDomain string
+
 		BeforeEach(func() {
 			Ω(client.CreateTask(task)).Should(Succeed())
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
