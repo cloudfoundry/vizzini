@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -47,7 +48,15 @@ func NewGuid() string {
 }
 
 var _ = BeforeSuite(func() {
-	SetDefaultEventuallyTimeout(10 * time.Second)
+	timeout := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
+	if timeout == "" {
+		SetDefaultEventuallyTimeout(10 * time.Second)
+	} else {
+		duration, err := time.ParseDuration(timeout)
+		Ω(err).ShouldNot(HaveOccurred(), "invalid timeout")
+		fmt.Printf("Setting Default Eventually Timeout to %s\n", duration)
+		SetDefaultEventuallyTimeout(duration)
+	}
 	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
