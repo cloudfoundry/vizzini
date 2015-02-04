@@ -75,9 +75,10 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
+	client.UpsertDomain(domain, 0) //leave the domain around forever so that Diego cleans up if need be
+
 	ClearOutDesiredLRPsInDomain(domain)
 	ClearOutTasksInDomain(domain)
-	client.UpsertDomain(domain, 1*time.Second) //clear out the domain
 
 	Ω(client.TasksByDomain(domain)).Should(BeEmpty())
 	Ω(client.DesiredLRPsByDomain(domain)).Should(BeEmpty())
