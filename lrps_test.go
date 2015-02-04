@@ -201,7 +201,8 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes := append(lrp.Routes, newRoute)
+					routes := lrp.Routes
+					routes.CFRoutes[0].Hostnames = append(routes.CFRoutes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
 						Routes: routes,
 					})).Should(Succeed())
@@ -223,7 +224,8 @@ var _ = Describe("LRPs", func() {
 					two := 2
 					annotation := "my new annotation"
 					newRoute := RouteForGuid(NewGuid())
-					routes := append(lrp.Routes, newRoute)
+					routes := lrp.Routes
+					routes.CFRoutes[0].Hostnames = append(routes.CFRoutes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
 						Instances:  &two,
 						Routes:     routes,

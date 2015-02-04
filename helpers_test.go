@@ -192,9 +192,11 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		MemoryMB:  128,
 		DiskMB:    128,
 		CPUWeight: 100,
-		Ports:     []uint32{8080},
-		Routes: []string{
-			RouteForGuid(guid),
+		Ports:     []uint16{8080},
+		Routes: &receptor.RoutingInfo{
+			CFRoutes: receptor.CFRoutes{
+				{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
+			},
 		},
 		LogGuid:    guid,
 		LogSource:  "VIZ",

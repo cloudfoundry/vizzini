@@ -17,7 +17,7 @@ var _ = Describe("The container environment", func() {
 	BeforeEach(func() {
 		url = "http://" + RouteForGuid(guid) + "/env?json=true"
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Ports = []uint32{8080, 5000}
+		lrp.Ports = []uint16{8080, 5000}
 	})
 
 	getEnvs := func(url string) [][]string {
