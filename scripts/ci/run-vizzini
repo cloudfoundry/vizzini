@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e -x
+
+cd gopath/
+
+export GOPATH=$PWD
+export PATH=$GOPATH/bin:$PATH
+
+cd src/github.com/pivotal-cf-experimental/vizzini/
+
+go get -t -d -v ./...
+
+go install github.com/onsi/ginkgo/ginkgo
+
+ginkgo \
+  -nodes=4 \
+  -skip="{LOCAL}" \
+  -randomizeAllSpecs \
+  "$@" \
+  -- \
+  --receptor-address=${RECEPTOR_ADDRESS} \
+  --routable-domain-suffix=${ROUTABLE_DOMAIN_SUFFIX}
