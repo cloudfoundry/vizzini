@@ -280,7 +280,6 @@ var _ = Describe("LRPs", func() {
 
 	Describe("Getting All DesiredLRPs and Getting DesiredLRPs by Domain", func() {
 		var otherGuids []string
-		var otherDomain string
 
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
