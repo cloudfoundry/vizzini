@@ -80,7 +80,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	for _, domain := range []string{domain, otherDomain} {
-		client.UpsertDomain(domain, 0) //leave the domain around forever so that Diego cleans up if need be
+		client.UpsertDomain(domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
 	}
 
 	for _, domain := range []string{domain, otherDomain} {
