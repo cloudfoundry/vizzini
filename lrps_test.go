@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,7 +36,6 @@ var _ = Describe("LRPs", func() {
 				fetchedLRP, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(fetchedLRP.Annotation).Should(Equal("arbitrary-data"))
-				time.Sleep(time.Hour)
 			})
 		})
 
@@ -203,7 +202,7 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
@@ -227,7 +226,7 @@ var _ = Describe("LRPs", func() {
 					two := 2
 					annotation := "my new annotation"
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{

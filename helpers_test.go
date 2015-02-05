@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,47 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
-
-//Routes
-
-const CF_ROUTER = "cf-router"
-
-type CFRoutes []CFRoute
-
-type CFRoute struct {
-	Hostnames []string `json:"hostnames"`
-	Port      uint16   `json:"port"`
-}
-
-func (c CFRoutes) RoutingInfo() *receptor.RoutingInfo {
-	data, _ := json.Marshal(c)
-	routingInfo := json.RawMessage(data)
-	return &receptor.RoutingInfo{
-		CF_ROUTER: &routingInfo,
-	}
-}
-
-func CFRoutesFromRoutingInfo(routingInfo *receptor.RoutingInfo) (CFRoutes, error) {
-	if routingInfo == nil {
-		return nil, nil
-	}
-
-	data, found := (*routingInfo)[CF_ROUTER]
-	if !found {
-		return nil, nil
-	}
-
-	if data == nil {
-		return nil, nil
-	}
-
-	routes := CFRoutes{}
-	err := json.Unmarshal(*data, &routes)
-
-	return routes, err
-}
 
 //Tasks
 
@@ -233,7 +194,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		DiskMB:    128,
 		CPUWeight: 100,
 		Ports:     []uint16{8080},
-		Routes: CFRoutes{
+		Routes: cfroutes.CFRoutes{
 			{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
 		}.RoutingInfo(),
 		LogGuid:    guid,
