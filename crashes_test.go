@@ -14,6 +14,10 @@ import (
 )
 
 func MakeGraceExit(baseURL string, status int) {
+	//make sure Grace is up first
+	Eventually(EndpointCurler(baseURL + "/env")).Should(Equal(http.StatusOK))
+
+	//make Grace exit
 	for i := 0; i < 3; i++ {
 		url := fmt.Sprintf("%s/exit/%d", baseURL, status)
 		resp, err := http.Post(url, "application/octet-stream", nil)
@@ -106,6 +110,30 @@ var _ = Describe("Crashes", func() {
 
 			By("deleting the DesiredLRP")
 			Ω(client.DeleteDesiredLRP(guid)).Should(Succeed())
+			Eventually(ActualByProcessGuidGetter(guid)).Should(BeEmpty())
+		})
+	})
+
+	Describe("killing crashed applications", func() {
+		BeforeEach(func() {
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+		})
+
+		It("should delete the Crashed ActualLRP succesfully", func() {
+			By("immediately restarting #1")
+			MakeGraceExit(url, 1)
+			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+
+			By("immediately restarting #2")
+			MakeGraceExit(url, 1)
+			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 2))
+
+			By("eventually restarting #3")
+			MakeGraceExit(url, 1)
+			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
+
+			Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).Should(Succeed())
 			Eventually(ActualByProcessGuidGetter(guid)).Should(BeEmpty())
 		})
 	})
