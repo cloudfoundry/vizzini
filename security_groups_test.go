@@ -22,6 +22,7 @@ var _ = Describe("Security groups", func() {
 
 		Ω(client.CreateDesiredLRP(listener)).Should(Succeed())
 		Eventually(ActualGetter(listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, receptor.ActualLRPStateRunning))
+		Eventually(EndpointCurler("http://" + RouteForGuid(listenerGuid) + "/env")).Should(Equal(http.StatusOK))
 
 		listenerActual, err := client.ActualLRPByProcessGuidAndIndex(listenerGuid, 0)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -38,6 +39,7 @@ var _ = Describe("Security groups", func() {
 
 			Ω(client.CreateDesiredLRP(disallowedCaller)).Should(Succeed())
 			Eventually(ActualGetter(disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, receptor.ActualLRPStateRunning))
+			Eventually(EndpointCurler("http://" + RouteForGuid(disallowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 
 			allowedCaller.EgressRules = []models.SecurityGroupRule{
 				{
@@ -48,16 +50,12 @@ var _ = Describe("Security groups", func() {
 
 			Ω(client.CreateDesiredLRP(allowedCaller)).Should(Succeed())
 			Eventually(ActualGetter(allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, receptor.ActualLRPStateRunning))
+			Eventually(EndpointCurler("http://" + RouteForGuid(allowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("should allow access to the opened up location", func() {
 			urlToProxyThroughDisallowedCaller := fmt.Sprintf("http://"+RouteForGuid(disallowedCallerGuid)+"/curl?url=%s", protectedURL)
 			urlToProxyThroughAllowedCaller := fmt.Sprintf("http://"+RouteForGuid(allowedCallerGuid)+"/curl?url=%s", protectedURL)
-
-			By("verifiying that the target is serving requests")
-			resp, err := http.Get(protectedURL)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 
 			By("verifiying that calling into the VPC is disallowed")
 			resp, err = http.Get(urlToProxyThroughDisallowedCaller)

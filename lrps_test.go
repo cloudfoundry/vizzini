@@ -59,7 +59,7 @@ var _ = Describe("LRPs", func() {
 			})
 		})
 
-		Context("when the LRP's # of instances is <= 0", func() {
+		Context("when the LRP's # of instances is == 0", func() {
 			It("should create the LRP and allow the user to subsequently scale up", func() {
 				lrp.Instances = 0
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
