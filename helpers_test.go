@@ -35,7 +35,7 @@ func ClearOutTasksInDomain(domain string) {
 		client.CancelTask(task.TaskGuid)
 		client.DeleteTask(task.TaskGuid)
 	}
-	Eventually(TasksByDomainGetter(domain), 2).Should(BeEmpty())
+	Eventually(TasksByDomainGetter(domain)).Should(BeEmpty())
 }
 
 func TaskWithGuid(guid string) receptor.TaskCreateRequest {
