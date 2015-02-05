@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
@@ -27,7 +28,7 @@ var _ = Describe("LRPs", func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			})
 
-			It("desires the LRP", func() {
+			FIt("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
@@ -35,6 +36,7 @@ var _ = Describe("LRPs", func() {
 				fetchedLRP, err := client.GetDesiredLRP(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(fetchedLRP.Annotation).Should(Equal("arbitrary-data"))
+				time.Sleep(time.Hour)
 			})
 		})
 
@@ -201,10 +203,11 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes := lrp.Routes
-					routes.CFRoutes[0].Hostnames = append(routes.CFRoutes[0].Hostnames, newRoute)
+					routes, err := CFRoutesFromRoutingInfo(lrp.Routes)
+					Ω(err).ShouldNot(HaveOccurred())
+					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-						Routes: routes,
+						Routes: routes.RoutingInfo(),
 					})).Should(Succeed())
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
 					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
@@ -224,11 +227,12 @@ var _ = Describe("LRPs", func() {
 					two := 2
 					annotation := "my new annotation"
 					newRoute := RouteForGuid(NewGuid())
-					routes := lrp.Routes
-					routes.CFRoutes[0].Hostnames = append(routes.CFRoutes[0].Hostnames, newRoute)
+					routes, err := CFRoutesFromRoutingInfo(lrp.Routes)
+					Ω(err).ShouldNot(HaveOccurred())
+					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
 						Instances:  &two,
-						Routes:     routes,
+						Routes:     routes.RoutingInfo(),
 						Annotation: &annotation,
 					})).Should(Succeed())
 
