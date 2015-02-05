@@ -48,7 +48,7 @@ func CFRoutesFromRoutingInfo(routingInfo *receptor.RoutingInfo) (CFRoutes, error
 	}
 
 	routes := CFRoutes{}
-	err := json.Unmarshal(*data, routes)
+	err := json.Unmarshal(*data, &routes)
 
 	return routes, err
 }

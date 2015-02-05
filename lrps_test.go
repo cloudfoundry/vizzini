@@ -28,7 +28,7 @@ var _ = Describe("LRPs", func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			})
 
-			FIt("desires the LRP", func() {
+			It("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
