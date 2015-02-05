@@ -58,7 +58,7 @@ var _ = Describe("Security groups", func() {
 			urlToProxyThroughAllowedCaller := fmt.Sprintf("http://"+RouteForGuid(allowedCallerGuid)+"/curl?url=%s", protectedURL)
 
 			By("verifiying that calling into the VPC is disallowed")
-			resp, err = http.Get(urlToProxyThroughDisallowedCaller)
+			resp, err := http.Get(urlToProxyThroughDisallowedCaller)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(resp.StatusCode).Should(Equal(http.StatusInternalServerError))
 
