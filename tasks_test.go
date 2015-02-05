@@ -181,6 +181,7 @@ var _ = Describe("Tasks", func() {
 
 			task, err := client.GetTask(guid)
 			Ω(err).ShouldNot(HaveOccurred())
+			Ω(task.Failed).Should(BeFalse())
 			Ω(task.Result).Should(ContainSubstring("grace"))
 		})
 	})
