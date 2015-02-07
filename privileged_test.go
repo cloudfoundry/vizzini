@@ -27,6 +27,10 @@ var _ = Describe("Privileged", func() {
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
 	})
 
+	AfterEach(func() {
+		Ω(client.DeleteTask(guid)).Should(Succeed())
+	})
+
 	Context("with a privileged container", func() {
 		BeforeEach(func() {
 			containerPrivileged = true

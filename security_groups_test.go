@@ -110,6 +110,9 @@ var _ = Describe("Security groups", func() {
 			task, err = client.GetTask(allowedTaskGuid)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(Equal(false))
+
+			Ω(client.DeleteTask(allowedTaskGuid)).Should(Succeed())
+			Ω(client.DeleteTask(disallowedTaskGuid)).Should(Succeed())
 		})
 	})
 })

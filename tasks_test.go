@@ -39,6 +39,8 @@ var _ = Describe("Tasks", func() {
 
 				Ω(task.Failed).Should(BeFalse())
 				Ω(task.Result).Should(ContainSubstring("some output"))
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
@@ -71,6 +73,9 @@ var _ = Describe("Tasks", func() {
 				By("even when the domain is different")
 				task.Domain = otherDomain
 				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
@@ -132,6 +137,8 @@ var _ = Describe("Tasks", func() {
 				Ω(task.Failed).Should(BeTrue())
 
 				Ω(task.Result).Should(BeEmpty())
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})
@@ -163,6 +170,8 @@ var _ = Describe("Tasks", func() {
 			Ω(task.Result).Should(ContainSubstring("ACTION_LEVEL=C"))
 			Ω(task.Result).Should(ContainSubstring("OVERRIDE=D"))
 			Ω(task.Result).ShouldNot(ContainSubstring("OVERRIDE=B"))
+
+			Ω(client.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
@@ -183,6 +192,8 @@ var _ = Describe("Tasks", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(BeFalse())
 			Ω(task.Result).Should(ContainSubstring("grace"))
+
+			Ω(client.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
@@ -224,6 +235,8 @@ var _ = Describe("Tasks", func() {
 
 			It("should fail", func() {
 				Ω(client.CancelTask(guid)).ShouldNot(Succeed())
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})
@@ -239,6 +252,9 @@ var _ = Describe("Tasks", func() {
 				task, err := client.GetTask(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.TaskGuid).Should(Equal(guid))
+
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
@@ -265,6 +281,13 @@ var _ = Describe("Tasks", func() {
 				otherTask.Domain = otherDomain
 				Ω(client.CreateTask(otherTask)).Should(Succeed())
 				Eventually(TaskGetter(otherGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			}
+		})
+
+		AfterEach(func() {
+			Ω(client.DeleteTask(guid)).Should(Succeed())
+			for _, otherGuid := range otherGuids {
+				Ω(client.DeleteTask(otherGuid)).Should(Succeed())
 			}
 		})
 
@@ -327,6 +350,9 @@ var _ = Describe("Tasks", func() {
 
 				_, err = client.TasksByDomain(domain)
 				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
@@ -444,6 +470,11 @@ var _ = Describe("Tasks", func() {
 			It("should hit the callback", func() {
 				Ω(client.CreateTask(task)).Should(Succeed())
 				Eventually(done).Should(BeClosed())
+
+				Eventually(func() bool {
+					_, err := client.GetTask(guid)
+					return err == nil
+				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
 		})
 	})
@@ -463,6 +494,8 @@ var _ = Describe("Tasks", func() {
 
 				Ω(retreivedTask.Failed).Should(BeTrue())
 				Ω(retreivedTask.FailureReason).Should(ContainSubstring("insufficient resources"))
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
@@ -480,6 +513,8 @@ var _ = Describe("Tasks", func() {
 
 				Ω(retreivedTask.Failed).Should(BeTrue())
 				Ω(retreivedTask.FailureReason).Should(ContainSubstring("found no compatible cell"))
+
+				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})

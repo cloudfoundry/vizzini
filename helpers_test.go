@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	. "github.com/pivotal-cf-experimental/vizzini/matchers"
+
 	. "github.com/onsi/gomega"
 
 	"github.com/cloudfoundry-incubator/receptor"
@@ -32,8 +34,11 @@ func ClearOutTasksInDomain(domain string) {
 	tasks, err := client.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
-		client.CancelTask(task.TaskGuid)
-		client.DeleteTask(task.TaskGuid)
+		if task.State != receptor.TaskStateCompleted {
+			client.CancelTask(task.TaskGuid)
+			Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+		}
+		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
 	}
 	Eventually(TasksByDomainGetter(domain)).Should(BeEmpty())
 }

@@ -60,6 +60,8 @@ var _ = Describe("Actions", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(BeFalse())
 			Ω(task.Result).Should(ContainSubstring("/etc"))
+
+			Ω(client.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
