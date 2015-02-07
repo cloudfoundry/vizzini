@@ -48,10 +48,6 @@ func DirectURL(guid string, index int) string {
 	return fmt.Sprintf("http://%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)
 }
 
-const HealthyCheckInterval = 30 * time.Second
-const ConvergerInterval = 30 * time.Second
-const CrashRestartTimeout = 30 * time.Second
-
 var _ = Describe("Crashes", func() {
 	var lrp receptor.DesiredLRPCreateRequest
 	var url string

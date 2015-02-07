@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
@@ -15,6 +16,10 @@ import (
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
+
+const HealthyCheckInterval = 30 * time.Second
+const ConvergerInterval = 30 * time.Second
+const CrashRestartTimeout = 30 * time.Second
 
 //Tasks
 

@@ -512,7 +512,7 @@ var _ = Describe("LRPs", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).Should(Succeed())
 				//This needs a large timeout as the converger needs to run for it to return
-				Eventually(StartedAtGetter(guid), 35).Should(BeNumerically(">", initialTime))
+				Eventually(StartedAtGetter(guid), ConvergerInterval*2).Should(BeNumerically(">", initialTime))
 			})
 		})
 	})
