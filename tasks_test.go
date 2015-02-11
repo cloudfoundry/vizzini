@@ -2,10 +2,12 @@ package vizzini_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/onsi/gomega/ghttp"
 
@@ -199,23 +201,54 @@ var _ = Describe("Tasks", func() {
 
 	Describe("Cancelling tasks", func() {
 		Context("when the task exists", func() {
+			var lrpGuid string
+
 			BeforeEach(func() {
+				lrpGuid = NewGuid()
+
+				lrp := DesiredLRPWithGuid(lrpGuid)
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler("http://" + RouteForGuid(lrpGuid) + "/env")).Should(Equal(http.StatusOK))
+
+				incrementCounterRoute := "http://" + RouteForGuid(lrpGuid) + "/counter"
+
+				task.EgressRules = []models.SecurityGroupRule{
+					{
+						Protocol:     models.AllProtocol,
+						Destinations: []string{"0.0.0.0/0"},
+					},
+				}
 				task.Action = &models.RunAction{
 					Path: "bash",
-					Args: []string{"-c", "sleep 1000"},
+					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST; sleep 0.05; done", incrementCounterRoute)},
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
 
-			It("should cancel the task marking it completed immediately", func() {
+			It("should cancel the task immediately", func() {
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
 
+				By("verifying the counter is being incremented")
+				Eventually(GraceCounterGetter(lrpGuid)).Should(BeNumerically(">", 2))
+
 				Ω(client.CancelTask(guid)).Should(Succeed())
+
+				By("marking the task as completed")
 				task, err := client.GetTask(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.State).Should(Equal(receptor.TaskStateCompleted))
 				Ω(task.Failed).Should(BeTrue())
 				Ω(task.FailureReason).Should(Equal("task was cancelled"))
+
+				By("actually shutting down the container immediately, it should stop incrementing the counter")
+				counterAfterCancel, err := GraceCounterGetter(lrpGuid)()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				time.Sleep(2 * time.Second)
+
+				counterAfterSomeTime, err := GraceCounterGetter(lrpGuid)()
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(counterAfterSomeTime).Should(BeNumerically("<", counterAfterCancel+20))
 
 				Ω(client.DeleteTask(guid)).Should(Succeed())
 			})

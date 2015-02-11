@@ -153,6 +153,21 @@ func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) (i
 	return strconv.Atoi(string(content))
 }
 
+func GraceCounterGetter(guid string) func() (int, error) {
+	return func() (int, error) {
+		resp, err := http.Get("http://" + RouteForGuid(guid) + "/counter")
+		if err != nil {
+			return 0, err
+		}
+		defer resp.Body.Close()
+		content, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return 0, err
+		}
+		return strconv.Atoi(string(content))
+	}
+}
+
 func StartedAtGetter(guid string) func() (int64, error) {
 	url := "http://" + RouteForGuid(guid) + "/started-at"
 	return func() (int64, error) {
