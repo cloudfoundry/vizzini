@@ -113,6 +113,21 @@ func EndpointCurler(endpoint string) func() (int, error) {
 	}
 }
 
+func EndpointContentCurler(endpoint string) func() (string, error) {
+	return func() (string, error) {
+		resp, err := http.Get(endpoint)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		content, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		return string(content), nil
+	}
+}
+
 func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() (int, error) {
 	return func() (int, error) {
 		counts := map[int]bool{}

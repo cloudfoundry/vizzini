@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -47,6 +48,55 @@ var _ = Describe("Routing Related Tests", func() {
 			resp.Body.Close()
 
 			Ω(IndexCounter(guid, httpClient)()).Should(Equal(3))
+		})
+	})
+
+	Describe("supporting multiple ports", func() {
+		var primaryURL string
+		BeforeEach(func() {
+			lrp = DesiredLRPWithGuid(guid)
+			lrp.Ports = []uint16{8080, 9999}
+			primaryURL = "http://" + RouteForGuid(guid) + "/env"
+
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(primaryURL)).Should(Equal(http.StatusOK))
+		})
+
+		It("should be able to route to multiple ports", func() {
+			By("updating the LRP with a new route to a port 9999")
+			newRoute := RouteForGuid(NewGuid())
+			routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+			Ω(err).ShouldNot(HaveOccurred())
+			routes = append(routes, cfroutes.CFRoute{
+				Hostnames: []string{newRoute},
+				Port:      9999,
+			})
+			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+				Routes: routes.RoutingInfo(),
+			})).Should(Succeed())
+
+			By("verifying that the new route is hooked up to the port")
+			Eventually(EndpointContentCurler("http://" + newRoute)).Should(Equal("grace side-channel"))
+
+			By("verifying that the original route is fine")
+			Ω(EndpointContentCurler(primaryURL)()).Should(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
+
+			By("adding a new route to the new port")
+			veryNewRoute := RouteForGuid(NewGuid())
+			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
+			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+				Routes: routes.RoutingInfo(),
+			})).Should(Succeed())
+
+			Eventually(EndpointContentCurler("http://" + veryNewRoute)).Should(Equal("grace side-channel"))
+			Ω(EndpointContentCurler("http://" + newRoute)()).Should(Equal("grace side-channel"))
+			Ω(EndpointContentCurler(primaryURL)()).Should(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
+
+			By("tearing down the new port")
+			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+				Routes: lrp.Routes,
+			})).Should(Succeed())
+			Eventually(EndpointCurler("http://" + newRoute)).ShouldNot(Equal(http.StatusOK))
 		})
 	})
 
