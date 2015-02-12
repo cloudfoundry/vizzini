@@ -348,7 +348,7 @@ var _ = Describe("LRPs", func() {
 		Context("when the DesiredLRP is deleted after it is claimed but before it is running #86668966", func() {
 			It("should succesfully remove any ActualLRP", func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid), 2, 0.05).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, receptor.ActualLRPStateClaimed)))
+				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, receptor.ActualLRPStateClaimed)))
 				//note: we don't wait for the ActualLRP to start running
 				Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
 				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(BeEmpty())
