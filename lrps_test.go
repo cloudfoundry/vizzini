@@ -177,9 +177,13 @@ var _ = Describe("LRPs", func() {
 	})
 
 	Describe("Updating an existing DesiredLRP", func() {
+		var tag receptor.ModificationTag
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+			fetchedLRP, err := client.GetDesiredLRP(lrp.ProcessGuid)
+			Ω(err).ShouldNot(HaveOccurred())
+			tag = fetchedLRP.ModificationTag
 		})
 
 		Context("By explicitly updating it", func() {
@@ -243,6 +247,25 @@ var _ = Describe("LRPs", func() {
 					lrp, err := client.GetDesiredLRP(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(lrp.Annotation).Should(Equal("my new annotation"))
+				})
+
+				It("updates the modification index when a change occurs", func() {
+					By("not modifying if no change has been made")
+					fetchedLRP, err := client.GetDesiredLRP(lrp.ProcessGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(fetchedLRP.ModificationTag).Should(Equal(tag))
+
+					By("modifying when a change is made")
+					two := 2
+					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+						Instances: &two,
+					})).Should(Succeed())
+					Eventually(IndexCounter(guid)).Should(Equal(2))
+
+					fetchedLRP, err = client.GetDesiredLRP(lrp.ProcessGuid)
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(fetchedLRP.ModificationTag.Epoch).Should(Equal(tag.Epoch))
+					Ω(fetchedLRP.ModificationTag.Index).Should(BeNumerically(">", tag.Index))
 				})
 			})
 

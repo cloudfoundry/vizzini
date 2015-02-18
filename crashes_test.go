@@ -68,9 +68,10 @@ var _ = Describe("Crashes", func() {
 			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
-		It("{SLOW} restarts the application immediately twice, and then starts backing it off", func() {
+		It("{SLOW} restarts the application immediately twice, and then starts backing it off, and updates the modification tag as it goes", func() {
 			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
+			tag := actualLRP.ModificationTag
 
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
@@ -79,6 +80,8 @@ var _ = Describe("Crashes", func() {
 			restartedActualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(restartedActualLRP.InstanceGuid).ShouldNot(Equal(actualLRP.InstanceGuid))
+			Ω(restartedActualLRP.ModificationTag.Epoch).Should(Equal(tag.Epoch))
+			Ω(restartedActualLRP.ModificationTag.Index).Should(BeNumerically(">", tag.Index))
 
 			By("immediately restarting #2")
 			MakeGraceExit(url, 1)
