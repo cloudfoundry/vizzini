@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/veritas/say"
+	"github.com/onsi/say"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

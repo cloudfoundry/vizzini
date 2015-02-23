@@ -6,9 +6,9 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	"github.com/cloudfoundry-incubator/veritas/say"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/say"
 )
 
 func CF(dir string, args ...string) *gexec.Session {

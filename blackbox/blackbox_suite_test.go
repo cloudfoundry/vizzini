@@ -3,10 +3,10 @@ package blackbox
 import (
 	"log"
 
-	"github.com/cloudfoundry-incubator/veritas/say"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/internal/codelocation"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/say"
 
 	"testing"
 )
