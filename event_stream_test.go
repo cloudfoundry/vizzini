@@ -1,6 +1,8 @@
 package vizzini_test
 
 import (
+	"sync"
+
 	"github.com/cloudfoundry-incubator/receptor"
 
 	. "github.com/onsi/ginkgo"
@@ -8,12 +10,18 @@ import (
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
-//{LOCAL} because: the eventstream is lossy.  Especially so when running many tests in parallel.  Makes for flakey tests.
-var _ = Describe("{LOCAL}{FLAKEY} EventStream", func() {
+var _ = Describe("EventStream", func() {
 	var desiredLRP receptor.DesiredLRPCreateRequest
 	var eventSource receptor.EventSource
-	var events chan receptor.Event
 	var done chan struct{}
+	var lock *sync.Mutex
+	var events []receptor.Event
+
+	getEvents := func() []receptor.Event {
+		lock.Lock()
+		defer lock.Unlock()
+		return events
+	}
 
 	BeforeEach(func() {
 		var err error
@@ -21,8 +29,9 @@ var _ = Describe("{LOCAL}{FLAKEY} EventStream", func() {
 		eventSource, err = client.SubscribeToEvents()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		events = make(chan receptor.Event, 10000)
 		done = make(chan struct{})
+		lock = &sync.Mutex{}
+		events = []receptor.Event{}
 
 		go func() {
 			for {
@@ -31,7 +40,9 @@ var _ = Describe("{LOCAL}{FLAKEY} EventStream", func() {
 					close(done)
 					return
 				}
-				events <- event
+				lock.Lock()
+				events = append(events, event)
+				lock.Unlock()
 			}
 		}()
 	})
@@ -43,12 +54,12 @@ var _ = Describe("{LOCAL}{FLAKEY} EventStream", func() {
 
 	It("should receive events as the LRP goes through its lifecycle", func() {
 		client.CreateDesiredLRP(desiredLRP)
-		Eventually(events).Should(Receive(MatchDesiredLRPCreatedEvent(guid)))
-		Eventually(events).Should(Receive(MatchActualLRPCreatedEvent(guid, 0)))
-		Eventually(events).Should(Receive(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateClaimed)))
-		Eventually(events).Should(Receive(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateRunning)))
+		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(guid)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(guid, 0)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateClaimed)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateRunning)))
 		client.DeleteDesiredLRP(guid)
-		Eventually(events).Should(Receive(MatchDesiredLRPRemovedEvent(guid)))
-		Eventually(events).Should(Receive(MatchActualLRPRemovedEvent(guid, 0)))
+		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPRemovedEvent(guid)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPRemovedEvent(guid, 0)))
 	})
 })
