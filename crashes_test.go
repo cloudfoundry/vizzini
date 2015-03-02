@@ -92,6 +92,7 @@ var _ = Describe("Crashes", func() {
 			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			Consistently(ActualGetter(guid, 0), CrashRestartTimeout-5*time.Second).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			Eventually(ActualGetter(guid, 0), ConvergerInterval*2).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 3))
+			Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 		})
 
 		It("deletes the crashed ActualLRP when scaling down", func() {
@@ -154,6 +155,7 @@ var _ = Describe("Crashes", func() {
 
 			It("gets restarted immediately", func() {
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+				Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 			})
 		})
 
@@ -164,6 +166,7 @@ var _ = Describe("Crashes", func() {
 
 			It("gets restarted immediately", func() {
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+				Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 			})
 		})
 	})
