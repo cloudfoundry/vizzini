@@ -62,6 +62,21 @@ var _ = Describe("Crashes", func() {
 		lrp.Monitor = nil
 	})
 
+	Describe("Annotating the Crash Reason", func() {
+		BeforeEach(func() {
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+		})
+
+		It("adds the crash reason to the application", func() {
+			MakeGraceExit(url, 17)
+			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(actualLRP.CrashReason).Should(ContainSubstring("Exited with status 17"))
+		})
+	})
+
 	Describe("backoff behavior", func() {
 		BeforeEach(func() {
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
