@@ -16,12 +16,13 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var client receptor.Client
 var domain string
 var otherDomain string
-var stack string
+var defaultRootFS string
 var guid string
 var startTime time.Time
 
@@ -65,7 +66,7 @@ var _ = BeforeSuite(func() {
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
-	stack = "lucid64"
+	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
 
 	client = receptor.NewClient(receptorAddress)
 })

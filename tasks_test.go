@@ -98,9 +98,14 @@ var _ = Describe("Tasks", func() {
 				taskCopy.Action = nil
 				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
 
-				By("not having a stack")
+				By("not having a rootfs")
 				taskCopy = task
-				taskCopy.Stack = ""
+				taskCopy.RootFS = ""
+				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+
+				By("having a malformed rootfs")
+				taskCopy = task
+				taskCopy.RootFS = "ploop"
 				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
 			})
 		})
@@ -179,7 +184,7 @@ var _ = Describe("Tasks", func() {
 
 	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
-			task.RootFSPath = "docker:///onsi/grace-busybox"
+			task.RootFS = "docker:///onsi/grace-busybox"
 			task.Action = &models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "ls / > /tmp/bar"},
@@ -534,7 +539,7 @@ var _ = Describe("Tasks", func() {
 
 		Context("because of a stack mismatch", func() {
 			BeforeEach(func() {
-				task.Stack = "banana-pancakes"
+				task.RootFS = models.PreloadedRootFS("fruitfs")
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {

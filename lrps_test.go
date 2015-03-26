@@ -89,9 +89,14 @@ var _ = Describe("LRPs", func() {
 				lrpCopy.Action = nil
 				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
 
-				By("not having a stack")
+				By("not having a rootfs")
 				lrpCopy = lrp
-				lrpCopy.Stack = ""
+				lrpCopy.RootFS = ""
+				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+
+				By("having a malformed rootfs")
+				lrpCopy = lrp
+				lrpCopy.RootFS = "ploop"
 				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
 			})
 		})
@@ -152,7 +157,7 @@ var _ = Describe("LRPs", func() {
 
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
-			lrp.RootFSPath = "docker:///onsi/grace-busybox"
+			lrp.RootFS = "docker:///onsi/grace-busybox"
 			lrp.Setup = &models.DownloadAction{
 				From:     "http://file-server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
@@ -558,9 +563,9 @@ var _ = Describe("LRPs", func() {
 			})
 		})
 
-		Context("because of a stack mismatch", func() {
+		Context("because of a rootfs mismatch", func() {
 			BeforeEach(func() {
-				lrp.Stack = "banana-pancakes"
+				lrp.RootFS = models.PreloadedRootFS("fruitfs")
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {

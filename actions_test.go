@@ -70,13 +70,13 @@ var _ = Describe("Actions", func() {
 		BeforeEach(func() {
 			desiredLRP = receptor.DesiredLRPCreateRequest{
 				ProcessGuid: guid,
+				RootFS:      defaultRootFS,
 				Domain:      domain,
 				Instances:   1,
 				Action: &models.DownloadAction{
 					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
 					To:   "/tmp",
 				},
-				Stack: stack,
 			}
 		})
 

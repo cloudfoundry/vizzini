@@ -21,7 +21,6 @@ var _ = Describe("Cells", func() {
 		Ω(cell_z1_0).ShouldNot(BeZero())
 
 		Ω(cell_z1_0.CellID).Should(Equal("cell_z1-0"))
-		Ω(cell_z1_0.Stack).Should(Equal("lucid64"))
 		Ω(cell_z1_0.Zone).Should(Equal("z1"))
 		Ω(cell_z1_0.Capacity.MemoryMB).Should(BeNumerically(">", 0))
 		Ω(cell_z1_0.Capacity.DiskMB).Should(BeNumerically(">", 0))
