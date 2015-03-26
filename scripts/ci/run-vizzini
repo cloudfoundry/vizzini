@@ -14,9 +14,11 @@ go get -t -d -v ./...
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo \
-  -nodes=4 \
+  -nodes=8 \
   -skip="{LOCAL}" \
   -randomizeAllSpecs \
+  -progress \
+  -trace \
   "$@" \
   -- \
   --receptor-address=${RECEPTOR_ADDRESS} \

@@ -21,6 +21,7 @@ var domain string
 var otherDomain string
 var stack string
 var guid string
+var startTime time.Time
 
 var receptorAddress string
 var routableDomainSuffix string
@@ -68,6 +69,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = BeforeEach(func() {
+	startTime = time.Now()
 	guid = NewGuid()
 })
 
@@ -76,6 +78,9 @@ var _ = AfterEach(func() {
 		ClearOutTasksInDomain(domain)
 		ClearOutDesiredLRPsInDomain(domain)
 	}
+
+	endTime := time.Now()
+	fmt.Fprintf(GinkgoWriter, "%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n", CurrentGinkgoTestDescription().FullTestText, guid, startTime, startTime.Unix(), endTime, endTime.Unix())
 })
 
 var _ = AfterSuite(func() {
