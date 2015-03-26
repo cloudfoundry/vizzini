@@ -76,13 +76,15 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
+	defer func() {
+		endTime := time.Now()
+		fmt.Fprint(GinkgoWriter, say.Cyan("\n%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n", CurrentGinkgoTestDescription().FullTestText, guid, startTime, startTime.Unix(), endTime, endTime.Unix()))
+	}()
+
 	for _, domain := range []string{domain, otherDomain} {
 		ClearOutTasksInDomain(domain)
 		ClearOutDesiredLRPsInDomain(domain)
 	}
-
-	endTime := time.Now()
-	fmt.Fprint(GinkgoWriter, say.Cyan("\n%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n", CurrentGinkgoTestDescription().FullTestText, guid, startTime, startTime.Unix(), endTime, endTime.Unix()))
 })
 
 var _ = AfterSuite(func() {
