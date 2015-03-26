@@ -154,7 +154,7 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			lrp.RootFSPath = "docker:///onsi/grace-busybox"
 			lrp.Setup = &models.DownloadAction{
-				From:     "http://file_server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
+				From:     "http://file-server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
 			}
