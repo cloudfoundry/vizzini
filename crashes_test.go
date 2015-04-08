@@ -41,13 +41,6 @@ func TellGraceToDeleteFile(baseURL string, filename string) {
 	Ω(resp.StatusCode).Should(Equal(http.StatusOK))
 }
 
-func DirectURL(guid string, index int) string {
-	actualLRP, err := ActualGetter(guid, 0)()
-	Ω(err).ShouldNot(HaveOccurred())
-	Ω(actualLRP).ShouldNot(BeZero())
-	return fmt.Sprintf("http://%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)
-}
-
 var _ = Describe("Crashes", func() {
 	var lrp receptor.DesiredLRPCreateRequest
 	var url string
@@ -205,7 +198,7 @@ var _ = Describe("Crashes", func() {
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
-				directURL = DirectURL(guid, 0)
+				directURL = "http://" + DirectAddressFor(guid, 0, 8080)
 				indirectURL = "http://" + RouteForGuid(guid)
 			})
 

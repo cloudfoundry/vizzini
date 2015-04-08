@@ -10,6 +10,7 @@ import (
 
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/cloudfoundry-incubator/receptor"
@@ -205,6 +206,21 @@ func StartedAtGetter(guid string) func() (int64, error) {
 
 func RouteForGuid(guid string) string {
 	return fmt.Sprintf("%s.%s", guid, routableDomainSuffix)
+}
+
+func DirectAddressFor(guid string, index int, containerPort uint16) string {
+	actualLRP, err := ActualGetter(guid, index)()
+	Ω(err).ShouldNot(HaveOccurred())
+	Ω(actualLRP).ShouldNot(BeZero())
+
+	for _, portMapping := range actualLRP.Ports {
+		if portMapping.ContainerPort == containerPort {
+			return fmt.Sprintf("%s:%d", actualLRP.Address, portMapping.HostPort)
+		}
+	}
+
+	ginkgo.Fail(fmt.Sprintf("could not find port %d for ActualLRP %d with ProcessGuid %s", containerPort, index, guid))
+	return ""
 }
 
 func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
