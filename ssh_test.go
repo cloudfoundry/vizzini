@@ -152,5 +152,42 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Ω(session).Should(gbytes.Say("USER=vcap"))
 			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
+
+		It("should be possible to run an interactive ssh session", func() {
+			f, err := ioutil.TempFile("", "pem")
+			Ω(err).ShouldNot(HaveOccurred())
+			fmt.Fprintf(f, privateRSAKey)
+			f.Close()
+
+			defer os.Remove(f.Name())
+
+			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+			sshCmd := exec.Command(
+				"ssh",
+				"-t", "-t", // double tap to force pty allocation
+				"-i", f.Name(),
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-p", addrComponents[1],
+				"vcap@"+addrComponents[0],
+			)
+			input, err := sshCmd.StdinPipe()
+
+			session, err := gexec.Start(sshCmd, GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+			Eventually(session).Should(gbytes.Say("vcap@"))
+
+			_, err = input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(session).Should(gbytes.Say("foobar"))
+
+			_, err = input.Write([]byte("exit\n"))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
+			Eventually(session).Should(gexec.Exit(0))
+			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
+		})
 	})
 })
