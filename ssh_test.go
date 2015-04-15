@@ -164,14 +164,17 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 			sshCmd := exec.Command(
 				"ssh",
-				"-t", "-t", // double tap to force pty allocation
+				"-t",
+				"-t", // double tap to force pty allocation
 				"-i", f.Name(),
 				"-o", "StrictHostKeyChecking=no",
 				"-o", "UserKnownHostsFile=/dev/null",
 				"-p", addrComponents[1],
 				"vcap@"+addrComponents[0],
 			)
+
 			input, err := sshCmd.StdinPipe()
+			Ω(err).ShouldNot(HaveOccurred())
 
 			session, err := gexec.Start(sshCmd, GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
