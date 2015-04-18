@@ -46,14 +46,7 @@ Jm/15BLfU/Ty+MHchPV6bR6fQ6SnePDKQNOBSxtMQT8oFNNM/os+WYpsF5dG8whH
 wWA9OrJdbrDo9w==
 -----END RSA PRIVATE KEY-----`
 
-const publicRSAKey = `-----BEGIN PUBLIC KEY-----
-MIIBHDANBgkqhkiG9w0BAQEFAAOCAQkAMIIBBAKB/C/hstPGznfdyUGdbatKgbWJ
-YRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvI
-nCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6
-QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zib
-Nqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn
-9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQIDAQAB
------END PUBLIC KEY-----`
+const authorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zibNqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQ==`
 
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
@@ -125,7 +118,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 	Describe("Spinning up a public-key authenticated SSH session", func() {
 		BeforeEach(func() {
-			sshdArgs = []string{"-publicUserKey=" + publicRSAKey}
+			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
 		})
 
 		It("should be possible to run an ssh command", func() {
