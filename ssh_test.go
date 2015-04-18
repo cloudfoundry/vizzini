@@ -73,12 +73,18 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					},
 				},
 			},
-			Action: &models.RunAction{
-				Path: "/tmp/diego-sshd",
-				Args: append([]string{
-					"-address=0.0.0.0:2222",
-				}, sshdArgs...),
-			},
+			Action: models.Parallel(
+				&models.RunAction{
+					Path: "/tmp/diego-sshd",
+					Args: append([]string{
+						"-address=0.0.0.0:2222",
+					}, sshdArgs...),
+				},
+				&models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
+				},
+			),
 			Monitor: &models.RunAction{
 				Path: "nc",
 				Args: []string{"-z", "0.0.0.0", "2222"},
@@ -183,6 +189,44 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 			Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
 			Eventually(session).Should(gexec.Exit(0))
+			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
+		})
+
+		It("should be possible to forward ports", func() {
+			f, err := ioutil.TempFile("", "pem")
+			Ω(err).ShouldNot(HaveOccurred())
+			fmt.Fprintf(f, privateRSAKey)
+			f.Close()
+
+			defer os.Remove(f.Name())
+
+			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+			session, err := gexec.Start(exec.Command(
+				"ssh",
+				"-N",
+				"-L", "12345:localhost:9999",
+				"-i", f.Name(),
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-p", addrComponents[1],
+				"vcap@"+addrComponents[0],
+			), GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+			Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
+
+			nc, err := gexec.Start(exec.Command(
+				"nc",
+				"127.0.0.1",
+				"12345",
+			), GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(nc).Should(gexec.Exit(0))
+			Ω(nc).Should(gbytes.Say("inconceivable!"))
+
+			session.Interrupt()
+
+			Eventually(session).Should(gexec.Exit())
 			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 	})
