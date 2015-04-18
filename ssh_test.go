@@ -189,7 +189,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 			Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
 			Eventually(session).Should(gexec.Exit(0))
-			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 
 		It("should be possible to forward ports", func() {
@@ -227,7 +226,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			session.Interrupt()
 
 			Eventually(session).Should(gexec.Exit())
-			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 	})
 })
