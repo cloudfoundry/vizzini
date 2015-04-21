@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/onsi/gomega/gbytes"
@@ -226,6 +227,64 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			session.Interrupt()
 
 			Eventually(session).Should(gexec.Exit())
+		})
+
+		It("can scp files back and forth", func() {
+			dir, err := ioutil.TempDir("", "vizzini-ssh")
+			Ω(err).ShouldNot(HaveOccurred())
+
+			defer os.RemoveAll(dir)
+
+			inpath := path.Join(dir, "inbound")
+			infile, err := os.Create(inpath)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			_, err = infile.Write([]byte("hello from vizzini"))
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = infile.Close()
+			Ω(err).ShouldNot(HaveOccurred())
+
+			f, err := ioutil.TempFile("", "pem")
+			Ω(err).ShouldNot(HaveOccurred())
+			fmt.Fprintf(f, privateRSAKey)
+			f.Close()
+
+			defer os.Remove(f.Name())
+
+			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+			insession, err := gexec.Start(exec.Command(
+				"scp",
+				"-i", f.Name(),
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "User=vcap",
+				"-P", addrComponents[1],
+				inpath,
+				addrComponents[0]+":in-container",
+			), GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(insession).Should(gexec.Exit())
+
+			outpath := path.Join(dir, "outbound")
+			outsession, err := gexec.Start(exec.Command(
+				"scp",
+				"-i", f.Name(),
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "User=vcap",
+				"-P", addrComponents[1],
+				addrComponents[0]+":in-container",
+				outpath,
+			), GinkgoWriter, GinkgoWriter)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			Eventually(outsession).Should(gexec.Exit())
+
+			contents, err := ioutil.ReadFile(outpath)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(contents).Should(Equal([]byte("hello from vizzini")))
 		})
 	})
 })
