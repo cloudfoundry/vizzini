@@ -58,77 +58,289 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		sshdArgs = []string{}
 	})
 
-	JustBeforeEach(func() {
-		lrp = receptor.DesiredLRPCreateRequest{
-			ProcessGuid:          guid,
-			Domain:               domain,
-			Instances:            2,
-			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
-			Setup: &models.SerialAction{
-				Actions: []models.Action{
-					&models.DownloadAction{
-						Artifact: "diego-sshd",
-						From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
-						To:       "/tmp",
-						CacheKey: "diego-sshd",
+	Context("in a fully-featured preloaded rootfs", func() {
+		JustBeforeEach(func() {
+			lrp = receptor.DesiredLRPCreateRequest{
+				ProcessGuid:          guid,
+				Domain:               domain,
+				Instances:            2,
+				EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
+				Setup: &models.SerialAction{
+					Actions: []models.Action{
+						&models.DownloadAction{
+							Artifact: "diego-sshd",
+							From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
+							To:       "/tmp",
+							CacheKey: "diego-sshd",
+						},
 					},
 				},
-			},
-			Action: models.Parallel(
-				&models.RunAction{
-					Path: "/tmp/diego-sshd",
-					Args: append([]string{
-						"-address=0.0.0.0:2222",
-					}, sshdArgs...),
+				Action: models.Parallel(
+					&models.RunAction{
+						Path: "/tmp/diego-sshd",
+						Args: append([]string{
+							"-address=0.0.0.0:2222",
+						}, sshdArgs...),
+					},
+					&models.RunAction{
+						Path: "bash",
+						Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
+					},
+				),
+				Monitor: &models.RunAction{
+					Path: "nc",
+					Args: []string{"-z", "0.0.0.0", "2222"},
 				},
-				&models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
-				},
-			),
-			Monitor: &models.RunAction{
-				Path: "nc",
-				Args: []string{"-z", "0.0.0.0", "2222"},
-			},
-			RootFS:   defaultRootFS,
-			MemoryMB: 128,
-			DiskMB:   128,
-			Ports:    []uint16{2222},
-		}
+				RootFS:   defaultRootFS,
+				MemoryMB: 128,
+				DiskMB:   128,
+				Ports:    []uint16{2222},
+			}
 
-		Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-		Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
-	})
-
-	Describe("Spinning up an unauthenticated SSH session", func() {
-		BeforeEach(func() {
-			sshdArgs = []string{"-allowUnauthenticatedClients"}
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 		})
 
-		It("should be possible to run an ssh command", func() {
-			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-			session, err := gexec.Start(exec.Command(
-				"ssh",
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-p", addrComponents[1],
-				"vcap@"+addrComponents[0],
-				"/usr/bin/env",
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
+		Describe("Spinning up an unauthenticated SSH session", func() {
+			BeforeEach(func() {
+				sshdArgs = []string{"-allowUnauthenticatedClients"}
+			})
 
-			Eventually(session).Should(gexec.Exit(0))
-			Ω(session).Should(gbytes.Say("USER=vcap"))
-			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
+			It("should be possible to run an ssh command", func() {
+				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+				session, err := gexec.Start(exec.Command(
+					"ssh",
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-p", addrComponents[1],
+					"vcap@"+addrComponents[0],
+					"/usr/bin/env",
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(session).Should(gexec.Exit(0))
+				Ω(session).Should(gbytes.Say("USER=vcap"))
+				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
+			})
+		})
+
+		Describe("Spinning up a public-key authenticated SSH session", func() {
+			BeforeEach(func() {
+				sshdArgs = []string{"-authorizedKey=" + authorizedKey}
+			})
+
+			It("should be possible to run an ssh command", func() {
+				f, err := ioutil.TempFile("", "pem")
+				Ω(err).ShouldNot(HaveOccurred())
+				fmt.Fprintf(f, privateRSAKey)
+				f.Close()
+
+				defer os.Remove(f.Name())
+
+				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+				session, err := gexec.Start(exec.Command(
+					"ssh",
+					"-i", f.Name(),
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-p", addrComponents[1],
+					"vcap@"+addrComponents[0],
+					"/usr/bin/env",
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(session).Should(gexec.Exit(0))
+				Ω(session).Should(gbytes.Say("USER=vcap"))
+				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
+			})
+
+			It("should be possible to run an interactive ssh session", func() {
+				f, err := ioutil.TempFile("", "pem")
+				Ω(err).ShouldNot(HaveOccurred())
+				fmt.Fprintf(f, privateRSAKey)
+				f.Close()
+
+				defer os.Remove(f.Name())
+
+				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+				sshCmd := exec.Command(
+					"ssh",
+					"-t",
+					"-t", // double tap to force pty allocation
+					"-i", f.Name(),
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-p", addrComponents[1],
+					"vcap@"+addrComponents[0],
+				)
+
+				input, err := sshCmd.StdinPipe()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				session, err := gexec.Start(sshCmd, GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+				Eventually(session).Should(gbytes.Say("vcap@"))
+
+				_, err = input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(session).Should(gbytes.Say("foobar"))
+
+				_, err = input.Write([]byte("exit\n"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
+				Eventually(session).Should(gexec.Exit(0))
+			})
+
+			It("should be possible to forward ports", func() {
+				f, err := ioutil.TempFile("", "pem")
+				Ω(err).ShouldNot(HaveOccurred())
+				fmt.Fprintf(f, privateRSAKey)
+				f.Close()
+
+				defer os.Remove(f.Name())
+
+				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+				session, err := gexec.Start(exec.Command(
+					"ssh",
+					"-N",
+					"-L", "12345:localhost:9999",
+					"-i", f.Name(),
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-p", addrComponents[1],
+					"vcap@"+addrComponents[0],
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
+
+				nc, err := gexec.Start(exec.Command(
+					"nc",
+					"127.0.0.1",
+					"12345",
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(nc).Should(gexec.Exit(0))
+				Ω(nc).Should(gbytes.Say("inconceivable!"))
+
+				session.Interrupt()
+
+				Eventually(session).Should(gexec.Exit())
+			})
+
+			It("can scp files back and forth", func() {
+				dir, err := ioutil.TempDir("", "vizzini-ssh")
+				Ω(err).ShouldNot(HaveOccurred())
+
+				defer os.RemoveAll(dir)
+
+				inpath := path.Join(dir, "inbound")
+				infile, err := os.Create(inpath)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				_, err = infile.Write([]byte("hello from vizzini"))
+				Ω(err).ShouldNot(HaveOccurred())
+
+				err = infile.Close()
+				Ω(err).ShouldNot(HaveOccurred())
+
+				f, err := ioutil.TempFile("", "pem")
+				Ω(err).ShouldNot(HaveOccurred())
+				fmt.Fprintf(f, privateRSAKey)
+				f.Close()
+
+				defer os.Remove(f.Name())
+
+				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+				insession, err := gexec.Start(exec.Command(
+					"scp",
+					"-i", f.Name(),
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "User=vcap",
+					"-P", addrComponents[1],
+					inpath,
+					addrComponents[0]+":in-container",
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(insession).Should(gexec.Exit())
+
+				outpath := path.Join(dir, "outbound")
+				outsession, err := gexec.Start(exec.Command(
+					"scp",
+					"-i", f.Name(),
+					"-o", "StrictHostKeyChecking=no",
+					"-o", "UserKnownHostsFile=/dev/null",
+					"-o", "User=vcap",
+					"-P", addrComponents[1],
+					addrComponents[0]+":in-container",
+					outpath,
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
+
+				Eventually(outsession).Should(gexec.Exit())
+
+				contents, err := ioutil.ReadFile(outpath)
+				Ω(err).ShouldNot(HaveOccurred())
+				Ω(contents).Should(Equal([]byte("hello from vizzini")))
+			})
 		})
 	})
 
-	Describe("Spinning up a public-key authenticated SSH session", func() {
+	Context("in a bare-bones docker image (that nevertheless provides /bin/sh)", func() {
 		BeforeEach(func() {
 			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
 		})
 
-		It("should be possible to run an ssh command", func() {
+		JustBeforeEach(func() {
+			lrp = receptor.DesiredLRPCreateRequest{
+				ProcessGuid:          guid,
+				Domain:               domain,
+				Instances:            2,
+				EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
+				Setup: &models.SerialAction{
+					Actions: []models.Action{
+						&models.DownloadAction{
+							Artifact: "diego-sshd",
+							From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
+							To:       "/tmp",
+							CacheKey: "diego-sshd",
+						},
+					},
+				},
+				Action: models.Parallel(
+					&models.RunAction{
+						Path: "/tmp/diego-sshd",
+						Args: append([]string{
+							"-address=0.0.0.0:2222",
+						}, sshdArgs...),
+					},
+					&models.RunAction{
+						Path: "sh",
+						Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
+					},
+				),
+				Monitor: &models.RunAction{
+					Path: "sh",
+					Args: []string{
+						"-c",
+						"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
+					},
+				},
+				RootFS:   "docker:///busybox",
+				MemoryMB: 128,
+				DiskMB:   128,
+				Ports:    []uint16{2222},
+			}
+
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+		})
+
+		It("runs an ssh command", func() {
 			f, err := ioutil.TempFile("", "pem")
 			Ω(err).ShouldNot(HaveOccurred())
 			fmt.Fprintf(f, privateRSAKey)
@@ -137,6 +349,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			defer os.Remove(f.Name())
 
 			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
+
 			session, err := gexec.Start(exec.Command(
 				"ssh",
 				"-i", f.Name(),
@@ -151,45 +364,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Eventually(session).Should(gexec.Exit(0))
 			Ω(session).Should(gbytes.Say("USER=vcap"))
 			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
-		})
-
-		It("should be possible to run an interactive ssh session", func() {
-			f, err := ioutil.TempFile("", "pem")
-			Ω(err).ShouldNot(HaveOccurred())
-			fmt.Fprintf(f, privateRSAKey)
-			f.Close()
-
-			defer os.Remove(f.Name())
-
-			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-			sshCmd := exec.Command(
-				"ssh",
-				"-t",
-				"-t", // double tap to force pty allocation
-				"-i", f.Name(),
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-p", addrComponents[1],
-				"vcap@"+addrComponents[0],
-			)
-
-			input, err := sshCmd.StdinPipe()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			session, err := gexec.Start(sshCmd, GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
-			Eventually(session).Should(gbytes.Say("vcap@"))
-
-			_, err = input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(session).Should(gbytes.Say("foobar"))
-
-			_, err = input.Write([]byte("exit\n"))
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
-			Eventually(session).Should(gexec.Exit(0))
 		})
 
 		It("should be possible to forward ports", func() {
@@ -204,7 +378,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			session, err := gexec.Start(exec.Command(
 				"ssh",
 				"-N",
-				"-L", "12345:localhost:9999",
+				"-L", "23456:localhost:9999",
 				"-i", f.Name(),
 				"-o", "StrictHostKeyChecking=no",
 				"-o", "UserKnownHostsFile=/dev/null",
@@ -217,7 +391,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			nc, err := gexec.Start(exec.Command(
 				"nc",
 				"127.0.0.1",
-				"12345",
+				"23456",
 			), GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -227,64 +401,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			session.Interrupt()
 
 			Eventually(session).Should(gexec.Exit())
-		})
-
-		It("can scp files back and forth", func() {
-			dir, err := ioutil.TempDir("", "vizzini-ssh")
-			Ω(err).ShouldNot(HaveOccurred())
-
-			defer os.RemoveAll(dir)
-
-			inpath := path.Join(dir, "inbound")
-			infile, err := os.Create(inpath)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			_, err = infile.Write([]byte("hello from vizzini"))
-			Ω(err).ShouldNot(HaveOccurred())
-
-			err = infile.Close()
-			Ω(err).ShouldNot(HaveOccurred())
-
-			f, err := ioutil.TempFile("", "pem")
-			Ω(err).ShouldNot(HaveOccurred())
-			fmt.Fprintf(f, privateRSAKey)
-			f.Close()
-
-			defer os.Remove(f.Name())
-
-			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-			insession, err := gexec.Start(exec.Command(
-				"scp",
-				"-i", f.Name(),
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-o", "User=vcap",
-				"-P", addrComponents[1],
-				inpath,
-				addrComponents[0]+":in-container",
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(insession).Should(gexec.Exit())
-
-			outpath := path.Join(dir, "outbound")
-			outsession, err := gexec.Start(exec.Command(
-				"scp",
-				"-i", f.Name(),
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-o", "User=vcap",
-				"-P", addrComponents[1],
-				addrComponents[0]+":in-container",
-				outpath,
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			Eventually(outsession).Should(gexec.Exit())
-
-			contents, err := ioutil.ReadFile(outpath)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(contents).Should(Equal([]byte("hello from vizzini")))
 		})
 	})
 })
