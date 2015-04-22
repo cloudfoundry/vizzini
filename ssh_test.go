@@ -52,52 +52,112 @@ const authorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatK
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
 	var lrp receptor.DesiredLRPCreateRequest
+	var rootfs string
 	var sshdArgs []string
+	var sshClientArgs []string
+	var shellServer models.RunAction
+	var sshdMonitor models.RunAction
+
+	secureCommand := func(cmd string, args ...string) *exec.Cmd {
+		sshArgs := []string{}
+		sshArgs = append(sshArgs, sshClientArgs...)
+		sshArgs = append(sshArgs, args...)
+
+		return exec.Command(cmd, sshArgs...)
+	}
+
+	ssh := func(target []string, args ...string) *exec.Cmd {
+		sshArgs := []string{
+			"-p", target[1],
+			"vcap@" + target[0],
+		}
+		return secureCommand("ssh", append(sshArgs, args...)...)
+	}
+
+	sshInteractive := func(target []string) *exec.Cmd {
+		return ssh(target,
+			"-t",
+			"-t", // double tap to force pty allocation
+		)
+	}
+
+	sshTunnelTo := func(target []string, localport, remoteport int) *exec.Cmd {
+		return ssh(target,
+			"-N",
+			"-L", fmt.Sprintf("%d:127.0.0.1:%d", localport, remoteport),
+		)
+	}
+
+	scp := func(target []string, args ...string) *exec.Cmd {
+		sshArgs := []string{
+			"-o", "User=vcap",
+			"-P", target[1],
+		}
+		return secureCommand("scp", append(sshArgs, args...)...)
+	}
+
+	generatePrivateKey := func() string {
+		f, err := ioutil.TempFile("", "pem")
+		Ω(err).ShouldNot(HaveOccurred())
+		fmt.Fprintf(f, privateRSAKey)
+		f.Close()
+
+		return f.Name()
+	}
 
 	BeforeEach(func() {
 		sshdArgs = []string{}
+		sshClientArgs = []string{
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "UserKnownHostsFile=/dev/null",
+		}
+	})
+
+	JustBeforeEach(func() {
+		lrp = receptor.DesiredLRPCreateRequest{
+			ProcessGuid:          guid,
+			Domain:               domain,
+			Instances:            2,
+			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
+			Setup: &models.DownloadAction{
+				Artifact: "diego-sshd",
+				From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
+				To:       "/tmp",
+				CacheKey: "diego-sshd",
+			},
+			Action: models.Parallel(
+				&models.RunAction{
+					Path: "/tmp/diego-sshd",
+					Args: append([]string{
+						"-address=0.0.0.0:2222",
+					}, sshdArgs...),
+				},
+				&shellServer,
+			),
+			Monitor:  &sshdMonitor,
+			RootFS:   rootfs,
+			MemoryMB: 128,
+			DiskMB:   128,
+			Ports:    []uint16{2222},
+		}
+
+		Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 	})
 
 	Context("in a fully-featured preloaded rootfs", func() {
-		JustBeforeEach(func() {
-			lrp = receptor.DesiredLRPCreateRequest{
-				ProcessGuid:          guid,
-				Domain:               domain,
-				Instances:            2,
-				EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
-				Setup: &models.SerialAction{
-					Actions: []models.Action{
-						&models.DownloadAction{
-							Artifact: "diego-sshd",
-							From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
-							To:       "/tmp",
-							CacheKey: "diego-sshd",
-						},
-					},
-				},
-				Action: models.Parallel(
-					&models.RunAction{
-						Path: "/tmp/diego-sshd",
-						Args: append([]string{
-							"-address=0.0.0.0:2222",
-						}, sshdArgs...),
-					},
-					&models.RunAction{
-						Path: "bash",
-						Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
-					},
-				),
-				Monitor: &models.RunAction{
-					Path: "nc",
-					Args: []string{"-z", "0.0.0.0", "2222"},
-				},
-				RootFS:   defaultRootFS,
-				MemoryMB: 128,
-				DiskMB:   128,
-				Ports:    []uint16{2222},
+		BeforeEach(func() {
+			rootfs = defaultRootFS
+			shellServer = models.RunAction{
+				Path: "bash",
+				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
 			}
+			sshdMonitor = models.RunAction{
+				Path: "nc",
+				Args: []string{"-z", "0.0.0.0", "2222"},
+			}
+		})
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+		JustBeforeEach(func() {
 			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 		})
 
@@ -108,12 +168,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 			It("should be possible to run an ssh command", func() {
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(exec.Command(
-					"ssh",
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-p", addrComponents[1],
-					"vcap@"+addrComponents[0],
+				session, err := gexec.Start(ssh(addrComponents,
 					"/usr/bin/env",
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -125,26 +180,22 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		Describe("Spinning up a public-key authenticated SSH session", func() {
+			var keypath string
+
 			BeforeEach(func() {
 				sshdArgs = []string{"-authorizedKey=" + authorizedKey}
+
+				keypath = generatePrivateKey()
+				sshClientArgs = append(sshClientArgs, "-i", keypath)
+			})
+
+			AfterEach(func() {
+				os.Remove(keypath)
 			})
 
 			It("should be possible to run an ssh command", func() {
-				f, err := ioutil.TempFile("", "pem")
-				Ω(err).ShouldNot(HaveOccurred())
-				fmt.Fprintf(f, privateRSAKey)
-				f.Close()
-
-				defer os.Remove(f.Name())
-
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(exec.Command(
-					"ssh",
-					"-i", f.Name(),
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-p", addrComponents[1],
-					"vcap@"+addrComponents[0],
+				session, err := gexec.Start(ssh(addrComponents,
 					"/usr/bin/env",
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -155,29 +206,13 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 
 			It("should be possible to run an interactive ssh session", func() {
-				f, err := ioutil.TempFile("", "pem")
-				Ω(err).ShouldNot(HaveOccurred())
-				fmt.Fprintf(f, privateRSAKey)
-				f.Close()
-
-				defer os.Remove(f.Name())
-
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				sshCmd := exec.Command(
-					"ssh",
-					"-t",
-					"-t", // double tap to force pty allocation
-					"-i", f.Name(),
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-p", addrComponents[1],
-					"vcap@"+addrComponents[0],
-				)
+				sshCommand := sshInteractive(addrComponents)
 
-				input, err := sshCmd.StdinPipe()
+				input, err := sshCommand.StdinPipe()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				session, err := gexec.Start(sshCmd, GinkgoWriter, GinkgoWriter)
+				session, err := gexec.Start(sshCommand, GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
 				Eventually(session).Should(gbytes.Say("vcap@"))
 
@@ -194,23 +229,10 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 
 			It("should be possible to forward ports", func() {
-				f, err := ioutil.TempFile("", "pem")
-				Ω(err).ShouldNot(HaveOccurred())
-				fmt.Fprintf(f, privateRSAKey)
-				f.Close()
-
-				defer os.Remove(f.Name())
-
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(exec.Command(
-					"ssh",
-					"-N",
-					"-L", "12345:localhost:9999",
-					"-i", f.Name(),
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-p", addrComponents[1],
-					"vcap@"+addrComponents[0],
+				session, err := gexec.Start(sshTunnelTo(addrComponents,
+					12345,
+					9999,
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
 				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
@@ -246,21 +268,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				err = infile.Close()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				f, err := ioutil.TempFile("", "pem")
-				Ω(err).ShouldNot(HaveOccurred())
-				fmt.Fprintf(f, privateRSAKey)
-				f.Close()
-
-				defer os.Remove(f.Name())
-
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				insession, err := gexec.Start(exec.Command(
-					"scp",
-					"-i", f.Name(),
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-o", "User=vcap",
-					"-P", addrComponents[1],
+				insession, err := gexec.Start(scp(addrComponents,
 					inpath,
 					addrComponents[0]+":in-container",
 				), GinkgoWriter, GinkgoWriter)
@@ -269,13 +278,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Eventually(insession).Should(gexec.Exit())
 
 				outpath := path.Join(dir, "outbound")
-				outsession, err := gexec.Start(exec.Command(
-					"scp",
-					"-i", f.Name(),
-					"-o", "StrictHostKeyChecking=no",
-					"-o", "UserKnownHostsFile=/dev/null",
-					"-o", "User=vcap",
-					"-P", addrComponents[1],
+				outsession, err := gexec.Start(scp(addrComponents,
 					addrComponents[0]+":in-container",
 					outpath,
 				), GinkgoWriter, GinkgoWriter)
@@ -291,72 +294,40 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 	})
 
 	Context("in a bare-bones docker image (that nevertheless provides /bin/sh)", func() {
+		var keypath string
+
 		BeforeEach(func() {
+			rootfs = "docker:///busybox"
+			shellServer = models.RunAction{
+				Path: "sh",
+				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
+			}
+			sshdMonitor = models.RunAction{
+				Path: "sh",
+				Args: []string{
+					"-c",
+					"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
+				},
+			}
+
 			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
+
+			keypath = generatePrivateKey()
+			sshClientArgs = append(sshClientArgs, "-i", keypath)
+		})
+
+		AfterEach(func() {
+			os.Remove(keypath)
 		})
 
 		JustBeforeEach(func() {
-			lrp = receptor.DesiredLRPCreateRequest{
-				ProcessGuid:          guid,
-				Domain:               domain,
-				Instances:            2,
-				EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
-				Setup: &models.SerialAction{
-					Actions: []models.Action{
-						&models.DownloadAction{
-							Artifact: "diego-sshd",
-							From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
-							To:       "/tmp",
-							CacheKey: "diego-sshd",
-						},
-					},
-				},
-				Action: models.Parallel(
-					&models.RunAction{
-						Path: "/tmp/diego-sshd",
-						Args: append([]string{
-							"-address=0.0.0.0:2222",
-						}, sshdArgs...),
-					},
-					&models.RunAction{
-						Path: "sh",
-						Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
-					},
-				),
-				Monitor: &models.RunAction{
-					Path: "sh",
-					Args: []string{
-						"-c",
-						"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
-					},
-				},
-				RootFS:   "docker:///busybox",
-				MemoryMB: 128,
-				DiskMB:   128,
-				Ports:    []uint16{2222},
-			}
-
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 			Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 		})
 
 		It("runs an ssh command", func() {
-			f, err := ioutil.TempFile("", "pem")
-			Ω(err).ShouldNot(HaveOccurred())
-			fmt.Fprintf(f, privateRSAKey)
-			f.Close()
-
-			defer os.Remove(f.Name())
-
 			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 
-			session, err := gexec.Start(exec.Command(
-				"ssh",
-				"-i", f.Name(),
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-p", addrComponents[1],
-				"vcap@"+addrComponents[0],
+			session, err := gexec.Start(ssh(addrComponents,
 				"/usr/bin/env",
 			), GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -367,23 +338,10 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		It("should be possible to forward ports", func() {
-			f, err := ioutil.TempFile("", "pem")
-			Ω(err).ShouldNot(HaveOccurred())
-			fmt.Fprintf(f, privateRSAKey)
-			f.Close()
-
-			defer os.Remove(f.Name())
-
 			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-			session, err := gexec.Start(exec.Command(
-				"ssh",
-				"-N",
-				"-L", "23456:localhost:9999",
-				"-i", f.Name(),
-				"-o", "StrictHostKeyChecking=no",
-				"-o", "UserKnownHostsFile=/dev/null",
-				"-p", addrComponents[1],
-				"vcap@"+addrComponents[0],
+			session, err := gexec.Start(sshTunnelTo(addrComponents,
+				23456,
+				9999,
 			), GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
 			Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
