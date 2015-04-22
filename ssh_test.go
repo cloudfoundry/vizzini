@@ -161,12 +161,12 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
 		})
 
-		Describe("Spinning up an unauthenticated SSH session", func() {
+		Context("with an unauthenticated SSH session", func() {
 			BeforeEach(func() {
 				sshdArgs = []string{"-allowUnauthenticatedClients"}
 			})
 
-			It("should be possible to run an ssh command", func() {
+			It("runs an ssh command", func() {
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 				session, err := gexec.Start(ssh(addrComponents,
 					"/usr/bin/env",
@@ -179,7 +179,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 		})
 
-		Describe("Spinning up a public-key authenticated SSH session", func() {
+		Describe("with a public-key-authenticated SSH session", func() {
 			var keypath string
 
 			BeforeEach(func() {
@@ -193,7 +193,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				os.Remove(keypath)
 			})
 
-			It("should be possible to run an ssh command", func() {
+			It("runs an ssh command", func() {
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 				session, err := gexec.Start(ssh(addrComponents,
 					"/usr/bin/env",
@@ -205,7 +205,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 			})
 
-			It("should be possible to run an interactive ssh session", func() {
+			It("runs an interactive ssh session", func() {
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 				sshCommand := sshInteractive(addrComponents)
 
@@ -228,7 +228,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Eventually(session).Should(gexec.Exit(0))
 			})
 
-			It("should be possible to forward ports", func() {
+			It("forwards ports", func() {
 				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 				session, err := gexec.Start(sshTunnelTo(addrComponents,
 					12345,
@@ -252,7 +252,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Eventually(session).Should(gexec.Exit())
 			})
 
-			It("can scp files back and forth", func() {
+			It("copies files back and forth", func() {
 				dir, err := ioutil.TempDir("", "vizzini-ssh")
 				Ω(err).ShouldNot(HaveOccurred())
 
@@ -293,7 +293,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 	})
 
-	Context("in a bare-bones docker image (that nevertheless provides /bin/sh)", func() {
+	Context("in a bare-bones docker image with /bin/sh", func() {
 		var keypath string
 
 		BeforeEach(func() {
@@ -337,7 +337,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 
-		It("should be possible to forward ports", func() {
+		It("forwards ports", func() {
 			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
 			session, err := gexec.Start(sshTunnelTo(addrComponents,
 				23456,
