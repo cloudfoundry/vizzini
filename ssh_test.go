@@ -49,6 +49,23 @@ wWA9OrJdbrDo9w==
 
 const authorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zibNqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQ==`
 
+type sshTarget struct {
+	User string
+	Host string
+	Port string
+}
+
+func directTargetFor(guid string, index int, port uint16) sshTarget {
+	addrComponents := strings.Split(DirectAddressFor(guid, index, port), ":")
+	Ω(addrComponents).Should(HaveLen(2))
+
+	return sshTarget{
+		User: "vcap",
+		Host: addrComponents[0],
+		Port: addrComponents[1],
+	}
+}
+
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
 	var lrp receptor.DesiredLRPCreateRequest
@@ -66,32 +83,32 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		return exec.Command(cmd, sshArgs...)
 	}
 
-	ssh := func(target []string, args ...string) *exec.Cmd {
+	ssh := func(target sshTarget, args ...string) *exec.Cmd {
 		sshArgs := []string{
-			"-p", target[1],
-			"vcap@" + target[0],
+			"-p", target.Port,
+			target.User + "@" + target.Host,
 		}
 		return secureCommand("ssh", append(sshArgs, args...)...)
 	}
 
-	sshInteractive := func(target []string) *exec.Cmd {
+	sshInteractive := func(target sshTarget) *exec.Cmd {
 		return ssh(target,
 			"-t",
 			"-t", // double tap to force pty allocation
 		)
 	}
 
-	sshTunnelTo := func(target []string, localport, remoteport int) *exec.Cmd {
+	sshTunnelTo := func(target sshTarget, localport, remoteport int) *exec.Cmd {
 		return ssh(target,
 			"-N",
 			"-L", fmt.Sprintf("%d:127.0.0.1:%d", localport, remoteport),
 		)
 	}
 
-	scp := func(target []string, args ...string) *exec.Cmd {
+	scp := func(target sshTarget, args ...string) *exec.Cmd {
 		sshArgs := []string{
-			"-o", "User=vcap",
-			"-P", target[1],
+			"-o", "User=" + target.User,
+			"-P", target.Port,
 		}
 		return secureCommand("scp", append(sshArgs, args...)...)
 	}
@@ -167,8 +184,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 
 			It("runs an ssh command", func() {
-				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(ssh(addrComponents,
+				target := directTargetFor(guid, 0, 2222)
+				session, err := gexec.Start(ssh(target,
 					"/usr/bin/env",
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -194,8 +211,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 
 			It("runs an ssh command", func() {
-				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(ssh(addrComponents,
+				target := directTargetFor(guid, 0, 2222)
+				session, err := gexec.Start(ssh(target,
 					"/usr/bin/env",
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -206,8 +223,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			})
 
 			It("runs an interactive ssh session", func() {
-				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				sshCommand := sshInteractive(addrComponents)
+				target := directTargetFor(guid, 0, 2222)
+				sshCommand := sshInteractive(target)
 
 				input, err := sshCommand.StdinPipe()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -224,13 +241,13 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				_, err = input.Write([]byte("exit\n"))
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(session.Err).Should(gbytes.Say("Connection to " + addrComponents[0] + " closed."))
+				Eventually(session.Err).Should(gbytes.Say("Connection to " + target.Host + " closed."))
 				Eventually(session).Should(gexec.Exit(0))
 			})
 
 			It("forwards ports", func() {
-				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				session, err := gexec.Start(sshTunnelTo(addrComponents,
+				target := directTargetFor(guid, 0, 2222)
+				session, err := gexec.Start(sshTunnelTo(target,
 					12345,
 					9999,
 				), GinkgoWriter, GinkgoWriter)
@@ -268,18 +285,18 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				err = infile.Close()
 				Ω(err).ShouldNot(HaveOccurred())
 
-				addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-				insession, err := gexec.Start(scp(addrComponents,
+				target := directTargetFor(guid, 0, 2222)
+				insession, err := gexec.Start(scp(target,
 					inpath,
-					addrComponents[0]+":in-container",
+					target.Host+":in-container",
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(insession).Should(gexec.Exit())
 
 				outpath := path.Join(dir, "outbound")
-				outsession, err := gexec.Start(scp(addrComponents,
-					addrComponents[0]+":in-container",
+				outsession, err := gexec.Start(scp(target,
+					target.Host+":in-container",
 					outpath,
 				), GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -325,9 +342,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		It("runs an ssh command", func() {
-			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-
-			session, err := gexec.Start(ssh(addrComponents,
+			target := directTargetFor(guid, 0, 2222)
+			session, err := gexec.Start(ssh(target,
 				"/usr/bin/env",
 			), GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
@@ -338,8 +354,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		It("forwards ports", func() {
-			addrComponents := strings.Split(DirectAddressFor(guid, 0, 2222), ":")
-			session, err := gexec.Start(sshTunnelTo(addrComponents,
+			target := directTargetFor(guid, 0, 2222)
+			session, err := gexec.Start(sshTunnelTo(target,
 				23456,
 				9999,
 			), GinkgoWriter, GinkgoWriter)
