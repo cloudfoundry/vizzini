@@ -155,6 +155,35 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
+	Describe("Specifying HTTP-based health check (move to inigo or DATs once CC can specify an HTTP-based health-check)", func() {
+		BeforeEach(func() {
+			lrp.Setup = &models.SerialAction{
+				Actions: []models.Action{
+					&models.DownloadAction{
+						From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+						To:       ".",
+						CacheKey: "grace",
+					},
+					&models.DownloadAction{
+						From:     "http://file-server.service.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+						To:       "/tmp/lifecycle",
+						CacheKey: "buildpack-app-lifecycle",
+					},
+				},
+			}
+			lrp.Monitor = &models.RunAction{
+				Path: "/tmp/lifecycle/healthcheck",
+				Args: []string{"-port=8080", "-uri=/ping"},
+			}
+
+			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+		})
+
+		It("should run", func() {
+			Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning)))
+		})
+	})
+
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFS = "docker:///onsi/grace-busybox"
