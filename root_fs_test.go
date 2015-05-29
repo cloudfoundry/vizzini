@@ -28,18 +28,6 @@ var _ = Describe("Targetting different RootFSes", func() {
 		Ω(client.DeleteTask(guid)).Should(Succeed())
 	})
 
-	Describe("lucid64", func() {
-		BeforeEach(func() {
-			rootFS = models.PreloadedRootFS("lucid64")
-		})
-
-		It("should run the lucid64 rootfs", func() {
-			completedTask, err := client.GetTask(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(completedTask.Result).Should(ContainSubstring(`bash, version 4.1.5`))
-		})
-	})
-
 	Describe("cflinuxfs2", func() {
 		BeforeEach(func() {
 			rootFS = models.PreloadedRootFS("cflinuxfs2")
