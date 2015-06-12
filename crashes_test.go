@@ -147,34 +147,93 @@ var _ = Describe("Crashes", func() {
 	})
 
 	Context("with no monitor action", func() {
-		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
-		})
-
-		It("comes up as soon as the process starts", func() {
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
-		})
-
-		Context("when the process dies with exit code 0", func() {
+		Context("when running a single action", func() {
 			BeforeEach(func() {
-				MakeGraceExit(url, 0)
+				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 			})
 
-			It("gets restarted immediately", func() {
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
-				Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+			It("comes up as soon as the process starts", func() {
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+			})
+
+			Context("when the process dies with exit code 0", func() {
+				BeforeEach(func() {
+					MakeGraceExit(url, 0)
+				})
+
+				It("gets restarted immediately", func() {
+					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+					Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+				})
+			})
+
+			Context("when the process dies with exit code 1", func() {
+				BeforeEach(func() {
+					MakeGraceExit(url, 1)
+				})
+
+				It("gets restarted immediately", func() {
+					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+					Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+				})
 			})
 		})
 
-		Context("when the process dies with exit code 1", func() {
-			BeforeEach(func() {
-				MakeGraceExit(url, 1)
+		Context("when running several actions", func() {
+			Context("codependently", func() {
+				BeforeEach(func() {
+					lrp.Action = models.Codependent(
+						&models.RunAction{
+							Path: "bash",
+							Args: []string{"-c", "while true; do sleep 1; done"},
+						},
+						&models.RunAction{
+							Path: "./grace",
+							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+						},
+					)
+					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+				})
+
+				Context("when one of the actions finishes", func() {
+					BeforeEach(func() {
+						MakeGraceExit(url, 0)
+					})
+
+					It("gets restarted immediately", func() {
+						Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
+						Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+					})
+				})
 			})
 
-			It("gets restarted immediately", func() {
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateRunning, 1))
-				Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+			Context("in parallel", func() {
+				BeforeEach(func() {
+					lrp.Action = models.Parallel(
+						&models.RunAction{
+							Path: "bash",
+							Args: []string{"-c", "while true; do sleep 1; done"},
+						},
+						&models.RunAction{
+							Path: "./grace",
+							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+						},
+					)
+					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+				})
+
+				Context("when one of the actions finishes", func() {
+					BeforeEach(func() {
+						MakeGraceExit(url, 2)
+					})
+
+					It("does not crash", func() {
+						Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+					})
+				})
 			})
 		})
 	})
