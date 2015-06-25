@@ -137,10 +137,10 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Instances:            2,
 			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
 			Setup: &models.DownloadAction{
-				Artifact: "diego-sshd",
-				From:     "http://file-server.service.dc1.consul:8080/v1/static/diego-sshd/diego-sshd.tgz",
+				Artifact: "lifecycle bundle",
+				From:     "http://file-server.service.dc1.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 				To:       "/tmp",
-				CacheKey: "diego-sshd",
+				CacheKey: "lifecycle",
 			},
 			Action: models.Parallel(
 				&models.RunAction{
