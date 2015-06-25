@@ -148,6 +148,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					Args: append([]string{
 						"-address=0.0.0.0:2222",
 					}, sshdArgs...),
+					User: "vcap",
 				},
 				&shellServer,
 			),
@@ -167,10 +168,12 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			shellServer = models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
+				User: "vcap",
 			}
 			sshdMonitor = models.RunAction{
 				Path: "nc",
 				Args: []string{"-z", "0.0.0.0", "2222"},
+				User: "vcap",
 			}
 		})
 
@@ -318,6 +321,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			shellServer = models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
+				User: "vcap",
 			}
 			sshdMonitor = models.RunAction{
 				Path: "sh",
@@ -325,6 +329,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					"-c",
 					"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
 				},
+				User: "vcap",
 			}
 
 			sshdArgs = []string{"-authorizedKey=" + authorizedKey}

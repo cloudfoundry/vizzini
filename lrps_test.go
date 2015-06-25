@@ -174,6 +174,7 @@ var _ = Describe("LRPs", func() {
 			lrp.Monitor = &models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080", "-uri=/ping"},
+				User: "vcap",
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -194,11 +195,13 @@ var _ = Describe("LRPs", func() {
 			}
 			lrp.Action = &models.RunAction{
 				Path: "/grace",
+				User: "vcap",
 				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			}
 			lrp.Monitor = &models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080"},
+				User: "vcap",
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())

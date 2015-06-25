@@ -56,6 +56,7 @@ func TaskWithGuid(guid string) receptor.TaskCreateRequest {
 		Action: &models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
+			User: "vcap",
 		},
 		RootFS:     defaultRootFS,
 		MemoryMB:   128,
@@ -239,11 +240,13 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		},
 		Action: &models.RunAction{
 			Path: "./grace",
+			User: "vcap",
 			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 		},
 		Monitor: &models.RunAction{
 			Path: "nc",
 			Args: []string{"-z", "0.0.0.0", "8080"},
+			User: "vcap",
 		},
 		RootFS:    defaultRootFS,
 		MemoryMB:  128,

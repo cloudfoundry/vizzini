@@ -131,6 +131,7 @@ var _ = Describe("Tasks", func() {
 				task.Action = &models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "echo 'some output' > /tmp/bar && exit 1"},
+					User: "vcap",
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
@@ -159,6 +160,7 @@ var _ = Describe("Tasks", func() {
 			task.Action = &models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", "env > /tmp/bar"},
+				User: "vcap",
 				Env: []models.EnvironmentVariable{
 					{"ACTION_LEVEL", "C"},
 					{"OVERRIDE", "D"},
@@ -188,6 +190,7 @@ var _ = Describe("Tasks", func() {
 			task.Action = &models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "ls / > /tmp/bar"},
+				User: "vcap",
 			}
 			Ω(client.CreateTask(task)).Should(Succeed())
 		})
@@ -226,6 +229,7 @@ var _ = Describe("Tasks", func() {
 				task.Action = &models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST; sleep 0.05; done", incrementCounterRoute)},
+					User: "vcap",
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
@@ -380,6 +384,7 @@ var _ = Describe("Tasks", func() {
 				task.Action = &models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
+					User: "vcap",
 				}
 				Ω(client.CreateTask(task)).Should(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))

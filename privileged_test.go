@@ -11,16 +11,16 @@ import (
 
 var _ = Describe("Privileged", func() {
 	var task receptor.TaskCreateRequest
-	var runPrivileged bool
+	var runUser string
 	var containerPrivileged bool
 
 	JustBeforeEach(func() {
 		task = TaskWithGuid(guid)
 		task.Privileged = containerPrivileged
 		task.Action = &models.RunAction{
-			Path:       "bash",
-			Args:       []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
-			Privileged: runPrivileged,
+			Path: "bash",
+			Args: []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
+			User: runUser,
 		}
 
 		Ω(client.CreateTask(task)).Should(Succeed())
@@ -39,7 +39,7 @@ var _ = Describe("Privileged", func() {
 		//{LOCAL} because: privileged may not be allowed in the remote environment
 		Context("{LOCAL} when running a privileged action", func() {
 			BeforeEach(func() {
-				runPrivileged = true
+				runUser = "root"
 			})
 
 			It("should run as root", func() {
@@ -53,7 +53,7 @@ var _ = Describe("Privileged", func() {
 
 		Context("when running a non-privileged action", func() {
 			BeforeEach(func() {
-				runPrivileged = false
+				runUser = "vcap"
 			})
 
 			It("should run as non-root", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Privileged", func() {
 		//{LOCAL} because: privileged may not be allowed in the remote environment
 		Context("{LOCAL} when running a privileged action", func() {
 			BeforeEach(func() {
-				runPrivileged = true
+				runUser = "root"
 			})
 
 			It("should run as root", func() {
@@ -88,7 +88,7 @@ var _ = Describe("Privileged", func() {
 
 		Context("when running a non-privileged action", func() {
 			BeforeEach(func() {
-				runPrivileged = false
+				runUser = "vcap"
 			})
 
 			It("should run as non-root", func() {

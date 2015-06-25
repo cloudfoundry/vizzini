@@ -50,6 +50,7 @@ var _ = Describe("Crashes", func() {
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Action = &models.RunAction{
 			Path: "./grace",
+			User: "vcap",
 			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 		}
 		lrp.Monitor = nil
@@ -187,10 +188,12 @@ var _ = Describe("Crashes", func() {
 						&models.RunAction{
 							Path: "bash",
 							Args: []string{"-c", "while true; do sleep 1; done"},
+							User: "vcap",
 						},
 						&models.RunAction{
 							Path: "./grace",
 							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+							User: "vcap",
 						},
 					)
 					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -215,10 +218,12 @@ var _ = Describe("Crashes", func() {
 						&models.RunAction{
 							Path: "bash",
 							Args: []string{"-c", "while true; do sleep 1; done"},
+							User: "vcap",
 						},
 						&models.RunAction{
 							Path: "./grace",
 							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+							User: "vcap",
 						},
 					)
 					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -246,12 +251,14 @@ var _ = Describe("Crashes", func() {
 				lrp.Action = &models.RunAction{
 					Path: "./grace",
 					Args: []string{"-upFile=up"},
+					User: "vcap",
 					Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 				}
 
 				lrp.Monitor = &models.RunAction{
 					Path: "cat",
 					Args: []string{"/tmp/up"},
+					User: "vcap",
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -329,6 +336,7 @@ var _ = Describe("Crashes", func() {
 			JustBeforeEach(func() {
 				lrp.Monitor = &models.RunAction{
 					Path: "false",
+					User: "vcap",
 				}
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
@@ -340,6 +348,7 @@ var _ = Describe("Crashes", func() {
 					lrp.Action = &models.RunAction{
 						Path: "./grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
+						User: "vcap",
 						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 					}
 				})
@@ -354,6 +363,7 @@ var _ = Describe("Crashes", func() {
 					lrp.Action = &models.RunAction{
 						Path: "./grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=1"},
+						User: "vcap",
 						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 					}
 				})

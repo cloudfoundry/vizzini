@@ -22,6 +22,7 @@ var _ = Describe("Actions", func() {
 				Action: &models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "sleep 1000"},
+					User: "vcap",
 				},
 				Timeout: 2 * time.Second,
 			}
@@ -49,6 +50,7 @@ var _ = Describe("Actions", func() {
 				Path: "bash",
 				Dir:  "/etc",
 				Args: []string{"-c", "echo $PWD > /tmp/bar"},
+				User: "vcap",
 			}
 
 			Ω(client.CreateTask(task)).Should(Succeed())

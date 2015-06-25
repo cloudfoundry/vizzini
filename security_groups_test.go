@@ -81,11 +81,13 @@ var _ = Describe("Security groups", func() {
 			disallowedTask.Action = &models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
+				User: "vcap",
 			}
 
 			allowedTask.Action = &models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
+				User: "vcap",
 			}
 
 			allowedTask.EgressRules = []models.SecurityGroupRule{

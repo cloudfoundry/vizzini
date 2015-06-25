@@ -19,6 +19,7 @@ var _ = Describe("Targetting different RootFSes", func() {
 		task.Action = &models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "bash --version > /tmp/bar"},
+			User: "vcap",
 		}
 		Ω(client.CreateTask(task)).Should(Succeed())
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
