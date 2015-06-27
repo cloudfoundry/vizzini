@@ -23,7 +23,7 @@ var _ = Describe("Users", func() {
 			task.RootFS = "docker:///cloudfoundry/busybox-alice"
 			task.Action = &models.RunAction{
 				Path: "sh",
-				Args: []string{"-c", "echo foo; whoami > /tmp/output"},
+				Args: []string{"-c", "whoami > /tmp/output"},
 				User: "alice",
 			}
 			task.ResultFile = "/tmp/output"
