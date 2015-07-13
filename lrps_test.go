@@ -163,11 +163,13 @@ var _ = Describe("LRPs", func() {
 						From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
 						To:       ".",
 						CacheKey: "grace",
+						User:     "vcap",
 					},
 					&models.DownloadAction{
 						From:     "http://file-server.service.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 						To:       "/tmp/lifecycle",
 						CacheKey: "buildpack-app-lifecycle",
+						User:     "vcap",
 					},
 				},
 			}
@@ -192,6 +194,7 @@ var _ = Describe("LRPs", func() {
 				From:     "http://file-server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
+				User:     "vcap",
 			}
 			lrp.Action = &models.RunAction{
 				Path: "/grace",

@@ -78,6 +78,7 @@ var _ = Describe("Actions", func() {
 				Action: &models.DownloadAction{
 					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
 					To:   "/tmp",
+					User: "vcap",
 				},
 			}
 		})

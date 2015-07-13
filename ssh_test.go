@@ -141,6 +141,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				From:     "http://file-server.service.dc1.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 				To:       "/tmp",
 				CacheKey: "lifecycle",
+				User:     "vcap",
 			},
 			Action: models.Parallel(
 				&models.RunAction{

@@ -235,6 +235,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
 					To:       ".",
 					CacheKey: "grace",
+					User:     "vcap",
 				},
 			},
 		},
