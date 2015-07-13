@@ -51,8 +51,9 @@ func ClearOutTasksInDomain(domain string) {
 
 func TaskWithGuid(guid string) receptor.TaskCreateRequest {
 	return receptor.TaskCreateRequest{
-		TaskGuid: guid,
-		Domain:   domain,
+		TaskGuid:   guid,
+		Domain:     domain,
+		Privileged: true, // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
 		Action: &models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
@@ -229,6 +230,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		ProcessGuid: guid,
 		Domain:      domain,
 		Instances:   1,
+		Privileged:  true, // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
 		Setup: &models.SerialAction{
 			Actions: []models.Action{
 				&models.DownloadAction{
