@@ -32,7 +32,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("runs an action as alice", func() {
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
+			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(receptor.TaskStateRunning))
 			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(receptor.TaskStateCompleted))
 
 			task, err := client.GetTask(guid)
