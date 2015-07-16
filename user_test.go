@@ -16,10 +16,6 @@ var _ = Describe("Users", func() {
 	Context("{DOCKER} with an existing 'alice' user in the rootfs", func() {
 		BeforeEach(func() {
 			task = TaskWithGuid(guid)
-
-			// TODO: REMOVE once #95582718 delivered, so that garden-linux in diego-release supports user namespaces correctly
-			task.Privileged = true
-
 			task.RootFS = "docker:///cloudfoundry/busybox-alice"
 			task.Action = &models.RunAction{
 				Path: "sh",
