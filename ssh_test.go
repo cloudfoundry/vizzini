@@ -140,7 +140,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
 			Setup: &models.DownloadAction{
 				Artifact: "lifecycle bundle",
-				From:     "http://file-server.service.dc1.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+				From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 				To:       "/tmp",
 				CacheKey: "lifecycle",
 				User:     "vcap",

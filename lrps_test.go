@@ -166,7 +166,7 @@ var _ = Describe("LRPs", func() {
 						User:     "vcap",
 					},
 					&models.DownloadAction{
-						From:     "http://file-server.service.consul:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+						From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 						To:       "/tmp/lifecycle",
 						CacheKey: "buildpack-app-lifecycle",
 						User:     "vcap",
@@ -191,7 +191,7 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			lrp.RootFS = "docker:///onsi/grace-busybox"
 			lrp.Setup = &models.DownloadAction{
-				From:     "http://file-server.service.dc1.consul:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
+				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
 				User:     "vcap",
