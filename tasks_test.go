@@ -186,12 +186,14 @@ var _ = Describe("Tasks", func() {
 
 	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
-			task.RootFS = "docker:///onsi/grace-busybox"
+			task.RootFS = "docker:///cloudfoundry/busybox-alice"
 			task.Action = &models.RunAction{
 				Path: "sh",
-				Args: []string{"-c", "ls / > /tmp/bar"},
-				User: "vcap",
+				Args: []string{"-c", "echo 'down-the-rabbit-hole' > payload && chmod 0400 payload"},
+				User: "alice",
 			}
+			task.ResultFile = "/home/alice/payload"
+
 			Ω(client.CreateTask(task)).Should(Succeed())
 		})
 
@@ -201,7 +203,7 @@ var _ = Describe("Tasks", func() {
 			task, err := client.GetTask(guid)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(BeFalse())
-			Ω(task.Result).Should(ContainSubstring("grace"))
+			Ω(task.Result).Should(ContainSubstring("down-the-rabbit-hole"))
 
 			Ω(client.DeleteTask(guid)).Should(Succeed())
 		})
