@@ -1,8 +1,9 @@
 package vizzini_test
 
 import (
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -16,11 +17,11 @@ var _ = Describe("Targetting different RootFSes", func() {
 	JustBeforeEach(func() {
 		task = TaskWithGuid(guid)
 		task.RootFS = rootFS
-		task.Action = &models.RunAction{
+		task.Action = models.WrapAction(&models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "bash --version > /tmp/bar"},
 			User: "vcap",
-		}
+		})
 		Ω(client.CreateTask(task)).Should(Succeed())
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
 	})
@@ -31,7 +32,7 @@ var _ = Describe("Targetting different RootFSes", func() {
 
 	Describe("cflinuxfs2", func() {
 		BeforeEach(func() {
-			rootFS = models.PreloadedRootFS("cflinuxfs2")
+			rootFS = oldmodels.PreloadedRootFS("cflinuxfs2")
 		})
 
 		It("should run the cflinuxfs2 rootfs", func() {

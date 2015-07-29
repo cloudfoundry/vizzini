@@ -1,8 +1,8 @@
 package vizzini_test
 
 import (
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -23,11 +23,11 @@ var _ = Describe("Privileged", func() {
 		task = TaskWithGuid(guid)
 		task.RootFS = rootfs
 		task.Privileged = containerPrivileged
-		task.Action = &models.RunAction{
+		task.Action = models.WrapAction(&models.RunAction{
 			Path: shell,
 			Args: []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
 			User: runUser,
-		}
+		})
 
 		Ω(client.CreateTask(task)).Should(Succeed())
 		Eventually(TaskGetter(guid), timeout).Should(HaveTaskState(receptor.TaskStateCompleted))

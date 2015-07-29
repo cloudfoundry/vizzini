@@ -11,8 +11,8 @@ import (
 
 	"github.com/onsi/gomega/ghttp"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -128,11 +128,11 @@ var _ = Describe("Tasks", func() {
 
 		Context("Upon failure", func() {
 			BeforeEach(func() {
-				task.Action = &models.RunAction{
+				task.Action = models.WrapAction(&models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "echo 'some output' > /tmp/bar && exit 1"},
 					User: "vcap",
-				}
+				})
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
 
@@ -153,19 +153,19 @@ var _ = Describe("Tasks", func() {
 
 	Describe("Specifying environment variables", func() {
 		BeforeEach(func() {
-			task.EnvironmentVariables = []receptor.EnvironmentVariable{
+			task.EnvironmentVariables = []*models.EnvironmentVariable{
 				{"CONTAINER_LEVEL", "A"},
 				{"OVERRIDE", "B"},
 			}
-			task.Action = &models.RunAction{
+			task.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", "env > /tmp/bar"},
 				User: "vcap",
-				Env: []models.EnvironmentVariable{
+				Env: []*models.EnvironmentVariable{
 					{"ACTION_LEVEL", "C"},
 					{"OVERRIDE", "D"},
 				},
-			}
+			})
 		})
 
 		It("should be possible to specify environment variables on both the Task and the RunAction", func() {
@@ -187,11 +187,11 @@ var _ = Describe("Tasks", func() {
 	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
 			task.RootFS = "docker:///cloudfoundry/busybox-alice"
-			task.Action = &models.RunAction{
+			task.Action = models.WrapAction(&models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "echo 'down-the-rabbit-hole' > payload && chmod 0400 payload"},
 				User: "alice",
-			}
+			})
 			task.ResultFile = "/home/alice/payload"
 
 			Ω(client.CreateTask(task)).Should(Succeed())
@@ -222,17 +222,17 @@ var _ = Describe("Tasks", func() {
 
 				incrementCounterRoute := "http://" + RouteForGuid(lrpGuid) + "/counter"
 
-				task.EgressRules = []models.SecurityGroupRule{
+				task.EgressRules = []*models.SecurityGroupRule{
 					{
 						Protocol:     models.AllProtocol,
 						Destinations: []string{"0.0.0.0/0"},
 					},
 				}
-				task.Action = &models.RunAction{
+				task.Action = models.WrapAction(&models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST; sleep 0.05; done", incrementCounterRoute)},
 					User: "vcap",
-				}
+				})
 				Ω(client.CreateTask(task)).Should(Succeed())
 			})
 
@@ -383,11 +383,11 @@ var _ = Describe("Tasks", func() {
 
 		Context("when the task is not in the completed state", func() {
 			It("should not be deleted, and should error", func() {
-				task.Action = &models.RunAction{
+				task.Action = models.WrapAction(&models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
 					User: "vcap",
-				}
+				})
 				Ω(client.CreateTask(task)).Should(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
 				err := client.DeleteTask(guid)

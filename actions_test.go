@@ -5,8 +5,9 @@ import (
 
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,14 +19,14 @@ var _ = Describe("Actions", func() {
 	Describe("Timeout action", func() {
 		BeforeEach(func() {
 			task = TaskWithGuid(guid)
-			task.Action = &models.TimeoutAction{
-				Action: &models.RunAction{
+			task.Action = models.WrapAction(models.Timeout(
+				&models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "sleep 1000"},
 					User: "vcap",
 				},
-				Timeout: 2 * time.Second,
-			}
+				2*time.Second,
+			))
 			task.ResultFile = ""
 
 			Ω(client.CreateTask(task)).Should(Succeed())
@@ -46,12 +47,12 @@ var _ = Describe("Actions", func() {
 	Describe("Run action", func() {
 		BeforeEach(func() {
 			task = TaskWithGuid(guid)
-			task.Action = &models.RunAction{
+			task.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Dir:  "/etc",
 				Args: []string{"-c", "echo $PWD > /tmp/bar"},
 				User: "vcap",
-			}
+			})
 
 			Ω(client.CreateTask(task)).Should(Succeed())
 		})
@@ -75,7 +76,7 @@ var _ = Describe("Actions", func() {
 				RootFS:      defaultRootFS,
 				Domain:      domain,
 				Instances:   1,
-				Action: &models.DownloadAction{
+				Action: &oldmodels.DownloadAction{
 					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
 					To:   "/tmp",
 					User: "vcap",

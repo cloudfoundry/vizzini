@@ -13,9 +13,10 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 const HealthyCheckInterval = 30 * time.Second
@@ -54,11 +55,11 @@ func TaskWithGuid(guid string) receptor.TaskCreateRequest {
 		TaskGuid:   guid,
 		Domain:     domain,
 		Privileged: true, // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
-		Action: &models.RunAction{
+		Action: models.WrapAction(&models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
 			User: "vcap",
-		},
+		}),
 		RootFS:     defaultRootFS,
 		MemoryMB:   128,
 		DiskMB:     1152, // remove once preloaded rootfses again exempt from per-container disk quota
@@ -231,9 +232,9 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		Domain:      domain,
 		Instances:   1,
 		Privileged:  true, // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
-		Setup: &models.SerialAction{
-			Actions: []models.Action{
-				&models.DownloadAction{
+		Setup: &oldmodels.SerialAction{
+			Actions: []oldmodels.Action{
+				&oldmodels.DownloadAction{
 					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
 					To:       ".",
 					CacheKey: "grace",
@@ -241,12 +242,12 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 				},
 			},
 		},
-		Action: &models.RunAction{
+		Action: &oldmodels.RunAction{
 			Path: "./grace",
 			User: "vcap",
-			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
+			Env:  []oldmodels.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 		},
-		Monitor: &models.RunAction{
+		Monitor: &oldmodels.RunAction{
 			Path: "nc",
 			Args: []string{"-z", "0.0.0.0", "8080"},
 			User: "vcap",

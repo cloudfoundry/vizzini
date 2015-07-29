@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
+	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
@@ -41,9 +42,9 @@ var _ = Describe("Security groups", func() {
 			Eventually(ActualGetter(disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, receptor.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(disallowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 
-			allowedCaller.EgressRules = []models.SecurityGroupRule{
+			allowedCaller.EgressRules = []oldmodels.SecurityGroupRule{
 				{
-					Protocol:     models.AllProtocol,
+					Protocol:     oldmodels.AllProtocol,
 					Destinations: []string{"0.0.0.0/0"},
 				},
 			}
@@ -78,19 +79,19 @@ var _ = Describe("Security groups", func() {
 			allowedTask, disallowedTask = TaskWithGuid(allowedTaskGuid), TaskWithGuid(disallowedTaskGuid)
 			allowedTask.ResultFile, disallowedTask.ResultFile = "", ""
 
-			disallowedTask.Action = &models.RunAction{
+			disallowedTask.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
 				User: "vcap",
-			}
+			})
 
-			allowedTask.Action = &models.RunAction{
+			allowedTask.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
 				User: "vcap",
-			}
+			})
 
-			allowedTask.EgressRules = []models.SecurityGroupRule{
+			allowedTask.EgressRules = []*models.SecurityGroupRule{
 				{
 					Protocol:     models.AllProtocol,
 					Destinations: []string{"0.0.0.0/0"},

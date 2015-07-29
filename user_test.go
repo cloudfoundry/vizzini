@@ -3,8 +3,8 @@ package vizzini_test
 import (
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,11 +17,11 @@ var _ = Describe("Users", func() {
 		BeforeEach(func() {
 			task = TaskWithGuid(guid)
 			task.RootFS = "docker:///cloudfoundry/busybox-alice"
-			task.Action = &models.RunAction{
+			task.Action = models.WrapAction(&models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "whoami > /tmp/output"},
 				User: "alice",
-			}
+			})
 			task.ResultFile = "/tmp/output"
 
 			Ω(client.CreateTask(task)).Should(Succeed())
