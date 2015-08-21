@@ -68,12 +68,16 @@ func directTargetFor(guid string, index int, port uint16) sshTarget {
 
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
-	var lrp receptor.DesiredLRPCreateRequest
-	var rootfs string
-	var sshdArgs []string
-	var sshClientArgs []string
-	var shellServer models.RunAction
-	var sshdMonitor models.RunAction
+
+	var (
+		lrp           receptor.DesiredLRPCreateRequest
+		user          string
+		rootfs        string
+		sshdArgs      []string
+		sshClientArgs []string
+		shellServer   models.RunAction
+		sshdMonitor   models.RunAction
+	)
 
 	secureCommand := func(cmd string, args ...string) *exec.Cmd {
 		sshArgs := []string{}
@@ -123,6 +127,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 	}
 
 	BeforeEach(func() {
+		user = "vcap"
 		sshdArgs = []string{}
 		sshClientArgs = []string{
 			"-o", "StrictHostKeyChecking=no",
@@ -141,7 +146,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 				To:       "/tmp",
 				CacheKey: "lifecycle",
-				User:     "vcap",
+				User:     user,
 			},
 			Action: models.Parallel(
 				&models.RunAction{
@@ -149,7 +154,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					Args: append([]string{
 						"-address=0.0.0.0:2222",
 					}, sshdArgs...),
-					User: "vcap",
+					User: user,
 				},
 				&shellServer,
 			),
@@ -165,16 +170,17 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 	Context("in a fully-featured preloaded rootfs", func() {
 		BeforeEach(func() {
+			user = "vcap"
 			rootfs = defaultRootFS
 			shellServer = models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
-				User: "vcap",
+				User: user,
 			}
 			sshdMonitor = models.RunAction{
 				Path: "nc",
 				Args: []string{"-z", "0.0.0.0", "2222"},
-				User: "vcap",
+				User: user,
 			}
 		})
 
@@ -195,7 +201,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(session).Should(gexec.Exit(0))
-				Ω(session).Should(gbytes.Say("USER=vcap"))
+				Ω(session).Should(gbytes.Say("USER=" + user))
 				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 			})
 		})
@@ -222,7 +228,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(session).Should(gexec.Exit(0))
-				Ω(session).Should(gbytes.Say("USER=vcap"))
+				Ω(session).Should(gbytes.Say("USER=" + user))
 				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 			})
 
@@ -235,7 +241,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 				session, err := gexec.Start(sshCommand, GinkgoWriter, GinkgoWriter)
 				Ω(err).ShouldNot(HaveOccurred())
-				Eventually(session).Should(gbytes.Say("vcap@"))
+				Eventually(session).Should(gbytes.Say(user + "@"))
 
 				_, err = input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
 				Ω(err).ShouldNot(HaveOccurred())
@@ -318,11 +324,12 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		var keypath string
 
 		BeforeEach(func() {
+			user = "root"
 			rootfs = "docker:///busybox"
 			shellServer = models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
-				User: "vcap",
+				User: user,
 			}
 			sshdMonitor = models.RunAction{
 				Path: "sh",
@@ -330,7 +337,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					"-c",
 					"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
 				},
-				User: "vcap",
+				User: user,
 			}
 
 			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
@@ -355,7 +362,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Eventually(session).Should(gexec.Exit(0))
-			Ω(session).Should(gbytes.Say("USER=vcap"))
+			Ω(session).Should(gbytes.Say("USER=" + user))
 			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 

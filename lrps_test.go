@@ -194,17 +194,17 @@ var _ = Describe("LRPs", func() {
 				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
-				User:     "vcap",
+				User:     "root",
 			}
 			lrp.Action = &models.RunAction{
 				Path: "/grace",
-				User: "vcap",
+				User: "root",
 				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			}
 			lrp.Monitor = &models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080"},
-				User: "vcap",
+				User: "root",
 			}
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
