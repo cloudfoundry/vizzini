@@ -14,23 +14,17 @@ var _ = Describe("Privileged", func() {
 	var runUser string
 	var containerPrivileged bool
 
-	// TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
-	var rootfs string
-	var shell string
-	var timeout int
-
 	JustBeforeEach(func() {
 		task = TaskWithGuid(guid)
-		task.RootFS = rootfs
 		task.Privileged = containerPrivileged
 		task.Action = models.WrapAction(&models.RunAction{
-			Path: shell,
+			Path: "bash",
 			Args: []string{"-c", "id > /tmp/bar; echo h > /proc/sysrq-trigger ; echo have_real_root=$? >> /tmp/bar"},
 			User: runUser,
 		})
 
 		Ω(client.CreateTask(task)).Should(Succeed())
-		Eventually(TaskGetter(guid), timeout).Should(HaveTaskState(receptor.TaskStateCompleted))
+		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
 	})
 
 	AfterEach(func() {
@@ -40,11 +34,6 @@ var _ = Describe("Privileged", func() {
 	Context("with a privileged container", func() {
 		BeforeEach(func() {
 			containerPrivileged = true
-
-			// TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
-			rootfs = defaultRootFS
-			shell = "bash"
-			timeout = 10
 		})
 
 		//{LOCAL} because: privileged may not be allowed in the remote environment
@@ -80,11 +69,6 @@ var _ = Describe("Privileged", func() {
 	Context("with an unprivileged container", func() {
 		BeforeEach(func() {
 			containerPrivileged = false
-
-			// TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
-			rootfs = "docker:///busybox"
-			shell = "sh"
-			timeout = 120
 		})
 
 		//{LOCAL} because: privileged may not be allowed in the remote environment

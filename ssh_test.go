@@ -69,7 +69,6 @@ func directTargetFor(guid string, index int, port uint16) sshTarget {
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
 	var lrp receptor.DesiredLRPCreateRequest
-	var privileged bool
 	var rootfs string
 	var sshdArgs []string
 	var sshClientArgs []string
@@ -135,7 +134,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		lrp = receptor.DesiredLRPCreateRequest{
 			ProcessGuid:          guid,
 			Domain:               domain,
-			Privileged:           privileged, // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
 			Instances:            2,
 			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
 			Setup: &models.DownloadAction{
@@ -168,7 +166,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 	Context("in a fully-featured preloaded rootfs", func() {
 		BeforeEach(func() {
 			rootfs = defaultRootFS
-			privileged = true // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
 			shellServer = models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
@@ -322,7 +319,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 		BeforeEach(func() {
 			rootfs = "docker:///busybox"
-			privileged = false // TODO: remove once cflinuxfs2 rootfs no longer has its /etc/seed script
 			shellServer = models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
