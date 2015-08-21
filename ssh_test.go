@@ -158,7 +158,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Monitor:  &sshdMonitor,
 			RootFS:   rootfs,
 			MemoryMB: 128,
-			DiskMB:   1152, // remove once preloaded rootfses again exempt from per-container disk quota
+			DiskMB:   128,
 			Ports:    []uint16{2222},
 		}
 

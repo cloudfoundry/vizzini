@@ -62,7 +62,7 @@ func TaskWithGuid(guid string) receptor.TaskCreateRequest {
 		}),
 		RootFS:     defaultRootFS,
 		MemoryMB:   128,
-		DiskMB:     1152, // remove once preloaded rootfses again exempt from per-container disk quota
+		DiskMB:     128,
 		CPUWeight:  100,
 		LogGuid:    guid,
 		LogSource:  "VIZ",
@@ -254,7 +254,7 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		},
 		RootFS:    defaultRootFS,
 		MemoryMB:  128,
-		DiskMB:    1152, // remove once preloaded rootfses again exempt from per-container disk quota
+		DiskMB:    128,
 		CPUWeight: 100,
 		Ports:     []uint16{8080},
 		Routes: cfroutes.CFRoutes{
