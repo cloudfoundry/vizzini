@@ -36,8 +36,7 @@ var _ = Describe("Privileged", func() {
 			containerPrivileged = true
 		})
 
-		//{LOCAL} because: privileged may not be allowed in the remote environment
-		Context("{LOCAL} when running a privileged action", func() {
+		Context("when running a privileged action", func() {
 			BeforeEach(func() {
 				runUser = "root"
 			})
@@ -71,13 +70,12 @@ var _ = Describe("Privileged", func() {
 			containerPrivileged = false
 		})
 
-		//{LOCAL} because: privileged may not be allowed in the remote environment
-		Context("{LOCAL} when running a privileged action", func() {
+		Context("when running a privileged action", func() {
 			BeforeEach(func() {
 				runUser = "root"
 			})
 
-			It("should run as root", func() {
+			It("should run as namespaced root", func() {
 				completedTask, err := client.GetTask(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
