@@ -317,7 +317,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 	})
 
-	Context("in a bare-bones docker image with /bin/sh", func() {
+	Context("{DOCKER} in a bare-bones docker image with /bin/sh", func() {
 		var keypath string
 
 		BeforeEach(func() {
