@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
@@ -157,27 +157,25 @@ var _ = Describe("LRPs", func() {
 
 	Describe("Specifying HTTP-based health check (move to inigo or DATs once CC can specify an HTTP-based health-check)", func() {
 		BeforeEach(func() {
-			lrp.Setup = &models.SerialAction{
-				Actions: []models.Action{
-					&models.DownloadAction{
-						From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-						To:       ".",
-						CacheKey: "grace",
-						User:     "vcap",
-					},
-					&models.DownloadAction{
-						From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
-						To:       "/tmp/lifecycle",
-						CacheKey: "buildpack-app-lifecycle",
-						User:     "vcap",
-					},
+			lrp.Setup = models.WrapAction(models.Serial(
+				&models.DownloadAction{
+					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+					To:       ".",
+					CacheKey: "grace",
+					User:     "vcap",
 				},
-			}
-			lrp.Monitor = &models.RunAction{
+				&models.DownloadAction{
+					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					To:       "/tmp/lifecycle",
+					CacheKey: "buildpack-app-lifecycle",
+					User:     "vcap",
+				},
+			))
+			lrp.Monitor = models.WrapAction(&models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080", "-uri=/ping"},
 				User: "vcap",
-			}
+			})
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 		})
@@ -190,22 +188,22 @@ var _ = Describe("LRPs", func() {
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFS = "docker:///onsi/grace-busybox"
-			lrp.Setup = &models.DownloadAction{
+			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
 				User:     "root",
-			}
-			lrp.Action = &models.RunAction{
+			})
+			lrp.Action = models.WrapAction(&models.RunAction{
 				Path: "/grace",
 				User: "root",
-				Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-			}
-			lrp.Monitor = &models.RunAction{
+				Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+			})
+			lrp.Monitor = models.WrapAction(&models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080"},
 				User: "root",
-			}
+			})
 
 			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 		})

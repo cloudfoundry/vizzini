@@ -11,8 +11,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -141,14 +141,14 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			Domain:               domain,
 			Instances:            2,
 			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
-			Setup: &models.DownloadAction{
+			Setup: models.WrapAction(&models.DownloadAction{
 				Artifact: "lifecycle bundle",
 				From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 				To:       "/tmp",
 				CacheKey: "lifecycle",
 				User:     user,
-			},
-			Action: models.Parallel(
+			}),
+			Action: models.WrapAction(models.Parallel(
 				&models.RunAction{
 					Path: "/tmp/diego-sshd",
 					Args: append([]string{
@@ -157,8 +157,8 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					User: user,
 				},
 				&shellServer,
-			),
-			Monitor:  &sshdMonitor,
+			)),
+			Monitor:  models.WrapAction(&sshdMonitor),
 			RootFS:   rootfs,
 			MemoryMB: 128,
 			DiskMB:   128,

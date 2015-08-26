@@ -7,8 +7,8 @@ import (
 
 	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -48,11 +48,11 @@ var _ = Describe("Crashes", func() {
 	BeforeEach(func() {
 		url = fmt.Sprintf("http://%s", RouteForGuid(guid))
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Action = &models.RunAction{
+		lrp.Action = models.WrapAction(&models.RunAction{
 			Path: "./grace",
 			User: "vcap",
-			Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-		}
+			Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+		})
 		lrp.Monitor = nil
 	})
 
@@ -184,7 +184,7 @@ var _ = Describe("Crashes", func() {
 		Context("when running several actions", func() {
 			Context("codependently", func() {
 				BeforeEach(func() {
-					lrp.Action = models.Codependent(
+					lrp.Action = models.WrapAction(models.Codependent(
 						&models.RunAction{
 							Path: "bash",
 							Args: []string{"-c", "while true; do sleep 1; done"},
@@ -192,10 +192,10 @@ var _ = Describe("Crashes", func() {
 						},
 						&models.RunAction{
 							Path: "./grace",
-							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+							Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 							User: "vcap",
 						},
-					)
+					))
 					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
@@ -214,7 +214,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("in parallel", func() {
 				BeforeEach(func() {
-					lrp.Action = models.Parallel(
+					lrp.Action = models.WrapAction(models.Parallel(
 						&models.RunAction{
 							Path: "bash",
 							Args: []string{"-c", "while true; do sleep 1; done"},
@@ -222,10 +222,10 @@ var _ = Describe("Crashes", func() {
 						},
 						&models.RunAction{
 							Path: "./grace",
-							Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+							Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 							User: "vcap",
 						},
-					)
+					))
 					Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
@@ -248,18 +248,18 @@ var _ = Describe("Crashes", func() {
 			var directURL string
 			var indirectURL string
 			BeforeEach(func() {
-				lrp.Action = &models.RunAction{
+				lrp.Action = models.WrapAction(&models.RunAction{
 					Path: "./grace",
 					Args: []string{"-upFile=up"},
 					User: "vcap",
-					Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-				}
+					Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+				})
 
-				lrp.Monitor = &models.RunAction{
+				lrp.Monitor = models.WrapAction(&models.RunAction{
 					Path: "cat",
 					Args: []string{"/tmp/up"},
 					User: "vcap",
-				}
+				})
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
@@ -334,10 +334,10 @@ var _ = Describe("Crashes", func() {
 
 		Context("when the monitor never succeeds", func() {
 			JustBeforeEach(func() {
-				lrp.Monitor = &models.RunAction{
+				lrp.Monitor = models.WrapAction(&models.RunAction{
 					Path: "false",
 					User: "vcap",
-				}
+				})
 
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateClaimed))
@@ -345,12 +345,12 @@ var _ = Describe("Crashes", func() {
 
 			Context("when the process dies with exit code 0", func() {
 				BeforeEach(func() {
-					lrp.Action = &models.RunAction{
+					lrp.Action = models.WrapAction(&models.RunAction{
 						Path: "./grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
 						User: "vcap",
-						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-					}
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+					})
 				})
 
 				It("does not get marked as crash, as it has presumably daemonized and we are waiting on the health check", func() {
@@ -360,12 +360,12 @@ var _ = Describe("Crashes", func() {
 
 			Context("when the process dies with exit code 1", func() {
 				BeforeEach(func() {
-					lrp.Action = &models.RunAction{
+					lrp.Action = models.WrapAction(&models.RunAction{
 						Path: "./grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=1"},
 						User: "vcap",
-						Env:  []models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-					}
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+					})
 				})
 
 				It("gets marked as crashed (immediately)", func() {

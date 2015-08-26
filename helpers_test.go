@@ -8,15 +8,13 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
-
-	"github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
+
+	"github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
 const HealthyCheckInterval = 30 * time.Second
@@ -230,26 +228,24 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		ProcessGuid: guid,
 		Domain:      domain,
 		Instances:   1,
-		Setup: &oldmodels.SerialAction{
-			Actions: []oldmodels.Action{
-				&oldmodels.DownloadAction{
-					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-					To:       ".",
-					CacheKey: "grace",
-					User:     "vcap",
-				},
+		Setup: models.WrapAction(models.Serial(
+			&models.DownloadAction{
+				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+				To:       ".",
+				CacheKey: "grace",
+				User:     "vcap",
 			},
-		},
-		Action: &oldmodels.RunAction{
+		)),
+		Action: models.WrapAction(&models.RunAction{
 			Path: "./grace",
 			User: "vcap",
-			Env:  []oldmodels.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
-		},
-		Monitor: &oldmodels.RunAction{
+			Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
+		}),
+		Monitor: models.WrapAction(&models.RunAction{
 			Path: "nc",
 			Args: []string{"-z", "0.0.0.0", "8080"},
 			User: "vcap",
-		},
+		}),
 		RootFS:    defaultRootFS,
 		MemoryMB:  128,
 		DiskMB:    128,

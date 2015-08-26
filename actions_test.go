@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -76,11 +75,11 @@ var _ = Describe("Actions", func() {
 				RootFS:      defaultRootFS,
 				Domain:      domain,
 				Instances:   1,
-				Action: &oldmodels.DownloadAction{
+				Action: models.WrapAction(&models.DownloadAction{
 					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
 					To:   "/tmp",
 					User: "vcap",
-				},
+				}),
 			}
 		})
 
