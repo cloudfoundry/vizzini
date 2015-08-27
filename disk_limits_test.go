@@ -28,7 +28,7 @@ var _ = Describe("DiskLimits", func() {
 			It("should crash", func() {
 				lrp.DiskMB = 4
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateCrashed))
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 			})
 		})
 	})
@@ -57,7 +57,7 @@ var _ = Describe("DiskLimits", func() {
 			It("should crash", func() {
 				lrp.DiskMB = 4
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateCrashed))
+				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 			})
 		})
 	})

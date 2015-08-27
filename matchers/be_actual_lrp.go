@@ -9,11 +9,14 @@ import (
 	"github.com/onsi/gomega/format"
 )
 
+const NoCrashCount = -1
+const AtLeastOneCrashCount = -2
+
 func BeActualLRP(processGuid string, index int) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
-		CrashCount:  -1,
+		CrashCount:  NoCrashCount,
 	}
 }
 
@@ -21,7 +24,7 @@ func BeUnclaimedActualLRPWithPlacementError(processGuid string, index int) gomeg
 	return &BeActualLRPMatcher{
 		ProcessGuid:       processGuid,
 		Index:             index,
-		CrashCount:        -1,
+		CrashCount:        NoCrashCount,
 		State:             receptor.ActualLRPStateUnclaimed,
 		HasPlacementError: true,
 	}
@@ -32,7 +35,15 @@ func BeActualLRPWithState(processGuid string, index int, state receptor.ActualLR
 		ProcessGuid: processGuid,
 		Index:       index,
 		State:       state,
-		CrashCount:  -1,
+		CrashCount:  NoCrashCount,
+	}
+}
+
+func BeActualLRPThatHasCrashed(processGuid string, index int) gomega.OmegaMatcher {
+	return &BeActualLRPMatcher{
+		ProcessGuid: processGuid,
+		Index:       index,
+		CrashCount:  AtLeastOneCrashCount,
 	}
 }
 
@@ -72,8 +83,12 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 		matchesState = matcher.State == lrp.State
 	}
 	matchesCrashCount := true
-	if matcher.CrashCount != -1 {
-		matchesCrashCount = matcher.CrashCount == lrp.CrashCount
+	if matcher.CrashCount != NoCrashCount {
+		if matcher.CrashCount == AtLeastOneCrashCount {
+			matchesCrashCount = lrp.CrashCount > 0
+		} else {
+			matchesCrashCount = matcher.CrashCount == lrp.CrashCount
+		}
 	}
 	matchesPlacementErrorRequirement := true
 	if matcher.HasPlacementError {
@@ -91,8 +106,12 @@ func (matcher *BeActualLRPMatcher) expectedContents() string {
 	if matcher.State != "" {
 		expectedContents = append(expectedContents, fmt.Sprintf("State: %s", matcher.State))
 	}
-	if matcher.CrashCount != -1 {
-		expectedContents = append(expectedContents, fmt.Sprintf("CrashCount: %d", matcher.CrashCount))
+	if matcher.CrashCount != NoCrashCount {
+		if matcher.CrashCount == AtLeastOneCrashCount {
+			expectedContents = append(expectedContents, "CrashCount: > 0")
+		} else {
+			expectedContents = append(expectedContents, fmt.Sprintf("CrashCount: %d", matcher.CrashCount))
+		}
 	}
 	if matcher.HasPlacementError {
 		expectedContents = append(expectedContents, fmt.Sprintf("PlacementError Exists"))
