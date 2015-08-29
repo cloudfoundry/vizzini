@@ -29,6 +29,11 @@ var _ = Describe("DiskLimits", func() {
 				lrp.DiskMB = 4
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
+
+				//getting all the way helps ensure the tests don't spuriously fail
+				//when we delete the DesiredLRP if the application is in the middle of restarting it looks like we need to wiat for a convergence
+				//loop to eventually clean it up.  This is likely a bug, though it's not crticial.
+				Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			})
 		})
 	})
@@ -58,6 +63,11 @@ var _ = Describe("DiskLimits", func() {
 				lrp.DiskMB = 4
 				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
+
+				//getting all the way helps ensure the tests don't spuriously fail
+				//when we delete the DesiredLRP if the application is in the middle of restarting it looks like we need to wiat for a convergence
+				//loop to eventually clean it up.  This is likely a bug, though it's not crticial.
+				Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, receptor.ActualLRPStateCrashed, 3))
 			})
 		})
 	})
