@@ -251,9 +251,9 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 		DiskMB:    128,
 		CPUWeight: 100,
 		Ports:     []uint16{8080},
-		Routes: cfroutes.CFRoutes{
+		Routes: cfroutes.LegacyCFRoutes{
 			{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
-		}.RoutingInfo(),
+		}.LegacyRoutingInfo(),
 		LogGuid:    guid,
 		LogSource:  "VIZ",
 		Annotation: "arbitrary-data",

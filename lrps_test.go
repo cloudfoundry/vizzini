@@ -244,11 +244,11 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-						Routes: routes.RoutingInfo(),
+						Routes: routes.LegacyRoutingInfo(),
 					})).Should(Succeed())
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
 					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
@@ -268,12 +268,12 @@ var _ = Describe("LRPs", func() {
 					two := 2
 					annotation := "my new annotation"
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
 						Instances:  &two,
-						Routes:     routes.RoutingInfo(),
+						Routes:     routes.LegacyRoutingInfo(),
 						Annotation: &annotation,
 					})).Should(Succeed())
 

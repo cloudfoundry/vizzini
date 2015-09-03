@@ -65,14 +65,14 @@ var _ = Describe("Routing Related Tests", func() {
 		It("should be able to route to multiple ports", func() {
 			By("updating the LRP with a new route to a port 9999")
 			newRoute := RouteForGuid(NewGuid())
-			routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+			routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
 			Ω(err).ShouldNot(HaveOccurred())
-			routes = append(routes, cfroutes.CFRoute{
+			routes = append(routes, cfroutes.LegacyCFRoute{
 				Hostnames: []string{newRoute},
 				Port:      9999,
 			})
 			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-				Routes: routes.RoutingInfo(),
+				Routes: routes.LegacyRoutingInfo(),
 			})).Should(Succeed())
 
 			By("verifying that the new route is hooked up to the port")
@@ -85,7 +85,7 @@ var _ = Describe("Routing Related Tests", func() {
 			veryNewRoute := RouteForGuid(NewGuid())
 			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
 			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-				Routes: routes.RoutingInfo(),
+				Routes: routes.LegacyRoutingInfo(),
 			})).Should(Succeed())
 
 			Eventually(EndpointContentCurler("http://" + veryNewRoute)).Should(Equal("grace side-channel"))
