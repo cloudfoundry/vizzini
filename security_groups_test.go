@@ -6,9 +6,9 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
+	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
 )
 
 var _ = Describe("Security groups", func() {

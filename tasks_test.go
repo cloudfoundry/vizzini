@@ -13,7 +13,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
+	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

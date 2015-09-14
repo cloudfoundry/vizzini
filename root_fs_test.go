@@ -4,7 +4,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"
 	oldmodels "github.com/cloudfoundry-incubator/runtime-schema/models"
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
+	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

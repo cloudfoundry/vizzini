@@ -9,7 +9,7 @@ params:
 
 inputs:
   - name: vizzini
-    path: gopath/src/github.com/pivotal-cf-experimental/vizzini
+    path: gopath/src/github.com/cloudfoundry-incubator/vizzini
 
 run:
-  path: gopath/src/github.com/pivotal-cf-experimental/vizzini/scripts/ci/run-vizzini
+  path: gopath/src/github.com/cloudfoundry-incubator/vizzini/scripts/ci/run-vizzini

@@ -7,7 +7,7 @@ cd gopath/
 export GOPATH=$PWD
 export PATH=$GOPATH/bin:$PATH
 
-cd src/github.com/pivotal-cf-experimental/vizzini/
+cd src/github.com/cloudfoundry-incubator/vizzini/
 
 go get -t -d -v ./...
 

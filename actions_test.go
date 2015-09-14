@@ -3,7 +3,7 @@ package vizzini_test
 import (
 	"time"
 
-	. "github.com/pivotal-cf-experimental/vizzini/matchers"
+	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/receptor"

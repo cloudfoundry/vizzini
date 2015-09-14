@@ -1,4 +1,4 @@
 FROM busybox
-MAINTAINER https://github.com/pivotal-cf-experimental/vizzini
+MAINTAINER https://github.com/cloudfoundry-incubator/vizzini
 
 RUN adduser -D -s /bin/sh alice
