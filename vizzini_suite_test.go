@@ -15,26 +15,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var client receptor.Client
+var bbsClient bbs.Client
 var domain string
 var otherDomain string
 var defaultRootFS string
 var guid string
 var startTime time.Time
 
+var bbsAddress string
 var receptorAddress string
 var routableDomainSuffix string
 var hostAddress string
 
 func init() {
 	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
-	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "10.244.0.34.xip.io", "suffix to use when constructing FQDN")
+	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
+	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.Parse()
+
+	if bbsAddress == "" {
+		log.Fatal("i need a bbs address to talk to Diego...")
+	}
 
 	if receptorAddress == "" {
 		log.Fatal("i need a receptor-address to talk to Diego...")
@@ -69,6 +77,7 @@ var _ = BeforeSuite(func() {
 	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
 
 	client = receptor.NewClient(receptorAddress)
+	bbsClient = bbs.NewClient(bbsAddress)
 })
 
 var _ = BeforeEach(func() {
@@ -90,7 +99,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	for _, domain := range []string{domain, otherDomain} {
-		client.UpsertDomain(domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
+		bbsClient.UpsertDomain(domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
 	}
 
 	for _, domain := range []string{domain, otherDomain} {

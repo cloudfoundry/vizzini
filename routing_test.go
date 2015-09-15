@@ -6,7 +6,7 @@ import (
 	"net/http/cookiejar"
 	"time"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
@@ -15,7 +15,7 @@ import (
 )
 
 var _ = Describe("Routing Related Tests", func() {
-	var lrp receptor.DesiredLRPCreateRequest
+	var lrp *models.DesiredLRP
 
 	Describe("sticky sessions", func() {
 		var httpClient *http.Client
@@ -31,7 +31,7 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(IndexCounter(guid, httpClient)).Should(Equal(3))
 		})
 
@@ -55,24 +55,24 @@ var _ = Describe("Routing Related Tests", func() {
 		var primaryURL string
 		BeforeEach(func() {
 			lrp = DesiredLRPWithGuid(guid)
-			lrp.Ports = []uint16{8080, 9999}
+			lrp.Ports = []uint32{8080, 9999}
 			primaryURL = "http://" + RouteForGuid(guid) + "/env"
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(primaryURL)).Should(Equal(http.StatusOK))
 		})
 
 		It("should be able to route to multiple ports", func() {
 			By("updating the LRP with a new route to a port 9999")
 			newRoute := RouteForGuid(NewGuid())
-			routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
+			routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
 			Ω(err).ShouldNot(HaveOccurred())
-			routes = append(routes, cfroutes.LegacyCFRoute{
+			routes = append(routes, cfroutes.CFRoute{
 				Hostnames: []string{newRoute},
 				Port:      9999,
 			})
-			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-				Routes: routes.LegacyRoutingInfo(),
+			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+				Routes: routes.RoutingInfo(),
 			})).Should(Succeed())
 
 			By("verifying that the new route is hooked up to the port")
@@ -84,8 +84,8 @@ var _ = Describe("Routing Related Tests", func() {
 			By("adding a new route to the new port")
 			veryNewRoute := RouteForGuid(NewGuid())
 			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
-			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-				Routes: routes.LegacyRoutingInfo(),
+			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+				Routes: routes.RoutingInfo(),
 			})).Should(Succeed())
 
 			Eventually(EndpointContentCurler("http://" + veryNewRoute)).Should(Equal("grace side-channel"))
@@ -93,7 +93,7 @@ var _ = Describe("Routing Related Tests", func() {
 			Ω(EndpointContentCurler(primaryURL)()).Should(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
 
 			By("tearing down the new port")
-			Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 				Routes: lrp.Routes,
 			})).Should(Succeed())
 			Eventually(EndpointCurler("http://" + newRoute)).ShouldNot(Equal(http.StatusOK))
@@ -102,17 +102,17 @@ var _ = Describe("Routing Related Tests", func() {
 
 	Context("as containers come and go", func() {
 		var url string
-		var lrp receptor.DesiredLRPCreateRequest
+		var lrp *models.DesiredLRP
 
 		BeforeEach(func() {
 			url = "http://" + RouteForGuid(guid) + "/env"
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
-				BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning),
-				BeActualLRPWithState(guid, 1, receptor.ActualLRPStateRunning),
-				BeActualLRPWithState(guid, 2, receptor.ActualLRPStateRunning),
+				BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
+				BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
+				BeActualLRPWithState(guid, 2, models.ActualLRPStateRunning),
 			))
 		})
 
@@ -137,31 +137,31 @@ var _ = Describe("Routing Related Tests", func() {
 				}
 			}()
 
-			var three = 3
-			var one = 1
+			var three = int32(3)
+			var one = int32(1)
 
-			updateToThree := receptor.DesiredLRPUpdateRequest{
+			updateToThree := models.DesiredLRPUpdate{
 				Instances: &three,
 			}
 
-			updateToOne := receptor.DesiredLRPUpdateRequest{
+			updateToOne := models.DesiredLRPUpdate{
 				Instances: &one,
 			}
 
 			for i := 0; i < 4; i++ {
 				By(fmt.Sprintf("Scaling down then back up #%d", i+1))
-				Ω(client.UpdateDesiredLRP(guid, updateToOne)).Should(Succeed())
+				Ω(bbsClient.UpdateDesiredLRP(guid, &updateToOne)).Should(Succeed())
 				Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
-					BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning),
+					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 				))
 
 				time.Sleep(200 * time.Millisecond)
 
-				Ω(client.UpdateDesiredLRP(guid, updateToThree)).Should(Succeed())
+				Ω(bbsClient.UpdateDesiredLRP(guid, &updateToThree)).Should(Succeed())
 				Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
-					BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning),
-					BeActualLRPWithState(guid, 1, receptor.ActualLRPStateRunning),
-					BeActualLRPWithState(guid, 2, receptor.ActualLRPStateRunning),
+					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
+					BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
+					BeActualLRPWithState(guid, 2, models.ActualLRPStateRunning),
 				))
 			}
 

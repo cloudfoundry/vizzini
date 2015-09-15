@@ -4,13 +4,13 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("FuseFS", func() {
-	var lrp receptor.DesiredLRPCreateRequest
+	var lrp *models.DesiredLRP
 	var url string
 
 	BeforeEach(func() {
@@ -18,7 +18,7 @@ var _ = Describe("FuseFS", func() {
 		lrp.Privileged = true
 		url = "http://" + RouteForGuid(guid) + "/env"
 
-		Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 		Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 	})
 

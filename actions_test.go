@@ -6,19 +6,18 @@ import (
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Actions", func() {
-	var task receptor.TaskCreateRequest
+	var taskDef *models.TaskDefinition
 
 	Describe("Timeout action", func() {
 		BeforeEach(func() {
-			task = TaskWithGuid(guid)
-			task.Action = models.WrapAction(models.Timeout(
+			taskDef = Task()
+			taskDef.Action = models.WrapAction(models.Timeout(
 				&models.RunAction{
 					Path: "bash",
 					Args: []string{"-c", "sleep 1000"},
@@ -26,53 +25,54 @@ var _ = Describe("Actions", func() {
 				},
 				2*time.Second,
 			))
-			task.ResultFile = ""
+			taskDef.ResultFile = ""
 
-			Ω(client.CreateTask(task)).Should(Succeed())
+			Ω(bbsClient.DesireTask(guid, domain, taskDef)).Should(Succeed())
 		})
 
 		It("should fail the Task within the timeout window", func() {
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
-			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(receptor.TaskStateCompleted))
-			task, err := client.GetTask(guid)
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
+			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(models.Task_Completed))
+			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(task.Failed).Should(BeTrue())
-			Ω(task.FailureReason).Should(ContainSubstring("timeout"))
+			Ω(task.GetFailed()).Should(BeTrue())
+			Ω(task.GetFailureReason()).Should(ContainSubstring("timeout"))
 
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
 	Describe("Run action", func() {
 		BeforeEach(func() {
-			task = TaskWithGuid(guid)
-			task.Action = models.WrapAction(&models.RunAction{
+			taskDef = Task()
+			taskDef.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Dir:  "/etc",
 				Args: []string{"-c", "echo $PWD > /tmp/bar"},
 				User: "vcap",
 			})
 
-			Ω(client.CreateTask(task)).Should(Succeed())
+			Ω(bbsClient.DesireTask(guid, domain, taskDef)).Should(Succeed())
 		})
 
 		It("should be possible to specify a working directory", func() {
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-			task, err := client.GetTask(guid)
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
+			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(task.Failed).Should(BeFalse())
-			Ω(task.Result).Should(ContainSubstring("/etc"))
+			Ω(task.GetFailed()).Should(BeFalse())
+			Ω(task.GetResult()).Should(ContainSubstring("/etc"))
 
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
 	Describe("Cancelling Downloads", func() {
-		var desiredLRP receptor.DesiredLRPCreateRequest
-		BeforeEach(func() {
-			desiredLRP = receptor.DesiredLRPCreateRequest{
+		It("should cancel the download", func() {
+			desiredLRP := &models.DesiredLRP{
 				ProcessGuid: guid,
-				RootFS:      defaultRootFS,
+				RootFs:      defaultRootFS,
 				Domain:      domain,
 				Instances:   1,
 				Action: models.WrapAction(&models.DownloadAction{
@@ -81,13 +81,11 @@ var _ = Describe("Actions", func() {
 					User: "vcap",
 				}),
 			}
-		})
 
-		It("should cancel the download", func() {
-			Ω(client.CreateDesiredLRP(desiredLRP)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(desiredLRP)).Should(Succeed())
 			time.Sleep(3 * time.Second)
-			Ω(client.DeleteDesiredLRP(desiredLRP.ProcessGuid)).Should(Succeed())
-			Eventually(ActualGetter(desiredLRP.ProcessGuid, 0), 5).Should(BeZero())
+			Ω(bbsClient.RemoveDesiredLRP(desiredLRP.ProcessGuid)).Should(Succeed())
+			Eventually(ActualByProcessGuidGetter(desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
 	})
 })

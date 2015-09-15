@@ -3,7 +3,8 @@ package vizzini_test
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/events"
+	"github.com/cloudfoundry-incubator/bbs/models"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
@@ -11,13 +12,13 @@ import (
 )
 
 var _ = Describe("EventStream", func() {
-	var desiredLRP receptor.DesiredLRPCreateRequest
-	var eventSource receptor.EventSource
+	var desiredLRP *models.DesiredLRP
+	var eventSource events.EventSource
 	var done chan struct{}
 	var lock *sync.Mutex
-	var events []receptor.Event
+	var events []models.Event
 
-	getEvents := func() []receptor.Event {
+	getEvents := func() []models.Event {
 		lock.Lock()
 		defer lock.Unlock()
 		return events
@@ -26,12 +27,12 @@ var _ = Describe("EventStream", func() {
 	BeforeEach(func() {
 		var err error
 		desiredLRP = DesiredLRPWithGuid(guid)
-		eventSource, err = client.SubscribeToEvents()
+		eventSource, err = bbsClient.SubscribeToEvents()
 		Ω(err).ShouldNot(HaveOccurred())
 
 		done = make(chan struct{})
 		lock = &sync.Mutex{}
-		events = []receptor.Event{}
+		events = []models.Event{}
 
 		go func() {
 			for {
@@ -53,12 +54,13 @@ var _ = Describe("EventStream", func() {
 	})
 
 	It("should receive events as the LRP goes through its lifecycle", func() {
-		client.CreateDesiredLRP(desiredLRP)
+		bbsClient.DesireLRP(desiredLRP)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(guid)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(guid, 0)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateClaimed)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, receptor.ActualLRPStateRunning)))
-		client.DeleteDesiredLRP(guid)
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateClaimed)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateRunning)))
+
+		bbsClient.RemoveDesiredLRP(guid)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPRemovedEvent(guid)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPRemovedEvent(guid, 0)))
 	})

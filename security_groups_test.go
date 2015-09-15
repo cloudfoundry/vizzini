@@ -5,14 +5,13 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Security groups", func() {
-	var listener receptor.DesiredLRPCreateRequest
+	var listener *models.DesiredLRP
 	var listenerGuid string
 	var protectedURL string
 
@@ -20,25 +19,25 @@ var _ = Describe("Security groups", func() {
 		listenerGuid = NewGuid()
 		listener = DesiredLRPWithGuid(listenerGuid)
 
-		Ω(client.CreateDesiredLRP(listener)).Should(Succeed())
-		Eventually(ActualGetter(listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, receptor.ActualLRPStateRunning))
+		Ω(bbsClient.DesireLRP(listener)).Should(Succeed())
+		Eventually(ActualGetter(listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, models.ActualLRPStateRunning))
 		Eventually(EndpointCurler("http://" + RouteForGuid(listenerGuid) + "/env")).Should(Equal(http.StatusOK))
 
-		listenerActual, err := client.ActualLRPByProcessGuidAndIndex(listenerGuid, 0)
+		listenerActual, err := ActualLRPByProcessGuidAndIndex(listenerGuid, 0)
 		Ω(err).ShouldNot(HaveOccurred())
 		protectedURL = fmt.Sprintf("http://%s:%d/env", listenerActual.Address, listenerActual.Ports[0].HostPort)
 	})
 
 	Context("for LRPs", func() {
-		var allowedCaller, disallowedCaller receptor.DesiredLRPCreateRequest
+		var allowedCaller, disallowedCaller *models.DesiredLRP
 		var allowedCallerGuid, disallowedCallerGuid string
 
 		BeforeEach(func() {
 			allowedCallerGuid, disallowedCallerGuid = NewGuid(), NewGuid()
 			allowedCaller, disallowedCaller = DesiredLRPWithGuid(allowedCallerGuid), DesiredLRPWithGuid(disallowedCallerGuid)
 
-			Ω(client.CreateDesiredLRP(disallowedCaller)).Should(Succeed())
-			Eventually(ActualGetter(disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, receptor.ActualLRPStateRunning))
+			Ω(bbsClient.DesireLRP(disallowedCaller)).Should(Succeed())
+			Eventually(ActualGetter(disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(disallowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 
 			allowedCaller.EgressRules = []*models.SecurityGroupRule{
@@ -48,8 +47,8 @@ var _ = Describe("Security groups", func() {
 				},
 			}
 
-			Ω(client.CreateDesiredLRP(allowedCaller)).Should(Succeed())
-			Eventually(ActualGetter(allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, receptor.ActualLRPStateRunning))
+			Ω(bbsClient.DesireLRP(allowedCaller)).Should(Succeed())
+			Eventually(ActualGetter(allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(allowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 		})
 
@@ -70,12 +69,12 @@ var _ = Describe("Security groups", func() {
 	})
 
 	Context("for Tasks", func() {
-		var allowedTask, disallowedTask receptor.TaskCreateRequest
+		var allowedTask, disallowedTask *models.TaskDefinition
 		var allowedTaskGuid, disallowedTaskGuid string
 
 		BeforeEach(func() {
 			allowedTaskGuid, disallowedTaskGuid = NewGuid(), NewGuid()
-			allowedTask, disallowedTask = TaskWithGuid(allowedTaskGuid), TaskWithGuid(disallowedTaskGuid)
+			allowedTask, disallowedTask = Task(), Task()
 			allowedTask.ResultFile, disallowedTask.ResultFile = "", ""
 
 			disallowedTask.Action = models.WrapAction(&models.RunAction{
@@ -99,22 +98,24 @@ var _ = Describe("Security groups", func() {
 		})
 
 		It("should allow access to the opened up location", func() {
-			Ω(client.CreateTask(allowedTask)).Should(Succeed())
-			Ω(client.CreateTask(disallowedTask)).Should(Succeed())
+			Ω(bbsClient.DesireTask(allowedTaskGuid, domain, allowedTask)).Should(Succeed())
+			Ω(bbsClient.DesireTask(disallowedTaskGuid, domain, disallowedTask)).Should(Succeed())
 
-			Eventually(TaskGetter(allowedTaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-			Eventually(TaskGetter(disallowedTaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			Eventually(TaskGetter(allowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
+			Eventually(TaskGetter(disallowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 
-			task, err := client.GetTask(disallowedTaskGuid)
+			task, err := bbsClient.TaskByGuid(disallowedTaskGuid)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(Equal(true))
 
-			task, err = client.GetTask(allowedTaskGuid)
+			task, err = bbsClient.TaskByGuid(allowedTaskGuid)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(Equal(false))
 
-			Ω(client.DeleteTask(allowedTaskGuid)).Should(Succeed())
-			Ω(client.DeleteTask(disallowedTaskGuid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(allowedTaskGuid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(allowedTaskGuid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(disallowedTaskGuid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(disallowedTaskGuid)).Should(Succeed())
 		})
 	})
 })

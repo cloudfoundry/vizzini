@@ -2,7 +2,6 @@ package vizzini_test
 
 import (
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -10,12 +9,12 @@ import (
 )
 
 var _ = Describe("Privileged", func() {
-	var task receptor.TaskCreateRequest
+	var task *models.TaskDefinition
 	var runUser string
 	var containerPrivileged bool
 
 	JustBeforeEach(func() {
-		task = TaskWithGuid(guid)
+		task = Task()
 		task.Privileged = containerPrivileged
 		task.Action = models.WrapAction(&models.RunAction{
 			Path: "bash",
@@ -23,12 +22,13 @@ var _ = Describe("Privileged", func() {
 			User: runUser,
 		})
 
-		Ω(client.CreateTask(task)).Should(Succeed())
-		Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+		Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+		Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 	})
 
 	AfterEach(func() {
-		Ω(client.DeleteTask(guid)).Should(Succeed())
+		Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+		Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 	})
 
 	Context("with a privileged container", func() {
@@ -42,7 +42,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as root", func() {
-				completedTask, err := client.GetTask(guid)
+				completedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
 				Ω(completedTask.Result).Should(MatchRegexp(`groups=.*0\(root\)`))
@@ -56,7 +56,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as non-root", func() {
-				completedTask, err := client.GetTask(guid)
+				completedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
 				Ω(completedTask.Result).Should(MatchRegexp(`groups=.*0\(root\)`))
@@ -76,7 +76,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as namespaced root", func() {
-				completedTask, err := client.GetTask(guid)
+				completedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
 				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
@@ -89,7 +89,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as non-root", func() {
-				completedTask, err := client.GetTask(guid)
+				completedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
 				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))

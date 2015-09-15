@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("The container environment", func() {
-	var lrp receptor.DesiredLRPCreateRequest
+	var lrp *models.DesiredLRP
 	var url string
 
 	BeforeEach(func() {
 		url = "http://" + RouteForGuid(guid) + "/env?json=true"
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Ports = []uint16{8080, 5000}
+		lrp.Ports = []uint32{8080, 5000}
 	})
 
 	getEnvs := func(url string) [][]string {
@@ -33,12 +33,12 @@ var _ = Describe("The container environment", func() {
 
 	Describe("InstanceGuid and InstanceIndex", func() {
 		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
-			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			envs := getEnvs(url)
@@ -52,17 +52,17 @@ var _ = Describe("The container environment", func() {
 	//{LOCAL} because: Instance IP and PORT are not injected by default.  One needs to opt-into this feature.
 	Describe("{LOCAL} Instance IP and PORT", func() {
 		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url), 40).Should(Equal(http.StatusOK))
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
-			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			type cfPortMapping struct {
-				External uint16 `json:"external"`
-				Internal uint16 `json:"internal"`
+				External uint32 `json:"external"`
+				Internal uint32 `json:"internal"`
 			}
 
 			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{

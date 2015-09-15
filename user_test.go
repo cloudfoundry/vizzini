@@ -4,19 +4,18 @@ import (
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Users", func() {
-	var task receptor.TaskCreateRequest
+	var task *models.TaskDefinition
 
 	Context("{DOCKER} with an existing 'alice' user in the rootfs", func() {
 		BeforeEach(func() {
-			task = TaskWithGuid(guid)
-			task.RootFS = "docker:///cloudfoundry/busybox-alice"
+			task = Task()
+			task.RootFs = "docker:///cloudfoundry/busybox-alice"
 			task.Action = models.WrapAction(&models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "whoami > /tmp/output"},
@@ -24,20 +23,21 @@ var _ = Describe("Users", func() {
 			})
 			task.ResultFile = "/tmp/output"
 
-			Ω(client.CreateTask(task)).Should(Succeed())
+			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 		})
 
 		It("runs an action as alice", func() {
-			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(receptor.TaskStateRunning))
-			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(receptor.TaskStateCompleted))
+			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Running))
+			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(models.Task_Completed))
 
-			task, err := client.GetTask(guid)
+			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(task.Failed).Should(BeFalse())
 			Ω(task.Result).Should(ContainSubstring("alice"))
 
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 })

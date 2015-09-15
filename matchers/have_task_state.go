@@ -3,28 +3,28 @@ package matchers
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 )
 
-func HaveTaskState(state string) gomega.OmegaMatcher {
+func HaveTaskState(state models.Task_State) gomega.OmegaMatcher {
 	return &HaveTaskStateMatcher{
 		State: state,
 	}
 }
 
 type HaveTaskStateMatcher struct {
-	State string
+	State models.Task_State
 }
 
 func (matcher *HaveTaskStateMatcher) Match(actual interface{}) (success bool, err error) {
-	task, ok := actual.(receptor.TaskResponse)
+	task, ok := actual.(*models.Task)
 	if !ok {
-		return false, fmt.Errorf("HaveTaskState matcher expects a receptor.TaskResponse.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("HaveTaskState matcher expects a *models.Task.  Got:\n%s", format.Object(actual, 1))
 	}
 
-	return task.State == matcher.State, nil
+	return task.GetState() == matcher.State, nil
 }
 
 func (matcher *HaveTaskStateMatcher) FailureMessage(actual interface{}) (message string) {

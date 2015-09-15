@@ -12,7 +12,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
@@ -55,7 +54,7 @@ type sshTarget struct {
 	Port string
 }
 
-func directTargetFor(guid string, index int, port uint16) sshTarget {
+func directTargetFor(guid string, index int, port uint32) sshTarget {
 	addrComponents := strings.Split(DirectAddressFor(guid, index, port), ":")
 	Ω(addrComponents).Should(HaveLen(2))
 
@@ -70,7 +69,7 @@ func directTargetFor(guid string, index int, port uint16) sshTarget {
 var _ = Describe("{LOCAL} SSH Tests", func() {
 
 	var (
-		lrp           receptor.DesiredLRPCreateRequest
+		lrp           *models.DesiredLRP
 		user          string
 		rootfs        string
 		sshdArgs      []string
@@ -136,11 +135,11 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 	})
 
 	JustBeforeEach(func() {
-		lrp = receptor.DesiredLRPCreateRequest{
+		lrp = &models.DesiredLRP{
 			ProcessGuid:          guid,
 			Domain:               domain,
 			Instances:            2,
-			EnvironmentVariables: []receptor.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
+			EnvironmentVariables: []*models.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
 			Setup: models.WrapAction(&models.DownloadAction{
 				Artifact: "lifecycle bundle",
 				From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
@@ -159,13 +158,13 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				&shellServer,
 			)),
 			Monitor:  models.WrapAction(&sshdMonitor),
-			RootFS:   rootfs,
-			MemoryMB: 128,
-			DiskMB:   128,
-			Ports:    []uint16{2222},
+			RootFs:   rootfs,
+			MemoryMb: 128,
+			DiskMb:   128,
+			Ports:    []uint32{2222},
 		}
 
-		Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 	})
 
 	Context("in a fully-featured preloaded rootfs", func() {
@@ -185,7 +184,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		JustBeforeEach(func() {
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 		})
 
 		Context("with an unauthenticated SSH session", func() {
@@ -351,7 +350,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		})
 
 		JustBeforeEach(func() {
-			Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning))
+			Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 		})
 
 		It("runs an ssh command", func() {

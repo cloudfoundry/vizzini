@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
@@ -14,7 +13,7 @@ import (
 )
 
 var _ = Describe("LRPs", func() {
-	var lrp receptor.DesiredLRPCreateRequest
+	var lrp *models.DesiredLRP
 	var url string
 
 	BeforeEach(func() {
@@ -25,15 +24,15 @@ var _ = Describe("LRPs", func() {
 	Describe("Desiring LRPs", func() {
 		Context("when the LRP is well-formed", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			})
 
 			It("desires the LRP", func() {
 				Eventually(LRPGetter(guid)).ShouldNot(BeZero())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-				Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+				Eventually(ActualByDomainGetter(domain)).Should(ContainElement(BeActualLRP(guid, 0)))
 
-				fetchedLRP, err := client.GetDesiredLRP(guid)
+				fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(fetchedLRP.Annotation).Should(Equal("arbitrary-data"))
 			})
@@ -42,30 +41,30 @@ var _ = Describe("LRPs", func() {
 		Context("when the LRP's process guid contains invalid characters", func() {
 			It("should fail to create", func() {
 				lrp.ProcessGuid = "abc def"
-				err := client.CreateDesiredLRP(lrp)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
+				err := bbsClient.DesireLRP(lrp)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 
 				lrp.ProcessGuid = "abc/def"
-				Ω(client.CreateDesiredLRP(lrp)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).ShouldNot(Succeed())
 
 				lrp.ProcessGuid = "abc,def"
-				Ω(client.CreateDesiredLRP(lrp)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).ShouldNot(Succeed())
 
 				lrp.ProcessGuid = "abc.def"
-				Ω(client.CreateDesiredLRP(lrp)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).ShouldNot(Succeed())
 
 				lrp.ProcessGuid = "abc∆def"
-				Ω(client.CreateDesiredLRP(lrp)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when the LRP's # of instances is == 0", func() {
 			It("should create the LRP and allow the user to subsequently scale up", func() {
 				lrp.Instances = 0
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 
-				two := 2
-				Ω(client.UpdateDesiredLRP(lrp.ProcessGuid, receptor.DesiredLRPUpdateRequest{
+				two := int32(2)
+				Ω(bbsClient.UpdateDesiredLRP(lrp.ProcessGuid, &models.DesiredLRPUpdate{
 					Instances: &two,
 				})).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
@@ -74,70 +73,72 @@ var _ = Describe("LRPs", func() {
 
 		Context("when required fields are missing", func() {
 			It("should fail to create", func() {
+				lrpCopy := new(models.DesiredLRP)
+
 				By("not having ProcessGuid")
-				lrpCopy := lrp
+				*lrpCopy = *lrp
 				lrpCopy.ProcessGuid = ""
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("not having a domain")
-				lrpCopy = lrp
+				*lrpCopy = *lrp
 				lrpCopy.Domain = ""
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("not having an action")
-				lrpCopy = lrp
+				*lrpCopy = *lrp
 				lrpCopy.Action = nil
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("not having a rootfs")
-				lrpCopy = lrp
-				lrpCopy.RootFS = ""
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+				*lrpCopy = *lrp
+				lrpCopy.RootFs = ""
+				Ω(bbsClient.DesireLRP(lrpCopy)).ShouldNot(Succeed())
 
 				By("having a malformed rootfs")
-				lrpCopy = lrp
-				lrpCopy.RootFS = "ploop"
-				Ω(client.CreateDesiredLRP(lrpCopy)).ShouldNot(Succeed())
+				*lrpCopy = *lrp
+				lrpCopy.RootFs = "ploop"
+				Ω(bbsClient.DesireLRP(lrpCopy)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when the CPUWeight is out of bounds", func() {
 			It("should fail", func() {
-				lrp.CPUWeight = 101
-				err := client.CreateDesiredLRP(lrp)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
+				lrp.CpuWeight = 101
+				err := bbsClient.DesireLRP(lrp)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 			})
 		})
 
 		Context("when the annotation is too large", func() {
 			It("should fail", func() {
 				lrp.Annotation = strings.Repeat("7", 1024*10+1)
-				err := client.CreateDesiredLRP(lrp)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidLRP))
+				err := bbsClient.DesireLRP(lrp)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 			})
 		})
 
 		Context("when the DesiredLRP already exists", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should fail", func() {
-				err := client.CreateDesiredLRP(lrp)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPAlreadyExists))
+				err := bbsClient.DesireLRP(lrp)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceExists))
 			})
 		})
 	})
 
 	Describe("Specifying environment variables", func() {
 		BeforeEach(func() {
-			lrp.EnvironmentVariables = []receptor.EnvironmentVariable{
+			lrp.EnvironmentVariables = []*models.EnvironmentVariable{
 				{"CONTAINER_LEVEL", "AARDVARK"},
 				{"OVERRIDE", "BANANA"},
 			}
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
@@ -177,17 +178,17 @@ var _ = Describe("LRPs", func() {
 				User: "vcap",
 			})
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 		})
 
 		It("should run", func() {
-			Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRPWithState(guid, 0, receptor.ActualLRPStateRunning)))
+			Eventually(ActualByDomainGetter(domain)).Should(ContainElement(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning)))
 		})
 	})
 
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
-			lrp.RootFS = "docker:///onsi/grace-busybox"
+			lrp.RootFs = "docker:///onsi/grace-busybox"
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
@@ -205,21 +206,22 @@ var _ = Describe("LRPs", func() {
 				User: "root",
 			})
 
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 		})
 
 		It("should succeed", func() {
 			Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
-			Eventually(client.ActualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
+			Eventually(ActualByDomainGetter(domain)).Should(ContainElement(BeActualLRP(guid, 0)))
 		})
 	})
 
 	Describe("Updating an existing DesiredLRP", func() {
-		var tag receptor.ModificationTag
+		var tag *models.ModificationTag
+
 		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-			fetchedLRP, err := client.GetDesiredLRP(lrp.ProcessGuid)
+			fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(lrp.ProcessGuid)
 			Ω(err).ShouldNot(HaveOccurred())
 			tag = fetchedLRP.ModificationTag
 		})
@@ -227,16 +229,16 @@ var _ = Describe("LRPs", func() {
 		Context("By explicitly updating it", func() {
 			Context("when the LRP exists", func() {
 				It("allows updating instances", func() {
-					two := 2
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+					two := int32(2)
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Instances: &two,
 					})).Should(Succeed())
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 				})
 
 				It("allows scaling down to 0", func() {
-					zero := 0
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+					zero := int32(0)
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Instances: &zero,
 					})).Should(Succeed())
 					Eventually(IndexCounter(guid)).Should(Equal(0))
@@ -244,36 +246,39 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
+
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
-						Routes: routes.LegacyRoutingInfo(),
+
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+						Routes: routes.RoutingInfo(),
 					})).Should(Succeed())
+
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
 					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				})
 
 				It("allows updating annotations", func() {
 					annotation := "my new annotation"
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Annotation: &annotation,
 					})).Should(Succeed())
-					lrp, err := client.GetDesiredLRP(guid)
+					lrp, err := bbsClient.DesiredLRPByProcessGuid(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(lrp.Annotation).Should(Equal("my new annotation"))
 				})
 
 				It("allows multiple simultaneous updates", func() {
-					two := 2
+					two := int32(2)
 					annotation := "my new annotation"
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.LegacyCFRoutesFromLegacyRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Instances:  &two,
-						Routes:     routes.LegacyRoutingInfo(),
+						Routes:     routes.RoutingInfo(),
 						Annotation: &annotation,
 					})).Should(Succeed())
 
@@ -282,38 +287,38 @@ var _ = Describe("LRPs", func() {
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
 					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
-					lrp, err := client.GetDesiredLRP(guid)
+					lrp, err := bbsClient.DesiredLRPByProcessGuid(guid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(lrp.Annotation).Should(Equal("my new annotation"))
 				})
 
 				It("updates the modification index when a change occurs", func() {
 					By("not modifying if no change has been made")
-					fetchedLRP, err := client.GetDesiredLRP(lrp.ProcessGuid)
+					fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(lrp.ProcessGuid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(fetchedLRP.ModificationTag).Should(Equal(tag))
 
 					By("modifying when a change is made")
-					two := 2
-					Ω(client.UpdateDesiredLRP(guid, receptor.DesiredLRPUpdateRequest{
+					two := int32(2)
+					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Instances: &two,
 					})).Should(Succeed())
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 
-					fetchedLRP, err = client.GetDesiredLRP(lrp.ProcessGuid)
+					fetchedLRP, err = bbsClient.DesiredLRPByProcessGuid(lrp.ProcessGuid)
 					Ω(err).ShouldNot(HaveOccurred())
 					Ω(fetchedLRP.ModificationTag.Epoch).Should(Equal(tag.Epoch))
 					Ω(fetchedLRP.ModificationTag.Index).Should(BeNumerically(">", tag.Index))
 				})
 			})
 
-			Context("when the LRP does not exit", func() {
+			Context("when the LRP does not exist", func() {
 				It("errors", func() {
-					two := 2
-					err := client.UpdateDesiredLRP("flooberdoobey", receptor.DesiredLRPUpdateRequest{
+					two := int32(2)
+					err := bbsClient.UpdateDesiredLRP("flooberdoobey", &models.DesiredLRPUpdate{
 						Instances: &two,
 					})
-					Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
+					Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
 				})
 			})
 		})
@@ -322,12 +327,12 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting a DesiredLRP", func() {
 		Context("when the DesiredLRP exists", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should succeed", func() {
-				lrp, err := client.GetDesiredLRP(guid)
+				lrp, err := bbsClient.DesiredLRPByProcessGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(lrp.ProcessGuid).Should(Equal(guid))
 			})
@@ -335,9 +340,9 @@ var _ = Describe("LRPs", func() {
 
 		Context("when the DesiredLRP does not exist", func() {
 			It("should error", func() {
-				lrp, err := client.GetDesiredLRP("floobeedoo")
+				lrp, err := bbsClient.DesiredLRPByProcessGuid("floobeedoo")
 				Ω(lrp).Should(BeZero())
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
@@ -346,24 +351,24 @@ var _ = Describe("LRPs", func() {
 		var otherGuids []string
 
 		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherLRP := DesiredLRPWithGuid(otherGuid)
 				otherLRP.Domain = otherDomain
-				Ω(client.CreateDesiredLRP(otherLRP)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(otherLRP)).Should(Succeed())
 				url := "http://" + RouteForGuid(otherGuid) + "/env"
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			}
 		})
 
 		It("should fetch desired lrps in the given domain", func() {
-			lrpsInDomain, err := client.DesiredLRPsByDomain(domain)
+			lrpsInDomain, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: domain})
 			Ω(err).ShouldNot(HaveOccurred())
 
-			lrpsInOtherDomain, err := client.DesiredLRPsByDomain(otherDomain)
+			lrpsInOtherDomain, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: otherDomain})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(lrpsInDomain).Should(HaveLen(1))
@@ -372,13 +377,13 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should not error if a domain is empty", func() {
-			domain, err := client.DesiredLRPsByDomain("farfignoogan")
+			lrpsInDomain, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: "farfignoogan"})
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(domain).Should(BeEmpty())
+			Ω(lrpsInDomain).Should(BeEmpty())
 		})
 
 		It("should fetch all desired lrps", func() {
-			allDesiredLRPs, err := client.DesiredLRPs()
+			allDesiredLRPs, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{})
 			Ω(err).ShouldNot(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
@@ -396,11 +401,11 @@ var _ = Describe("LRPs", func() {
 	Describe("Deleting DesiredLRPs", func() {
 		Context("when the DesiredLRP exists", func() {
 			It("should be deleted", func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
-				Ω(client.DeleteDesiredLRP(guid)).Should(Succeed())
-				_, err := client.GetDesiredLRP(guid)
+				Ω(bbsClient.RemoveDesiredLRP(guid)).Should(Succeed())
+				_, err := bbsClient.DesiredLRPByProcessGuid(guid)
 				Ω(err).Should(HaveOccurred())
 				Eventually(EndpointCurler(url)).ShouldNot(Equal(http.StatusOK))
 			})
@@ -408,30 +413,30 @@ var _ = Describe("LRPs", func() {
 
 		Context("when the DesiredLRP is deleted after it is claimed but before it is running #86668966", func() {
 			It("should succesfully remove any ActualLRP", func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
-				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, receptor.ActualLRPStateClaimed)))
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, models.ActualLRPStateClaimed)))
 				//note: we don't wait for the ActualLRP to start running
-				Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
+				Ω(bbsClient.RemoveDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
 				Eventually(ActualByProcessGuidGetter(lrp.ProcessGuid)).Should(BeEmpty())
 			})
 		})
 
 		Context("when the DesiredLRP does not exist", func() {
 			It("should not be deleted, and should error", func() {
-				err := client.DeleteDesiredLRP("floobeedoobee")
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.DesiredLRPNotFound))
+				err := bbsClient.RemoveDesiredLRP("floobeedoobee")
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
 
 	Describe("Getting all ActualLRPs", func() {
 		BeforeEach(func() {
-			Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
 		It("should fetch all Actual LRPs", func() {
-			actualLRPs, err := client.ActualLRPs()
+			actualLRPs, err := ActualsByDomain("")
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(actualLRPs)).Should(BeNumerically(">=", 1))
 			Ω(actualLRPs).Should(ContainElement(BeActualLRP(guid, 0)))
@@ -441,25 +446,25 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting ActualLRPs by Domain", func() {
 		Context("when the domain is empty", func() {
 			It("returns an empty list", func() {
-				Ω(client.ActualLRPsByDomain("floobidoo")).Should(BeEmpty())
+				Ω(ActualsByDomain("floobidoo")).Should(BeEmpty())
 			})
 		})
 
 		Context("when the domain contains instances", func() {
-			var otherDomainLRP1 receptor.DesiredLRPCreateRequest
-			var otherDomainLRP2 receptor.DesiredLRPCreateRequest
+			var otherDomainLRP1 *models.DesiredLRP
+			var otherDomainLRP2 *models.DesiredLRP
 
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 
 				otherDomainLRP1 = DesiredLRPWithGuid(NewGuid())
 				otherDomainLRP1.Instances = 2
 				otherDomainLRP1.Domain = otherDomain
-				Ω(client.CreateDesiredLRP(otherDomainLRP1)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(otherDomainLRP1)).Should(Succeed())
 
 				otherDomainLRP2 = DesiredLRPWithGuid(NewGuid())
 				otherDomainLRP2.Domain = otherDomain
-				Ω(client.CreateDesiredLRP(otherDomainLRP2)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(otherDomainLRP2)).Should(Succeed())
 
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				Eventually(IndexCounter(otherDomainLRP1.ProcessGuid)).Should(Equal(2))
@@ -467,12 +472,12 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("returns said instances", func() {
-				actualLRPs, err := client.ActualLRPsByDomain(domain)
+				actualLRPs, err := ActualsByDomain(domain)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(actualLRPs).Should(HaveLen(1))
 				Ω(actualLRPs).Should(ConsistOf(BeActualLRP(guid, 0)))
 
-				actualLRPs, err = client.ActualLRPsByDomain(otherDomain)
+				actualLRPs, err = ActualsByDomain(otherDomain)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(actualLRPs).Should(HaveLen(3))
 
@@ -488,19 +493,19 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting ActualLRPs by ProcessGuid", func() {
 		Context("when there are none", func() {
 			It("returns an empty list", func() {
-				Ω(client.ActualLRPsByProcessGuid("floobeedoo")).Should(BeEmpty())
+				Ω(ActualsByProcessGuid("floobeedoo")).Should(BeEmpty())
 			})
 		})
 
 		Context("when there are ActualLRPs for a given ProcessGuid", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
 
 			It("returns the ActualLRPs", func() {
-				Ω(client.ActualLRPsByProcessGuid(guid)).Should(ConsistOf(
+				Ω(ActualsByProcessGuid(guid)).Should(ConsistOf(
 					BeActualLRP(guid, 0),
 					BeActualLRP(guid, 1),
 				))
@@ -511,7 +516,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting the ActualLRP at a given index for a ProcessGuid", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("should return a missing ActualLRP error", func() {
-				actualLRP, err := client.ActualLRPByProcessGuidAndIndex("floobeedoo", 0)
+				actualLRP, err := ActualLRPByProcessGuidAndIndex("floobeedoo", 0)
 				Ω(actualLRP).Should(BeZero())
 				Ω(err).Should(HaveOccurred())
 			})
@@ -519,12 +524,12 @@ var _ = Describe("LRPs", func() {
 
 		Context("when there are no ActualLRPs at the given index", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(1))
 			})
 
 			It("should return a missing ActualLRP error", func() {
-				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 1)
+				actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 1)
 				Ω(actualLRP).Should(BeZero())
 				Ω(err).Should(HaveOccurred())
 			})
@@ -533,13 +538,13 @@ var _ = Describe("LRPs", func() {
 		Context("when there is an ActualLRP at the given index", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
 
 			It("returns them", func() {
-				Ω(client.ActualLRPByProcessGuidAndIndex(guid, 0)).Should(BeActualLRP(guid, 0))
-				Ω(client.ActualLRPByProcessGuidAndIndex(guid, 1)).Should(BeActualLRP(guid, 1))
+				Ω(ActualLRPByProcessGuidAndIndex(guid, 0)).Should(BeActualLRP(guid, 0))
+				Ω(ActualLRPByProcessGuidAndIndex(guid, 1)).Should(BeActualLRP(guid, 1))
 			})
 		})
 	})
@@ -547,31 +552,34 @@ var _ = Describe("LRPs", func() {
 	Describe("Restarting an ActualLRP", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("returns an error", func() {
-				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).ShouldNot(Succeed())
+				lrpKey := models.NewActualLRPKey(guid, 0, domain)
+				Ω(bbsClient.RetireActualLRP(&lrpKey)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when there is no ActualLRP at the given index", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("returns an error", func() {
-				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 1)).ShouldNot(Succeed())
+				lrpKey := models.NewActualLRPKey(guid, 1, domain)
+				Ω(bbsClient.RetireActualLRP(&lrpKey)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("{SLOW} when an ActualLRP exists at the given ProcessGuid and index", func() {
 			BeforeEach(func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("restarts the actual lrp", func() {
 				initialTime, err := StartedAtGetter(guid)()
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(client.KillActualLRPByProcessGuidAndIndex(guid, 0)).Should(Succeed())
+				lrpKey := models.NewActualLRPKey(guid, 0, domain)
+				Ω(bbsClient.RetireActualLRP(&lrpKey)).Should(Succeed())
 				//This needs a large timeout as the converger needs to run for it to return
 				Eventually(StartedAtGetter(guid), ConvergerInterval*2).Should(BeNumerically(">", initialTime))
 			})
@@ -581,34 +589,34 @@ var _ = Describe("LRPs", func() {
 	Describe("when an ActualLRP cannot be allocated", func() {
 		Context("because it's too large", func() {
 			BeforeEach(func() {
-				lrp.MemoryMB = 1024 * 1024
+				lrp.MemoryMb = 1024 * 1024
 			})
 
 			It("should report this fact on the UNCLAIMED ActualLRP", func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
 
-				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+				actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(actualLRP.State).Should(Equal(receptor.ActualLRPStateUnclaimed))
+				Ω(actualLRP.State).Should(Equal(models.ActualLRPStateUnclaimed))
 				Ω(actualLRP.PlacementError).Should(ContainSubstring("insufficient resources"))
 			})
 		})
 
 		Context("because of a rootfs mismatch", func() {
 			BeforeEach(func() {
-				lrp.RootFS = models.PreloadedRootFS("fruitfs")
+				lrp.RootFs = models.PreloadedRootFS("fruitfs")
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(ActualGetter(guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
 
-				actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
+				actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Ω(actualLRP.State).Should(Equal(receptor.ActualLRPStateUnclaimed))
+				Ω(actualLRP.State).Should(Equal(models.ActualLRPStateUnclaimed))
 				Ω(actualLRP.PlacementError).Should(ContainSubstring("found no compatible cell"))
 			})
 		})

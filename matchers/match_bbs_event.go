@@ -3,7 +3,7 @@ package matchers
 import (
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 )
@@ -19,11 +19,11 @@ type DesiredLRPCreatedEventMatcher struct {
 }
 
 func (matcher *DesiredLRPCreatedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.DesiredLRPCreatedEvent)
+	event, ok := actual.(*models.DesiredLRPCreatedEvent)
 	if !ok {
-		return false, fmt.Errorf("DesiredLRPCreatedEventMatcher matcher expects a receptor.DesiredLRPCreatedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("DesiredLRPCreatedEventMatcher matcher expects a models.DesiredLRPCreatedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	return event.DesiredLRPResponse.ProcessGuid == matcher.ProcessGuid, nil
+	return event.DesiredLrp.ProcessGuid == matcher.ProcessGuid, nil
 }
 
 func (matcher *DesiredLRPCreatedEventMatcher) FailureMessage(actual interface{}) (message string) {
@@ -47,9 +47,9 @@ type DesiredLRPChangedEventMatcher struct {
 }
 
 func (matcher *DesiredLRPChangedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.DesiredLRPChangedEvent)
+	event, ok := actual.(*models.DesiredLRPChangedEvent)
 	if !ok {
-		return false, fmt.Errorf("DesiredLRPChangedEventMatcher matcher expects a receptor.DesiredLRPChangedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("DesiredLRPChangedEventMatcher matcher expects a models.DesiredLRPChangedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
 
 	return event.After.ProcessGuid == matcher.ProcessGuid, nil
@@ -76,11 +76,11 @@ type DesiredLRPRemovedEventMatcher struct {
 }
 
 func (matcher *DesiredLRPRemovedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.DesiredLRPRemovedEvent)
+	event, ok := actual.(*models.DesiredLRPRemovedEvent)
 	if !ok {
-		return false, fmt.Errorf("DesiredLRPRemovedEventMatcher matcher expects a receptor.DesiredLRPRemovedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("DesiredLRPRemovedEventMatcher matcher expects a models.DesiredLRPRemovedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	return event.DesiredLRPResponse.ProcessGuid == matcher.ProcessGuid, nil
+	return event.DesiredLrp.ProcessGuid == matcher.ProcessGuid, nil
 }
 
 func (matcher *DesiredLRPRemovedEventMatcher) FailureMessage(actual interface{}) (message string) {
@@ -101,17 +101,17 @@ func MatchActualLRPCreatedEvent(processGuid string, index int) gomega.OmegaMatch
 }
 
 type ActualLRPCreatedEventMatcher struct {
-	ProcessGuid   string
-	Index         int
-	EventToReturn *receptor.ActualLRPCreatedEvent
+	ProcessGuid string
+	Index       int
 }
 
 func (matcher *ActualLRPCreatedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.ActualLRPCreatedEvent)
+	event, ok := actual.(*models.ActualLRPCreatedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPCreatedEventMatcher matcher expects a receptor.ActualLRPCreatedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPCreatedEventMatcher matcher expects a models.ActualLRPCreatedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	return event.ActualLRPResponse.ProcessGuid == matcher.ProcessGuid && event.ActualLRPResponse.Index == matcher.Index, nil
+	actualLRP, _ := event.ActualLrpGroup.Resolve()
+	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
 func (matcher *ActualLRPCreatedEventMatcher) FailureMessage(actual interface{}) (message string) {
@@ -124,7 +124,7 @@ func (matcher *ActualLRPCreatedEventMatcher) NegatedFailureMessage(actual interf
 
 //
 
-func MatchActualLRPChangedEvent(processGuid string, index int, state receptor.ActualLRPState) gomega.OmegaMatcher {
+func MatchActualLRPChangedEvent(processGuid string, index int, state string) gomega.OmegaMatcher {
 	return &ActualLRPChangedEventMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
@@ -133,18 +133,19 @@ func MatchActualLRPChangedEvent(processGuid string, index int, state receptor.Ac
 }
 
 type ActualLRPChangedEventMatcher struct {
-	ProcessGuid   string
-	Index         int
-	State         receptor.ActualLRPState
-	EventToReturn *receptor.ActualLRPChangedEvent
+	ProcessGuid string
+	Index       int
+	State       string
 }
 
 func (matcher *ActualLRPChangedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.ActualLRPChangedEvent)
+	event, ok := actual.(*models.ActualLRPChangedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPChangedEventMatcher matcher expects a receptor.ActualLRPChangedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPChangedEventMatcher matcher expects a models.ActualLRPChangedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	return event.After.ProcessGuid == matcher.ProcessGuid && event.After.Index == matcher.Index && event.After.State == matcher.State, nil
+
+	actualLRP, _ := event.After.Resolve()
+	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index) && actualLRP.State == matcher.State, nil
 }
 
 func (matcher *ActualLRPChangedEventMatcher) FailureMessage(actual interface{}) (message string) {
@@ -165,17 +166,17 @@ func MatchActualLRPRemovedEvent(processGuid string, index int) gomega.OmegaMatch
 }
 
 type ActualLRPRemovedEventMatcher struct {
-	ProcessGuid   string
-	Index         int
-	EventToReturn *receptor.ActualLRPRemovedEvent
+	ProcessGuid string
+	Index       int
 }
 
 func (matcher *ActualLRPRemovedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(receptor.ActualLRPRemovedEvent)
+	event, ok := actual.(*models.ActualLRPRemovedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPRemovedEventMatcher matcher expects a receptor.ActualLRPRemovedEventMatcher.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPRemovedEventMatcher matcher expects a models.ActualLRPRemovedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	return event.ActualLRPResponse.ProcessGuid == matcher.ProcessGuid && event.ActualLRPResponse.Index == matcher.Index, nil
+	actualLRP, _ := event.ActualLrpGroup.Resolve()
+	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
 func (matcher *ActualLRPRemovedEventMatcher) FailureMessage(actual interface{}) (message string) {

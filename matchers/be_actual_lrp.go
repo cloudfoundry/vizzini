@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 )
@@ -25,12 +25,12 @@ func BeUnclaimedActualLRPWithPlacementError(processGuid string, index int) gomeg
 		ProcessGuid:       processGuid,
 		Index:             index,
 		CrashCount:        NoCrashCount,
-		State:             receptor.ActualLRPStateUnclaimed,
+		State:             models.ActualLRPStateUnclaimed,
 		HasPlacementError: true,
 	}
 }
 
-func BeActualLRPWithState(processGuid string, index int, state receptor.ActualLRPState) gomega.OmegaMatcher {
+func BeActualLRPWithState(processGuid string, index int, state string) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
@@ -55,7 +55,7 @@ func BeActualLRPWithCrashCount(processGuid string, index int, crashCount int) go
 	}
 }
 
-func BeActualLRPWithStateAndCrashCount(processGuid string, index int, state receptor.ActualLRPState, crashCount int) gomega.OmegaMatcher {
+func BeActualLRPWithStateAndCrashCount(processGuid string, index int, state string, crashCount int) gomega.OmegaMatcher {
 	return &BeActualLRPMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
@@ -67,15 +67,15 @@ func BeActualLRPWithStateAndCrashCount(processGuid string, index int, state rece
 type BeActualLRPMatcher struct {
 	ProcessGuid       string
 	Index             int
-	State             receptor.ActualLRPState
+	State             string
 	CrashCount        int
 	HasPlacementError bool
 }
 
 func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err error) {
-	lrp, ok := actual.(receptor.ActualLRPResponse)
+	lrp, ok := actual.(models.ActualLRP)
 	if !ok {
-		return false, fmt.Errorf("BeActualLRP matcher expects a receptor.ActualLRPResponse.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("BeActualLRP matcher expects a models.ActualLRP.  Got:\n%s", format.Object(actual, 1))
 	}
 
 	matchesState := true
@@ -87,7 +87,7 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 		if matcher.CrashCount == AtLeastOneCrashCount {
 			matchesCrashCount = lrp.CrashCount > 0
 		} else {
-			matchesCrashCount = matcher.CrashCount == lrp.CrashCount
+			matchesCrashCount = matcher.CrashCount == int(lrp.CrashCount)
 		}
 	}
 	matchesPlacementErrorRequirement := true
@@ -95,7 +95,7 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 		matchesPlacementErrorRequirement = lrp.PlacementError != ""
 	}
 
-	return matchesPlacementErrorRequirement && matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && lrp.Index == matcher.Index, nil
+	return matchesPlacementErrorRequirement && matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && int(lrp.Index) == matcher.Index, nil
 }
 
 func (matcher *BeActualLRPMatcher) expectedContents() string {

@@ -12,7 +12,6 @@ import (
 	"github.com/onsi/gomega/ghttp"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -20,109 +19,108 @@ import (
 )
 
 var _ = Describe("Tasks", func() {
-	var task receptor.TaskCreateRequest
+	var task *models.TaskDefinition
 
 	BeforeEach(func() {
-		task = TaskWithGuid(guid)
+		task = Task()
 	})
 
 	Describe("Creating Tasks", func() {
 		Context("When the task is well formed (the happy path)", func() {
 			BeforeEach(func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 			})
 
 			It("runs the task", func() {
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
-				task, err := client.GetTask(guid)
+				task, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.TaskGuid).Should(Equal(guid))
 
 				Ω(task.Failed).Should(BeFalse())
 				Ω(task.Result).Should(ContainSubstring("some output"))
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("when the task guid is malformed", func() {
 			It("should fail to create", func() {
-				task.TaskGuid = "abc def"
-				err := client.CreateTask(task)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+				var badGuid string
 
-				task.TaskGuid = "abc/def"
-				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+				badGuid = "abc def"
+				err := bbsClient.DesireTask(badGuid, domain, task)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 
-				task.TaskGuid = "abc,def"
-				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+				badGuid = "abc/def"
+				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
 
-				task.TaskGuid = "abc.def"
-				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+				badGuid = "abc,def"
+				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
 
-				task.TaskGuid = "abc∆def"
-				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+				badGuid = "abc.def"
+				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
+
+				badGuid = "abc∆def"
+				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when the task guid is not unique", func() {
 			It("should fail to create", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
-				err := client.CreateTask(task)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskGuidAlreadyExists))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				err := bbsClient.DesireTask(guid, domain, task)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceExists))
 
 				By("even when the domain is different")
-				task.Domain = otherDomain
-				Ω(client.CreateTask(task)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireTask(guid, otherDomain, task)).ShouldNot(Succeed())
 
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("when required fields are missing", func() {
 			It("should fail", func() {
 				By("not having TaskGuid")
-				taskCopy := task
-				taskCopy.TaskGuid = ""
-				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireTask("", domain, task)).ShouldNot(Succeed())
 
 				By("not having a domain")
-				taskCopy = task
-				taskCopy.Domain = ""
-				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireTask(guid, "", task)).ShouldNot(Succeed())
 
 				By("not having any actions")
-				taskCopy = task
-				taskCopy.Action = nil
-				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+				invalidTask := Task()
+				invalidTask.Action = nil
+				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
 
 				By("not having a rootfs")
-				taskCopy = task
-				taskCopy.RootFS = ""
-				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+				invalidTask = Task()
+				invalidTask.RootFs = ""
+				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
 
 				By("having a malformed rootfs")
-				taskCopy = task
-				taskCopy.RootFS = "ploop"
-				Ω(client.CreateTask(taskCopy)).ShouldNot(Succeed())
+				invalidTask = Task()
+				invalidTask.RootFs = "ploop"
+				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when the CPUWeight is out of bounds", func() {
 			It("should fail", func() {
-				task.CPUWeight = 101
-				err := client.CreateTask(task)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+				task.CpuWeight = 101
+				err := bbsClient.DesireTask(guid, domain, task)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 			})
 		})
 
 		Context("when the annotation is too large", func() {
 			It("should fail", func() {
 				task.Annotation = strings.Repeat("7", 1024*10+1)
-				err := client.CreateTask(task)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.InvalidTask))
+				err := bbsClient.DesireTask(guid, domain, task)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
 			})
 		})
 
@@ -133,20 +131,21 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", "echo 'some output' > /tmp/bar && exit 1"},
 					User: "vcap",
 				})
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 			})
 
 			It("should be marked as failed and should not return the result file", func() {
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
-				task, err := client.GetTask(guid)
+				task, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.TaskGuid).Should(Equal(guid))
 				Ω(task.Failed).Should(BeTrue())
 
 				Ω(task.Result).Should(BeEmpty())
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})
@@ -169,10 +168,10 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("should be possible to specify environment variables on both the Task and the RunAction", func() {
-			Ω(client.CreateTask(task)).Should(Succeed())
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
-			task, err := client.GetTask(guid)
+			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(task.Result).Should(ContainSubstring("CONTAINER_LEVEL=A"))
@@ -180,13 +179,14 @@ var _ = Describe("Tasks", func() {
 			Ω(task.Result).Should(ContainSubstring("OVERRIDE=D"))
 			Ω(task.Result).ShouldNot(ContainSubstring("OVERRIDE=B"))
 
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
 	Describe("{DOCKER} Creating a Docker-based Task", func() {
 		BeforeEach(func() {
-			task.RootFS = "docker:///cloudfoundry/busybox-alice"
+			task.RootFs = "docker:///cloudfoundry/busybox-alice"
 			task.Action = models.WrapAction(&models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", "echo 'down-the-rabbit-hole' > payload && chmod 0400 payload"},
@@ -194,18 +194,19 @@ var _ = Describe("Tasks", func() {
 			})
 			task.ResultFile = "/home/alice/payload"
 
-			Ω(client.CreateTask(task)).Should(Succeed())
+			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 		})
 
 		It("should succeed", func() {
-			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(receptor.TaskStateCompleted), "Docker can be quite slow to spin up....")
+			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Completed), "Docker can be quite slow to spin up....")
 
-			task, err := client.GetTask(guid)
+			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(task.Failed).Should(BeFalse())
 			Ω(task.Result).Should(ContainSubstring("down-the-rabbit-hole"))
 
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 		})
 	})
 
@@ -217,7 +218,7 @@ var _ = Describe("Tasks", func() {
 				lrpGuid = NewGuid()
 
 				lrp := DesiredLRPWithGuid(lrpGuid)
-				Ω(client.CreateDesiredLRP(lrp)).Should(Succeed())
+				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
 				Eventually(EndpointCurler("http://" + RouteForGuid(lrpGuid) + "/env")).Should(Equal(http.StatusOK))
 
 				incrementCounterRoute := "http://" + RouteForGuid(lrpGuid) + "/counter"
@@ -233,21 +234,22 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST; sleep 0.05; done", incrementCounterRoute)},
 					User: "vcap",
 				})
-				Ω(client.CreateTask(task)).Should(Succeed())
+
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 			})
 
 			It("should cancel the task immediately", func() {
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
 
 				By("verifying the counter is being incremented")
 				Eventually(GraceCounterGetter(lrpGuid)).Should(BeNumerically(">", 2))
 
-				Ω(client.CancelTask(guid)).Should(Succeed())
+				Ω(bbsClient.CancelTask(guid)).Should(Succeed())
 
 				By("marking the task as completed")
-				task, err := client.GetTask(guid)
+				task, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
-				Ω(task.State).Should(Equal(receptor.TaskStateCompleted))
+				Ω(task.State).Should(Equal(models.Task_Completed))
 				Ω(task.Failed).Should(BeTrue())
 				Ω(task.FailureReason).Should(Equal("task was cancelled"))
 
@@ -261,26 +263,28 @@ var _ = Describe("Tasks", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(counterAfterSomeTime).Should(BeNumerically("<", counterAfterCancel+20))
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should fail", func() {
-				Ω(client.CancelTask("floobeedoo")).ShouldNot(Succeed())
+				Ω(bbsClient.CancelTask("floobeedoo")).ShouldNot(Succeed())
 			})
 		})
 
 		Context("when the task is already completed", func() {
 			BeforeEach(func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 			})
 
 			It("should fail", func() {
-				Ω(client.CancelTask(guid)).ShouldNot(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).ShouldNot(Succeed())
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})
@@ -288,25 +292,26 @@ var _ = Describe("Tasks", func() {
 	Describe("Getting a task", func() {
 		Context("when the task exists", func() {
 			BeforeEach(func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 			})
 
 			It("should succeed", func() {
 				Eventually(TaskGetter(guid)).ShouldNot(BeZero())
-				task, err := client.GetTask(guid)
+				task, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(task.TaskGuid).Should(Equal(guid))
 
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should error", func() {
-				task, err := client.GetTask("floobeedoo")
+				task, err := bbsClient.TaskByGuid("floobeedoo")
 				Ω(task).Should(BeZero())
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotFound))
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
@@ -315,31 +320,31 @@ var _ = Describe("Tasks", func() {
 		var otherGuids []string
 
 		BeforeEach(func() {
-			Ω(client.CreateTask(task)).Should(Succeed())
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
-				otherTask := task
-				otherTask.TaskGuid = otherGuid
-				otherTask.Domain = otherDomain
-				Ω(client.CreateTask(otherTask)).Should(Succeed())
-				Eventually(TaskGetter(otherGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				otherTask := Task()
+				Ω(bbsClient.DesireTask(otherGuid, otherDomain, otherTask)).Should(Succeed())
+				Eventually(TaskGetter(otherGuid)).Should(HaveTaskState(models.Task_Completed))
 			}
 		})
 
 		AfterEach(func() {
-			Ω(client.DeleteTask(guid)).Should(Succeed())
+			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			for _, otherGuid := range otherGuids {
-				Ω(client.DeleteTask(otherGuid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(otherGuid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(otherGuid)).Should(Succeed())
 			}
 		})
 
 		It("should fetch tasks in the given domain", func() {
-			tasksInDomain, err := client.TasksByDomain(domain)
+			tasksInDomain, err := bbsClient.TasksByDomain(domain)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			tasksInOtherDomain, err := client.TasksByDomain(otherDomain)
+			tasksInOtherDomain, err := bbsClient.TasksByDomain(otherDomain)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(tasksInDomain).Should(HaveLen(1))
@@ -348,13 +353,13 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("should not error if a domain is empty", func() {
-			domain, err := client.TasksByDomain("farfignoogan")
+			tasks, err := bbsClient.TasksByDomain("farfignoogan")
 			Ω(err).ShouldNot(HaveOccurred())
-			Ω(domain).Should(BeEmpty())
+			Ω(tasks).Should(BeEmpty())
 		})
 
 		It("should fetch all tasks", func() {
-			allTasks, err := client.Tasks()
+			allTasks, err := bbsClient.Tasks()
 			Ω(err).ShouldNot(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
@@ -372,11 +377,12 @@ var _ = Describe("Tasks", func() {
 	Describe("Deleting Tasks", func() {
 		Context("when the task is in the completed state", func() {
 			It("should be deleted", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
-				_, err := client.GetTask(guid)
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				_, err := bbsClient.TaskByGuid(guid)
 				Ω(err).Should(HaveOccurred())
 			})
 		})
@@ -388,23 +394,24 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
 					User: "vcap",
 				})
-				Ω(client.CreateTask(task)).Should(Succeed())
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateRunning))
-				err := client.DeleteTask(guid)
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotDeletable))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
+				err := bbsClient.ResolvingTask(guid)
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidStateTransition))
 
-				_, err = client.TasksByDomain(domain)
+				_, err = bbsClient.TasksByDomain(domain)
 				Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(TaskGetter(guid)).Should(HaveTaskState(receptor.TaskStateCompleted))
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should not be deleted, and should error", func() {
-				err := client.DeleteTask("floobeedoobee")
-				Ω(err.(receptor.Error).Type).Should(Equal(receptor.TaskNotFound))
+				err := bbsClient.ResolvingTask("floobeedoobee")
+				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
@@ -433,14 +440,14 @@ var _ = Describe("Tasks", func() {
 				ghttp.VerifyRequest("POST", "/endpoint"),
 				ghttp.RespondWithPtr(&status, nil),
 				func(w http.ResponseWriter, req *http.Request) {
-					var receivedTask receptor.TaskResponse
+					var receivedTask models.Task
 					json.NewDecoder(req.Body).Decode(&receivedTask)
 					Ω(receivedTask.TaskGuid).Should(Equal(guid))
 					close(done)
 				},
 			))
 
-			task.CompletionCallbackURL = "http://" + hostAddress + ":" + port + "/endpoint"
+			task.CompletionCallbackUrl = "http://" + hostAddress + ":" + port + "/endpoint"
 		})
 
 		AfterEach(func() {
@@ -453,10 +460,10 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("cleans up the task", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(func() bool {
-					_, err := client.GetTask(guid)
+					_, err := bbsClient.TaskByGuid(guid)
 					return err == nil
 				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
@@ -468,10 +475,10 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("nonetheless, cleans up the task", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(func() bool {
-					_, err := client.GetTask(guid)
+					_, err := bbsClient.TaskByGuid(guid)
 					return err == nil
 				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
@@ -488,7 +495,7 @@ var _ = Describe("Tasks", func() {
 					ghttp.VerifyRequest("POST", "/endpoint"),
 					ghttp.RespondWith(http.StatusOK, nil),
 					func(w http.ResponseWriter, req *http.Request) {
-						var receivedTask receptor.TaskResponse
+						var receivedTask models.Task
 						json.NewDecoder(req.Body).Decode(&receivedTask)
 						Ω(receivedTask.TaskGuid).Should(Equal(guid))
 						close(secondDone)
@@ -497,11 +504,11 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should retry", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(secondDone).Should(BeClosed())
 				Eventually(func() bool {
-					_, err := client.GetTask(guid)
+					_, err := bbsClient.TaskByGuid(guid)
 					return err == nil
 				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
@@ -509,15 +516,15 @@ var _ = Describe("Tasks", func() {
 
 		Context("[Regression: #84595244] when there's no room for the Task", func() {
 			BeforeEach(func() {
-				task.MemoryMB = 1024 * 1024
+				task.MemoryMb = 1024 * 1024
 			})
 
 			It("should hit the callback", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
 				Eventually(done).Should(BeClosed())
 
 				Eventually(func() bool {
-					_, err := client.GetTask(guid)
+					_, err := bbsClient.TaskByGuid(guid)
 					return err == nil
 				}).Should(BeFalse(), "Eventually, the task should be resolved")
 			})
@@ -527,39 +534,41 @@ var _ = Describe("Tasks", func() {
 	Describe("when the Task cannot be allocated", func() {
 		Context("because it's too large", func() {
 			BeforeEach(func() {
-				task.MemoryMB = 1024 * 1024
+				task.MemoryMb = 1024 * 1024
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
-				Eventually(TaskGetter(task.TaskGuid), 5).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Eventually(TaskGetter(guid), 5).Should(HaveTaskState(models.Task_Completed))
 
-				retreivedTask, err := client.GetTask(task.TaskGuid)
+				retreivedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(retreivedTask.Failed).Should(BeTrue())
 				Ω(retreivedTask.FailureReason).Should(ContainSubstring("insufficient resources"))
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 
 		Context("because of a stack mismatch", func() {
 			BeforeEach(func() {
-				task.RootFS = models.PreloadedRootFS("fruitfs")
+				task.RootFs = models.PreloadedRootFS("fruitfs")
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Ω(client.CreateTask(task)).Should(Succeed())
-				Eventually(TaskGetter(task.TaskGuid), 5).Should(HaveTaskState(receptor.TaskStateCompleted))
+				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Eventually(TaskGetter(guid), 5).Should(HaveTaskState(models.Task_Completed))
 
-				retreivedTask, err := client.GetTask(task.TaskGuid)
+				retreivedTask, err := bbsClient.TaskByGuid(guid)
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Ω(retreivedTask.Failed).Should(BeTrue())
 				Ω(retreivedTask.FailureReason).Should(ContainSubstring("found no compatible cell"))
 
-				Ω(client.DeleteTask(guid)).Should(Succeed())
+				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
+				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
 			})
 		})
 	})

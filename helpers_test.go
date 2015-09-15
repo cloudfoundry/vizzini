@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/receptor"
 	"github.com/cloudfoundry-incubator/route-emitter/cfroutes"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
@@ -23,44 +22,43 @@ const CrashRestartTimeout = 30 * time.Second
 
 //Tasks
 
-func TaskGetter(guid string) func() (receptor.TaskResponse, error) {
-	return func() (receptor.TaskResponse, error) {
-		return client.GetTask(guid)
+func TaskGetter(guid string) func() (*models.Task, error) {
+	return func() (*models.Task, error) {
+		return bbsClient.TaskByGuid(guid)
 	}
 }
 
-func TasksByDomainGetter(domain string) func() ([]receptor.TaskResponse, error) {
-	return func() ([]receptor.TaskResponse, error) {
-		return client.TasksByDomain(domain)
+func TasksByDomainGetter(domain string) func() ([]*models.Task, error) {
+	return func() ([]*models.Task, error) {
+		return bbsClient.TasksByDomain(domain)
 	}
 }
 
 func ClearOutTasksInDomain(domain string) {
-	tasks, err := client.TasksByDomain(domain)
+	tasks, err := bbsClient.TasksByDomain(domain)
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, task := range tasks {
-		if task.State != receptor.TaskStateCompleted {
-			client.CancelTask(task.TaskGuid)
-			Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(receptor.TaskStateCompleted))
+		if task.State != models.Task_Completed {
+			bbsClient.CancelTask(task.TaskGuid)
+			Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(models.Task_Completed))
 		}
-		Ω(client.DeleteTask(task.TaskGuid)).Should(Succeed())
+		Ω(bbsClient.ResolvingTask(task.TaskGuid)).Should(Succeed())
+		Ω(bbsClient.DeleteTask(task.TaskGuid)).Should(Succeed())
 	}
 	Eventually(TasksByDomainGetter(domain)).Should(BeEmpty())
 }
 
-func TaskWithGuid(guid string) receptor.TaskCreateRequest {
-	return receptor.TaskCreateRequest{
-		TaskGuid: guid,
-		Domain:   domain,
+func Task() *models.TaskDefinition {
+	return &models.TaskDefinition{
 		Action: models.WrapAction(&models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
 			User: "vcap",
 		}),
-		RootFS:     defaultRootFS,
-		MemoryMB:   128,
-		DiskMB:     128,
-		CPUWeight:  100,
+		RootFs:     defaultRootFS,
+		MemoryMb:   128,
+		DiskMb:     128,
+		CpuWeight:  100,
 		LogGuid:    guid,
 		LogSource:  "VIZ",
 		ResultFile: "/tmp/bar",
@@ -70,35 +68,72 @@ func TaskWithGuid(guid string) receptor.TaskCreateRequest {
 
 //LRPs
 
-func LRPGetter(guid string) func() (receptor.DesiredLRPResponse, error) {
-	return func() (receptor.DesiredLRPResponse, error) {
-		return client.GetDesiredLRP(guid)
+func LRPGetter(guid string) func() (*models.DesiredLRP, error) {
+	return func() (*models.DesiredLRP, error) {
+		return bbsClient.DesiredLRPByProcessGuid(guid)
 	}
 }
 
-func ActualGetter(guid string, index int) func() (receptor.ActualLRPResponse, error) {
-	return func() (receptor.ActualLRPResponse, error) {
-		return client.ActualLRPByProcessGuidAndIndex(guid, index)
+func ActualLRPByProcessGuidAndIndex(guid string, index int) (models.ActualLRP, error) {
+	actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(guid, index)
+	if err != nil {
+		return models.ActualLRP{}, err
+	}
+	actualLRP, _ := actualLRPGroup.Resolve()
+	return *actualLRP, nil
+}
+
+func ActualsByProcessGuid(guid string) ([]models.ActualLRP, error) {
+	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(guid)
+	if err != nil {
+		return nil, err
+	}
+
+	return resolveActuals(actualLRPGroups), nil
+}
+
+func ActualsByDomain(domain string) ([]models.ActualLRP, error) {
+	actualLRPGroups, err := bbsClient.ActualLRPGroups(models.ActualLRPFilter{Domain: domain})
+	if err != nil {
+		return nil, err
+	}
+
+	return resolveActuals(actualLRPGroups), nil
+}
+
+func resolveActuals(actualLRPGroups []*models.ActualLRPGroup) []models.ActualLRP {
+	actualLRPs := make([]models.ActualLRP, 0, len(actualLRPGroups))
+	for _, actualLRPGroup := range actualLRPGroups {
+		actualLRP, _ := actualLRPGroup.Resolve()
+		actualLRPs = append(actualLRPs, *actualLRP)
+	}
+
+	return actualLRPs
+}
+
+func ActualGetter(guid string, index int) func() (models.ActualLRP, error) {
+	return func() (models.ActualLRP, error) {
+		return ActualLRPByProcessGuidAndIndex(guid, index)
 	}
 }
 
-func ActualByProcessGuidGetter(guid string) func() ([]receptor.ActualLRPResponse, error) {
-	return func() ([]receptor.ActualLRPResponse, error) {
-		return client.ActualLRPsByProcessGuid(guid)
+func ActualByProcessGuidGetter(guid string) func() ([]models.ActualLRP, error) {
+	return func() ([]models.ActualLRP, error) {
+		return ActualsByProcessGuid(guid)
 	}
 }
 
-func ActualByDomainGetter(domain string) func() ([]receptor.ActualLRPResponse, error) {
-	return func() ([]receptor.ActualLRPResponse, error) {
-		return client.ActualLRPsByDomain(domain)
+func ActualByDomainGetter(domain string) func() ([]models.ActualLRP, error) {
+	return func() ([]models.ActualLRP, error) {
+		return ActualsByDomain(domain)
 	}
 }
 
 func ClearOutDesiredLRPsInDomain(domain string) {
-	lrps, err := client.DesiredLRPsByDomain(domain)
+	lrps, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: domain})
 	Ω(err).ShouldNot(HaveOccurred())
 	for _, lrp := range lrps {
-		Ω(client.DeleteDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
+		Ω(bbsClient.RemoveDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
 	}
 	Eventually(ActualByDomainGetter(domain)).Should(BeEmpty())
 }
@@ -208,7 +243,7 @@ func RouteForGuid(guid string) string {
 	return fmt.Sprintf("%s.%s", guid, routableDomainSuffix)
 }
 
-func DirectAddressFor(guid string, index int, containerPort uint16) string {
+func DirectAddressFor(guid string, index int, containerPort uint32) string {
 	actualLRP, err := ActualGetter(guid, index)()
 	Ω(err).ShouldNot(HaveOccurred())
 	Ω(actualLRP).ShouldNot(BeZero())
@@ -223,8 +258,8 @@ func DirectAddressFor(guid string, index int, containerPort uint16) string {
 	return ""
 }
 
-func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: guid,
 		Domain:      domain,
 		Instances:   1,
@@ -246,14 +281,14 @@ func DesiredLRPWithGuid(guid string) receptor.DesiredLRPCreateRequest {
 			Args: []string{"-z", "0.0.0.0", "8080"},
 			User: "vcap",
 		}),
-		RootFS:    defaultRootFS,
-		MemoryMB:  128,
-		DiskMB:    128,
-		CPUWeight: 100,
-		Ports:     []uint16{8080},
-		Routes: cfroutes.LegacyCFRoutes{
+		RootFs:    defaultRootFS,
+		MemoryMb:  128,
+		DiskMb:    128,
+		CpuWeight: 100,
+		Ports:     []uint32{8080},
+		Routes: cfroutes.CFRoutes{
 			{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
-		}.LegacyRoutingInfo(),
+		}.RoutingInfo(),
 		LogGuid:    guid,
 		LogSource:  "VIZ",
 		Annotation: "arbitrary-data",
