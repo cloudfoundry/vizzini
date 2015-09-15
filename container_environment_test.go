@@ -60,11 +60,22 @@ var _ = Describe("The container environment", func() {
 			actualLRP, err := client.ActualLRPByProcessGuidAndIndex(guid, 0)
 			Ω(err).ShouldNot(HaveOccurred())
 
+			type cfPortMapping struct {
+				External uint16 `json:"external"`
+				Internal uint16 `json:"internal"`
+			}
+
+			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{
+				{External: actualLRP.Ports[0].HostPort, Internal: actualLRP.Ports[0].ContainerPort},
+				{External: actualLRP.Ports[1].HostPort, Internal: actualLRP.Ports[1].ContainerPort},
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+
 			envs := getEnvs(url)
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
 			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORTS", fmt.Sprintf("%d:%d,%d:%d", actualLRP.Ports[0].HostPort, actualLRP.Ports[0].ContainerPort, actualLRP.Ports[1].HostPort, actualLRP.Ports[1].ContainerPort)}))
+			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
 		})
 	})
 })
