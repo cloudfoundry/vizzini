@@ -38,7 +38,7 @@ var _ = Describe("DiskLimits", func() {
 		})
 	})
 
-	Describe("with a docker-image rootfs", func() {
+	Describe("{DOCKER} with a docker-image rootfs", func() {
 		BeforeEach(func() {
 			lrp.RootFS = "docker:///onsi/grace-busybox"
 			lrp.Setup = nil //note: we copy nothing in, the docker image on its own should cause this failure
