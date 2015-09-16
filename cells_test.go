@@ -1,17 +1,17 @@
 package vizzini_test
 
 import (
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Cells", func() {
 	It("should return all cells", func() {
-		cells, err := client.Cells()
+		cells, err := locketClient.Cells()
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(len(cells)).Should(BeNumerically(">=", 1))
-		cell_z1_0 := receptor.CellResponse{}
+		cell_z1_0 := presence.CellPresence{}
 		for _, cell := range cells {
 			if cell.CellID == "cell_z1-0" {
 				cell_z1_0 = cell

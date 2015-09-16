@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/onsi/say"
+	"github.com/pivotal-golang/clock"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -16,12 +18,13 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/consuladapter"
+	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
-var client receptor.Client
 var bbsClient bbs.Client
+var locketClient locket.Client
 var domain string
 var otherDomain string
 var defaultRootFS string
@@ -29,13 +32,13 @@ var guid string
 var startTime time.Time
 
 var bbsAddress string
-var receptorAddress string
+var consulAddress string
 var routableDomainSuffix string
 var hostAddress string
 
 func init() {
-	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
+	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.Parse()
@@ -44,12 +47,12 @@ func init() {
 		log.Fatal("i need a bbs address to talk to Diego...")
 	}
 
-	if receptorAddress == "" {
-		log.Fatal("i need a receptor-address to talk to Diego...")
+	if consulAddress == "" {
+		log.Fatal("i need a consul address to talk to Diego...")
 	}
 }
 
-func TestReceptorSuite(t *testing.T) {
+func TestVizziniSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ReceptorSuite Suite")
 }
@@ -76,8 +79,17 @@ var _ = BeforeSuite(func() {
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
 
-	client = receptor.NewClient(receptorAddress)
 	bbsClient = bbs.NewClient(bbsAddress)
+	consulClient, err := consuladapter.NewClient(consulAddress)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	sessionMgr := consuladapter.NewSessionManager(consulClient)
+	consulSession, err := consuladapter.NewSession("vizzini", 10*time.Second, consulClient, sessionMgr)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	logger := lagertest.NewTestLogger("vizzini")
+
+	locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
 })
 
 var _ = BeforeEach(func() {
