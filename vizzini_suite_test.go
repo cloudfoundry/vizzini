@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 
 	"github.com/onsi/say"
@@ -32,12 +33,18 @@ var guid string
 var startTime time.Time
 
 var bbsAddress string
+var bbsCA string
+var bbsClientCert string
+var bbsClientKey string
 var consulAddress string
 var routableDomainSuffix string
 var hostAddress string
 
 func init() {
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
+	flag.StringVar(&bbsCA, "bbs-ca", "", "bbs ca cert")
+	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
+	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
 	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
@@ -79,7 +86,9 @@ var _ = BeforeSuite(func() {
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
 
-	bbsClient = bbs.NewClient(bbsAddress)
+	var err error
+	bbsClient = initializeBBSClient()
+
 	consulClient, err := consuladapter.NewClient(consulAddress)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -119,3 +128,16 @@ var _ = AfterSuite(func() {
 		ClearOutTasksInDomain(domain)
 	}
 })
+
+func initializeBBSClient() bbs.Client {
+	bbsURL, err := url.Parse(bbsAddress)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	if bbsURL.Scheme != "https" {
+		return bbs.NewClient(bbsAddress)
+	}
+
+	bbsClient, err := bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey)
+	Ω(err).ShouldNot(HaveOccurred())
+	return bbsClient
+}
