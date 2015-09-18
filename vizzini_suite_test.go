@@ -61,7 +61,7 @@ func init() {
 
 func TestVizziniSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "ReceptorSuite Suite")
+	RunSpecs(t, "Vizzini Suite")
 }
 
 func NewGuid() string {
