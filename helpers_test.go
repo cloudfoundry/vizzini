@@ -259,6 +259,10 @@ func DirectAddressFor(guid string, index int, containerPort uint32) string {
 }
 
 func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
+	routingInfo := cfroutes.CFRoutes{
+		{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
+	}.RoutingInfo()
+
 	return &models.DesiredLRP{
 		ProcessGuid: guid,
 		Domain:      domain,
@@ -281,14 +285,12 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 			Args: []string{"-z", "0.0.0.0", "8080"},
 			User: "vcap",
 		}),
-		RootFs:    defaultRootFS,
-		MemoryMb:  128,
-		DiskMb:    128,
-		CpuWeight: 100,
-		Ports:     []uint32{8080},
-		Routes: cfroutes.CFRoutes{
-			{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
-		}.RoutingInfo(),
+		RootFs:     defaultRootFS,
+		MemoryMb:   128,
+		DiskMb:     128,
+		CpuWeight:  100,
+		Ports:      []uint32{8080},
+		Routes:     &routingInfo,
 		LogGuid:    guid,
 		LogSource:  "VIZ",
 		Annotation: "arbitrary-data",

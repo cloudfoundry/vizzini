@@ -65,14 +65,15 @@ var _ = Describe("Routing Related Tests", func() {
 		It("should be able to route to multiple ports", func() {
 			By("updating the LRP with a new route to a port 9999")
 			newRoute := RouteForGuid(NewGuid())
-			routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+			routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
 			Ω(err).ShouldNot(HaveOccurred())
 			routes = append(routes, cfroutes.CFRoute{
 				Hostnames: []string{newRoute},
 				Port:      9999,
 			})
+			routingInfo := routes.RoutingInfo()
 			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
-				Routes: routes.RoutingInfo(),
+				Routes: &routingInfo,
 			})).Should(Succeed())
 
 			By("verifying that the new route is hooked up to the port")
@@ -84,8 +85,9 @@ var _ = Describe("Routing Related Tests", func() {
 			By("adding a new route to the new port")
 			veryNewRoute := RouteForGuid(NewGuid())
 			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
+			routingInfo = routes.RoutingInfo()
 			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
-				Routes: routes.RoutingInfo(),
+				Routes: &routingInfo,
 			})).Should(Succeed())
 
 			Eventually(EndpointContentCurler("http://" + veryNewRoute)).Should(Equal("grace side-channel"))

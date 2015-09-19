@@ -246,13 +246,14 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating routes", func() {
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
 
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
+					routingInfo := routes.RoutingInfo()
 
 					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
-						Routes: routes.RoutingInfo(),
+						Routes: &routingInfo,
 					})).Should(Succeed())
 
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
@@ -272,13 +273,17 @@ var _ = Describe("LRPs", func() {
 				It("allows multiple simultaneous updates", func() {
 					two := int32(2)
 					annotation := "my new annotation"
+
 					newRoute := RouteForGuid(NewGuid())
-					routes, err := cfroutes.CFRoutesFromRoutingInfo(lrp.Routes)
+					routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
 					Ω(err).ShouldNot(HaveOccurred())
+
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
+					routingInfo := routes.RoutingInfo()
+
 					Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 						Instances:  &two,
-						Routes:     routes.RoutingInfo(),
+						Routes:     &routingInfo,
 						Annotation: &annotation,
 					})).Should(Succeed())
 
