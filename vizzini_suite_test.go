@@ -9,6 +9,7 @@ import (
 
 	"github.com/onsi/say"
 	"github.com/pivotal-golang/clock"
+	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/nu7hatch/gouuid"
@@ -20,12 +21,11 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/locket"
 	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var bbsClient bbs.Client
-var locketClient locket.Client
+var serviceClient bbs.ServiceClient
 var domain string
 var otherDomain string
 var defaultRootFS string
@@ -39,6 +39,7 @@ var bbsClientKey string
 var consulAddress string
 var routableDomainSuffix string
 var hostAddress string
+var logger lager.Logger
 
 func init() {
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
@@ -96,9 +97,9 @@ var _ = BeforeSuite(func() {
 	consulSession, err := consuladapter.NewSession("vizzini", 10*time.Second, consulClient, sessionMgr)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	logger := lagertest.NewTestLogger("vizzini")
+	logger = lagertest.NewTestLogger("vizzini")
 
-	locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
+	serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())
 })
 
 var _ = BeforeEach(func() {
