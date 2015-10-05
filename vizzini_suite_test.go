@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/consuladapter"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 )
 
 var bbsClient bbs.Client
