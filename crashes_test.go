@@ -47,11 +47,6 @@ var _ = Describe("Crashes", func() {
 	BeforeEach(func() {
 		url = fmt.Sprintf("http://%s", RouteForGuid(guid))
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Action = models.WrapAction(&models.RunAction{
-			Path: "./grace",
-			User: "vcap",
-			Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-		})
 		lrp.Monitor = nil
 	})
 
@@ -191,7 +186,7 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 						&models.RunAction{
-							Path: "./grace",
+							Path: "/tmp/grace/grace",
 							Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 							User: "vcap",
 						},
@@ -221,7 +216,7 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 						&models.RunAction{
-							Path: "./grace",
+							Path: "/tmp/grace/grace",
 							Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 							User: "vcap",
 						},
@@ -249,7 +244,7 @@ var _ = Describe("Crashes", func() {
 			var indirectURL string
 			BeforeEach(func() {
 				lrp.Action = models.WrapAction(&models.RunAction{
-					Path: "./grace",
+					Path: "/tmp/grace/grace",
 					Args: []string{"-upFile=up"},
 					User: "vcap",
 					Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
@@ -346,7 +341,7 @@ var _ = Describe("Crashes", func() {
 			Context("when the process dies with exit code 0", func() {
 				BeforeEach(func() {
 					lrp.Action = models.WrapAction(&models.RunAction{
-						Path: "./grace",
+						Path: "/tmp/grace/grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
 						User: "vcap",
 						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
@@ -361,7 +356,7 @@ var _ = Describe("Crashes", func() {
 			Context("when the process dies with exit code 1", func() {
 				BeforeEach(func() {
 					lrp.Action = models.WrapAction(&models.RunAction{
-						Path: "./grace",
+						Path: "/tmp/grace/grace",
 						Args: []string{"-exitAfter=2s", "-exitAfterCode=1"},
 						User: "vcap",
 						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},

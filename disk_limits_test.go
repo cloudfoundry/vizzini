@@ -15,6 +15,15 @@ var _ = Describe("DiskLimits", func() {
 	})
 
 	Describe("with a preloaded rootfs, the disk limit is applied to the COW layer", func() {
+		BeforeEach(func() {
+			lrp.Setup = models.WrapAction(&models.DownloadAction{
+				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+				To:       ".",
+				CacheKey: "grace",
+				User:     "vcap",
+			})
+		})
+
 		Context("when the disk limit exceeds the contents to be copied in", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64

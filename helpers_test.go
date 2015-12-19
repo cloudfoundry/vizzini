@@ -267,16 +267,16 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		ProcessGuid: guid,
 		Domain:      domain,
 		Instances:   1,
-		Setup: models.WrapAction(models.Serial(
-			&models.DownloadAction{
+		CachedDependencies: []*models.CachedDependency{
+			&models.CachedDependency{
 				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-				To:       ".",
+				To:       "/tmp/grace",
 				CacheKey: "grace",
-				User:     "vcap",
 			},
-		)),
+		},
+		LegacyDownloadUser: "vcap",
 		Action: models.WrapAction(&models.RunAction{
-			Path: "./grace",
+			Path: "/tmp/grace/grace",
 			User: "vcap",
 			Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
 		}),
