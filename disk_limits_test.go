@@ -62,7 +62,7 @@ var _ = Describe("DiskLimits", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64
 				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 		})
 

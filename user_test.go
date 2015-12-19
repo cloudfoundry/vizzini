@@ -28,7 +28,7 @@ var _ = Describe("Users", func() {
 
 		It("runs an action as alice", func() {
 			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Running))
-			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(models.Task_Completed))
+			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Completed))
 
 			task, err := bbsClient.TaskByGuid(guid)
 			Ω(err).ShouldNot(HaveOccurred())
