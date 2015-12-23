@@ -45,7 +45,7 @@ var timeout time.Duration
 var dockerTimeout time.Duration
 
 func init() {
-	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
+	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.2:8889", "http address for the bbs (required)")
 	flag.StringVar(&bbsCA, "bbs-ca", "", "bbs ca cert")
 	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
 	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
