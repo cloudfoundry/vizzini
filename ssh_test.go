@@ -116,7 +116,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		return secureCommand("scp", append(sshArgs, args...)...)
 	}
 
-	generatePrivateKey := func() string {
+	writePrivateKeyFile := func() string {
 		f, err := ioutil.TempFile("", "pem")
 		Ω(err).ShouldNot(HaveOccurred())
 		fmt.Fprintf(f, privateRSAKey)
@@ -211,7 +211,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			BeforeEach(func() {
 				sshdArgs = []string{"-authorizedKey=" + authorizedKey}
 
-				keypath = generatePrivateKey()
+				keypath = writePrivateKeyFile()
 				sshClientArgs = append(sshClientArgs, "-i", keypath)
 			})
 
@@ -341,7 +341,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
 
-			keypath = generatePrivateKey()
+			keypath = writePrivateKeyFile()
 			sshClientArgs = append(sshClientArgs, "-i", keypath)
 		})
 
