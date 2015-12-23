@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -71,6 +72,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		lrp           *models.DesiredLRP
 		user          string
 		rootfs        string
+		startTimeout  time.Duration
 		sshdArgs      []string
 		sshClientArgs []string
 		shellServer   models.RunAction
@@ -126,6 +128,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 	BeforeEach(func() {
 		user = "vcap"
+		startTimeout = timeout
 		sshdArgs = []string{}
 		sshClientArgs = []string{
 			"-o", "StrictHostKeyChecking=no",
@@ -164,6 +167,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		}
 
 		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+		Eventually(ActualGetter(guid, 0), startTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 	})
 
 	Context("in a fully-featured preloaded rootfs", func() {
@@ -180,10 +184,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Args: []string{"-z", "0.0.0.0", "2222"},
 				User: user,
 			}
-		})
-
-		JustBeforeEach(func() {
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 		})
 
 		Context("with an unauthenticated SSH session", func() {
@@ -324,6 +324,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		BeforeEach(func() {
 			user = "root"
 			rootfs = "docker:///busybox"
+			startTimeout = dockerTimeout
 			shellServer = models.RunAction{
 				Path: "sh",
 				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
@@ -346,10 +347,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 		AfterEach(func() {
 			os.Remove(keypath)
-		})
-
-		JustBeforeEach(func() {
-			Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 		})
 
 		It("runs an ssh command", func() {
