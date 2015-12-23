@@ -188,7 +188,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 		Context("with an unauthenticated SSH session", func() {
 			BeforeEach(func() {
-				sshdArgs = []string{"-allowUnauthenticatedClients"}
+				sshdArgs = append(sshdArgs, "-allowUnauthenticatedClients")
 			})
 
 			It("runs an ssh command", func() {
@@ -200,7 +200,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 				Eventually(session).Should(gexec.Exit(0))
 				Ω(session).Should(gbytes.Say("USER=" + user))
-				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 			})
 		})
 
@@ -208,7 +207,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			var keypath string
 
 			BeforeEach(func() {
-				sshdArgs = []string{"-authorizedKey=" + userAuthorizedKey}
+				sshdArgs = append(sshdArgs, "-authorizedKey="+userAuthorizedKey)
 
 				keypath = writeUserPrivateKeyFile()
 				sshClientArgs = append(sshClientArgs, "-i", keypath)
@@ -227,7 +226,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 				Eventually(session).Should(gexec.Exit(0))
 				Ω(session).Should(gbytes.Say("USER=" + user))
-				// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 			})
 
 			It("runs an interactive ssh session", func() {
@@ -315,6 +313,24 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 				Ω(contents).Should(Equal([]byte("hello from vizzini")))
 			})
+
+			Context("when the daemon inherits the environment", func() {
+				BeforeEach(func() {
+					sshdArgs = append(sshdArgs, "-inheritDaemonEnv")
+				})
+
+				It("runs ssh commands with the container environment", func() {
+					target := directTargetFor(guid, 0, 2222)
+					session, err := gexec.Start(ssh(target,
+						"/usr/bin/env",
+					), GinkgoWriter, GinkgoWriter)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					Eventually(session).Should(gexec.Exit(0))
+					Ω(session).Should(gbytes.Say("USER=" + user))
+					Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
+				})
+			})
 		})
 	})
 
@@ -339,7 +355,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				User: user,
 			}
 
-			sshdArgs = []string{"-authorizedKey=" + userAuthorizedKey}
+			sshdArgs = append(sshdArgs, "-authorizedKey="+userAuthorizedKey)
 
 			keypath = writeUserPrivateKeyFile()
 			sshClientArgs = append(sshClientArgs, "-i", keypath)
@@ -358,7 +374,6 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 			Eventually(session).Should(gexec.Exit(0))
 			Ω(session).Should(gbytes.Say("USER=" + user))
-			// Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund")) //currently failing
 		})
 
 		It("forwards ports", func() {
