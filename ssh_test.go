@@ -352,7 +352,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		It("runs an ssh command", func() {
 			target := directTargetFor(guid, 0, 2222)
 			session, err := gexec.Start(ssh(target,
-				"/usr/bin/env",
+				"/bin/env",
 			), GinkgoWriter, GinkgoWriter)
 			Ω(err).ShouldNot(HaveOccurred())
 
