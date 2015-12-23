@@ -18,7 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const privateRSAKey = `-----BEGIN RSA PRIVATE KEY-----
+const userPrivateRSAKey = `-----BEGIN RSA PRIVATE KEY-----
 MIIEhgIBAAKB/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5I
 y/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3U
 t7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+K
@@ -46,7 +46,7 @@ Jm/15BLfU/Ty+MHchPV6bR6fQ6SnePDKQNOBSxtMQT8oFNNM/os+WYpsF5dG8whH
 wWA9OrJdbrDo9w==
 -----END RSA PRIVATE KEY-----`
 
-const authorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zibNqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQ==`
+const userAuthorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zibNqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQ==`
 
 type sshTarget struct {
 	User string
@@ -67,7 +67,6 @@ func directTargetFor(guid string, index int, port uint32) sshTarget {
 
 //These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
 var _ = Describe("{LOCAL} SSH Tests", func() {
-
 	var (
 		lrp           *models.DesiredLRP
 		user          string
@@ -116,10 +115,10 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		return secureCommand("scp", append(sshArgs, args...)...)
 	}
 
-	writePrivateKeyFile := func() string {
+	writeUserPrivateKeyFile := func() string {
 		f, err := ioutil.TempFile("", "pem")
 		Ω(err).ShouldNot(HaveOccurred())
-		fmt.Fprintf(f, privateRSAKey)
+		fmt.Fprintf(f, userPrivateRSAKey)
 		f.Close()
 
 		return f.Name()
@@ -209,9 +208,9 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			var keypath string
 
 			BeforeEach(func() {
-				sshdArgs = []string{"-authorizedKey=" + authorizedKey}
+				sshdArgs = []string{"-authorizedKey=" + userAuthorizedKey}
 
-				keypath = writePrivateKeyFile()
+				keypath = writeUserPrivateKeyFile()
 				sshClientArgs = append(sshClientArgs, "-i", keypath)
 			})
 
@@ -339,9 +338,9 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				User: user,
 			}
 
-			sshdArgs = []string{"-authorizedKey=" + authorizedKey}
+			sshdArgs = []string{"-authorizedKey=" + userAuthorizedKey}
 
-			keypath = writePrivateKeyFile()
+			keypath = writeUserPrivateKeyFile()
 			sshClientArgs = append(sshClientArgs, "-i", keypath)
 		})
 
