@@ -41,6 +41,9 @@ var routableDomainSuffix string
 var hostAddress string
 var logger lager.Logger
 
+var timeout time.Duration
+var dockerTimeout time.Duration
+
 func init() {
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
 	flag.StringVar(&bbsCA, "bbs-ca", "", "bbs ca cert")
@@ -72,15 +75,17 @@ func NewGuid() string {
 }
 
 var _ = BeforeSuite(func() {
-	timeout := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
-	if timeout == "" {
-		SetDefaultEventuallyTimeout(10 * time.Second)
-	} else {
-		duration, err := time.ParseDuration(timeout)
-		Ω(err).ShouldNot(HaveOccurred(), "invalid timeout")
-		fmt.Printf("Setting Default Eventually Timeout to %s\n", duration)
-		SetDefaultEventuallyTimeout(duration)
+	timeout = 10 * time.Second
+	dockerTimeout = 120 * time.Second
+
+	timeoutArg := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
+	if timeoutArg != "" {
+		timeout, err := time.ParseDuration(timeoutArg)
+		Ω(err).ShouldNot(HaveOccurred(), "invalid value '"+timeoutArg+"' for DEFAULT_EVENTUALLY_TIMEOUT")
+		fmt.Printf("Setting Default Eventually Timeout to %s\n", timeout)
 	}
+
+	SetDefaultEventuallyTimeout(timeout)
 	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
