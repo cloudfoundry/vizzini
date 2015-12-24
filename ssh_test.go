@@ -140,7 +140,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		lrp = &models.DesiredLRP{
 			ProcessGuid:          guid,
 			Domain:               domain,
-			Instances:            2,
+			Instances:            1,
 			EnvironmentVariables: []*models.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
 			Setup: models.WrapAction(&models.DownloadAction{
 				Artifact: "lifecycle bundle",
