@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 
@@ -37,6 +38,10 @@ var bbsClientCert string
 var bbsClientKey string
 var consulAddress string
 var routableDomainSuffix string
+var sshAddress string
+var sshHost string
+var sshPort string
+var sshPassword string
 var hostAddress string
 var logger lager.Logger
 
@@ -48,6 +53,8 @@ func init() {
 	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
 	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
 	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
+	flag.StringVar(&sshAddress, "ssh-address", "ssh.bosh-lite.com:2222", "domain and port for the ssh proxy (required)")
+	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.Parse()
@@ -58,6 +65,10 @@ func init() {
 
 	if consulAddress == "" {
 		log.Fatal("i need a consul address to talk to Diego...")
+	}
+
+	if sshAddress == "" {
+		log.Fatal("i need an SSH address to talk to Diego...")
 	}
 }
 
@@ -94,6 +105,9 @@ var _ = BeforeSuite(func() {
 	bbsClient = initializeBBSClient()
 
 	consulClient, err := consuladapter.NewClient(consulAddress)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	sessionMgr := consuladapter.NewSessionManager(consulClient)

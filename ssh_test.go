@@ -1,18 +1,23 @@
 package vizzini_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
-	"strings"
+	"syscall"
 	"time"
 
+	"github.com/kr/pty"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
 	"github.com/cloudfoundry-incubator/bbs/models"
+	ssh_routes "github.com/cloudfoundry-incubator/diego-ssh/routes"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
@@ -49,26 +54,47 @@ wWA9OrJdbrDo9w==
 
 const userAuthorizedKey = ` ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAA/C/hstPGznfdyUGdbatKgbWJYRTb8S8A7ehto1SukBzCKrR+Dw5Iy/qSIzi82xkOGjckEECa2B9fiACBY+fQQPvInCnU5iMUkJNZcrugJhnv6S9y8k3Ut7HT9YVlIxDpjxyxdrkkkmoPCAu0zSqUQuv6QlKBi2A7wZcfwmupOue11vhaPQ+KNULtJaiYNQoHsvO/hxe/wcKmHI4R0cWp/zibNqx5xz6eaao5qsrshr02mRxMumYCQohfM93/wL+oVyzLMSeaKxZtAglfMecjNcUn9Sk22Jq1bbvu8cLR9Gdg35XeHl5Gif03/JQsXbUpLeQd8nXKUjYk8uNAHQ==`
 
+const hostPrivateRSAKey = `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA2/Qt7gMd20+O+sOKxSCk+7AvFxJAqFNfnrB9nlAU1986UR3R
+euk5xqTvJokv3yCbzTPP07cQFHenalBrg2/sjCdq9MWKi8vfIBW3malquLr0fBRx
+qboukme2rgNXH0HCALxLinjBLPK5ToRMB25FVixkYo8nEvUbfiYH5GIRawXdRo7L
+XXIK/Htx40zUPpIu9juB5K+RFovI+MIv6U3QqxNYOUhfbPhaGVV0FdFLO+uQNdLy
+/ov7tI1mJVKTvpPR+Eea6v2rL75KdOfJ5prGVsAPrDA6gcvYpuJqaSi3OJe5sEhq
+yQs9qQoA60tGQfX0bmRdEhWDiueCXW5/WoU/2wIDAQABAoIBACReF0oHUeR1Hxrv
+Qf6eCyliVCboabBrOKAwZlTKwOeAjU/kMkK0VU028CPbAwNNjPU839wNpKb9sbyu
+V1iAJQh3bAPUtbevmdDgRl8t1+t7Xfk2GCUMF681Xsse2kTcxosAlyzqEmawK1uE
+HF4OKYC6Dk8NhFRqGoWdHCjy3hZnrzZsaNUUlMMCRTkyENCXR67hLT5TQfqEpbHP
+5BVSJe3nmvAUPN7Q3Nk98aRAzC1NLv7XGKCvLNFF7L4Kvq3BfoXVOjekvyF/Ssbn
+ciRpPRgxCJP3vlkWGFVbtnnZQpQDSc+LIbAxZ4BI5MMcsgX6YyyBbUzRbtub7JVQ
+rW18GWECgYEA+95Ye4lsc5Tp+WK9JvxvGUAjgrtO4t8/v6129NnYD1miZCjwb8Sn
+Ewk97cNfkWmTnCtsL5V18YXkpdgj3lF9cfnAFdJc3IX9xzpbrykEuJV1kxCCU61P
+9LsehAOpNTDAwfM+wX92W6iNnYd+jBAiEPExP2qkKetnHfNVb8a5FB8CgYEA34/R
+Bo4/Yb0E2Xi8C1FBOUlmDPhqN8QKKjdpVNSIrD5Q5eV1xpKKpZuB9TaCWQEWvcwT
+nbXTGTJ4CUGSMzGMZg7iPREXt41YRdiv/VrBA/zevSC6OfhiJx+Mz32aDWNFfUtV
+CwQlSSfiC5lw8PD9uY6q/lJUEBPcDXIBj2JuvMUCgYEAt4mONu+sjQlN+sIeDmPT
+XbYkamauFJsUrEvurHx2erEZqh0/IGNQUInii/lcEe26eAoYexBR8x9bwBKiCKaf
+YEfb1ssFillF1kFLgHfGje+zzugv4GQiKLeWhCLa0fzl6i+kYoLMr/xCvjF3YP98
+o5XvCkRevoFhEi047AwG4IcCgYBz1OwUXXdxiKIOm4OyyXLl36XEaqF+K1Co9vTY
+QxZdSBxaQT14mUzE6YG4L3nx66KAzFANkrvBfmi7QwIhDDcWWffWdBi5vb5S0ia9
+OlxvWIF/tIlIp+0TIEGw7/71mM3UUUfK4WcANG3mXKYr8HFFxynJg5aSjfeh78Pn
+KrT9kQKBgQCy9UfV4Kku8Zk6FeqWZvZP+wYarG9BMvc7C4mT+6bNMCeCmMydueZs
+u6FLDjvicUuG1MZywSCoOpI6MZkcZiFXwdgIdRFdhDDcWdewItsJXBmHMjzr+t8P
+hqA2YFwsUWCcgAxICpYQyTFVYBnHUVPYAHzctmWRbQuXhMJgWIRNhw==
+-----END RSA PRIVATE KEY-----`
+
+const hostFingerprint = `9e:33:35:e0:fe:67:e5:c4:7e:90:53:72:c2:3f:a1:9c`
+
 type sshTarget struct {
 	User string
 	Host string
 	Port string
 }
 
-func directTargetFor(guid string, index int, port uint32) sshTarget {
-	addrComponents := strings.Split(DirectAddressFor(guid, index, port), ":")
-	Ω(addrComponents).Should(HaveLen(2))
-
-	return sshTarget{
-		User: "vcap",
-		Host: addrComponents[0],
-		Port: addrComponents[1],
-	}
-}
-
-//These are LOCAL until we get the SSH proxy working.  There's no way to route to the container on Ketchup.
+// LOCAL because not all SSH proxies have the Diego SSH authenticator enabled
 var _ = Describe("{LOCAL} SSH Tests", func() {
 	var (
+		password      string
+		target        sshTarget
 		lrp           *models.DesiredLRP
 		user          string
 		rootfs        string
@@ -118,19 +144,21 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 		return secureCommand("scp", append(sshArgs, args...)...)
 	}
 
-	writeUserPrivateKeyFile := func() string {
-		f, err := ioutil.TempFile("", "pem")
-		Ω(err).ShouldNot(HaveOccurred())
-		fmt.Fprintf(f, userPrivateRSAKey)
-		f.Close()
-
-		return f.Name()
-	}
-
 	BeforeEach(func() {
+		password = sshPassword
+		target = sshTarget{
+			User: "diego:" + guid + "/0",
+			Port: sshPort,
+			Host: sshHost,
+		}
+
 		user = "vcap"
 		startTimeout = timeout
-		sshdArgs = []string{}
+		sshdArgs = append(sshdArgs,
+			"-hostKey="+hostPrivateRSAKey,
+			"-authorizedKey="+userAuthorizedKey,
+			"-inheritDaemonEnv",
+		)
 		sshClientArgs = []string{
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "UserKnownHostsFile=/dev/null",
@@ -138,6 +166,18 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 	})
 
 	JustBeforeEach(func() {
+		sshRoutePayload, err := json.Marshal(ssh_routes.SSHRoute{
+			ContainerPort:   2222,
+			HostFingerprint: hostFingerprint,
+			PrivateKey:      userPrivateRSAKey,
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		sshRouteJSON := json.RawMessage(sshRoutePayload)
+		routes := models.Routes{
+			ssh_routes.DIEGO_SSH: &sshRouteJSON,
+		}
+
 		lrp = &models.DesiredLRP{
 			ProcessGuid:          guid,
 			Domain:               domain,
@@ -155,6 +195,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 					Path: "/tmp/diego-sshd",
 					Args: append([]string{
 						"-address=0.0.0.0:2222",
+						"-logLevel=debug",
 					}, sshdArgs...),
 					User: user,
 				},
@@ -165,6 +206,7 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			MemoryMb: 128,
 			DiskMb:   128,
 			Ports:    []uint32{2222},
+			Routes:   &routes,
 		}
 
 		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
@@ -187,60 +229,23 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 			}
 		})
 
-		Context("with an unauthenticated SSH session", func() {
-			BeforeEach(func() {
-				sshdArgs = append(sshdArgs, "-allowUnauthenticatedClients")
-			})
+		It("runs an ssh command", func() {
+			cmd := ssh(target, "/usr/bin/env")
 
-			It("runs an ssh command", func() {
-				target := directTargetFor(guid, 0, 2222)
-				session, err := gexec.Start(ssh(target,
-					"/usr/bin/env",
-				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+			session := runWithPassword(cmd, password)
 
-				Eventually(session).Should(gexec.Exit(0))
-				Ω(session).Should(gbytes.Say("USER=" + user))
-			})
+			Eventually(session).Should(gexec.Exit(0))
+			Ω(session).Should(gbytes.Say("USER=" + user))
+			Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
 		})
 
-		Describe("with a public-key-authenticated SSH session", func() {
-			var keypath string
+		It("runs an interactive ssh session", func() {
+			cmd := sshInteractive(target)
 
-			BeforeEach(func() {
-				sshdArgs = append(sshdArgs, "-authorizedKey="+userAuthorizedKey)
-
-				keypath = writeUserPrivateKeyFile()
-				sshClientArgs = append(sshClientArgs, "-i", keypath)
-			})
-
-			AfterEach(func() {
-				os.Remove(keypath)
-			})
-
-			It("runs an ssh command", func() {
-				target := directTargetFor(guid, 0, 2222)
-				session, err := gexec.Start(ssh(target,
-					"/usr/bin/env",
-				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				Eventually(session).Should(gexec.Exit(0))
-				Ω(session).Should(gbytes.Say("USER=" + user))
-			})
-
-			It("runs an interactive ssh session", func() {
-				target := directTargetFor(guid, 0, 2222)
-				sshCommand := sshInteractive(target)
-
-				input, err := sshCommand.StdinPipe()
-				Ω(err).ShouldNot(HaveOccurred())
-
-				session, err := gexec.Start(sshCommand, GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, input *os.File) {
 				Eventually(session).Should(gbytes.Say(user + "@"))
 
-				_, err = input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
+				_, err := input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(session).Should(gbytes.Say("foobar"))
@@ -249,16 +254,15 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 
 				Eventually(session.Err).Should(gbytes.Say("Connection to " + target.Host + " closed."))
-				Eventually(session).Should(gexec.Exit(0))
 			})
 
-			It("forwards ports", func() {
-				target := directTargetFor(guid, 0, 2222)
-				session, err := gexec.Start(sshTunnelTo(target,
-					12345,
-					9999,
-				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+			Eventually(session).Should(gexec.Exit(0))
+		})
+
+		It("forwards ports", func() {
+			cmd := sshTunnelTo(target, 12345, 9999)
+
+			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
 				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
 
 				nc, err := gexec.Start(exec.Command(
@@ -272,72 +276,49 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				Ω(nc).Should(gbytes.Say("inconceivable!"))
 
 				session.Interrupt()
-
-				Eventually(session).Should(gexec.Exit())
 			})
 
-			It("copies files back and forth", func() {
-				dir, err := ioutil.TempDir("", "vizzini-ssh")
-				Ω(err).ShouldNot(HaveOccurred())
+			Eventually(session).Should(gexec.Exit())
+		})
 
-				defer os.RemoveAll(dir)
+		It("copies files back and forth", func() {
+			dir, err := ioutil.TempDir("", "vizzini-ssh")
+			Ω(err).ShouldNot(HaveOccurred())
 
-				inpath := path.Join(dir, "inbound")
-				infile, err := os.Create(inpath)
-				Ω(err).ShouldNot(HaveOccurred())
+			defer os.RemoveAll(dir)
 
-				_, err = infile.Write([]byte("hello from vizzini"))
-				Ω(err).ShouldNot(HaveOccurred())
+			inpath := path.Join(dir, "inbound")
+			infile, err := os.Create(inpath)
+			Ω(err).ShouldNot(HaveOccurred())
 
-				err = infile.Close()
-				Ω(err).ShouldNot(HaveOccurred())
+			_, err = infile.Write([]byte("hello from vizzini"))
+			Ω(err).ShouldNot(HaveOccurred())
 
-				target := directTargetFor(guid, 0, 2222)
-				insession, err := gexec.Start(scp(target,
-					inpath,
-					target.Host+":in-container",
-				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+			err = infile.Close()
+			Ω(err).ShouldNot(HaveOccurred())
 
-				Eventually(insession).Should(gexec.Exit())
+			insession := runWithPassword(scp(target,
+				inpath,
+				target.Host+":in-container",
+			), password)
 
-				outpath := path.Join(dir, "outbound")
-				outsession, err := gexec.Start(scp(target,
-					target.Host+":in-container",
-					outpath,
-				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+			Eventually(insession).Should(gexec.Exit())
 
-				Eventually(outsession).Should(gexec.Exit())
+			outpath := path.Join(dir, "outbound")
+			outsession := runWithPassword(scp(target,
+				target.Host+":in-container",
+				outpath,
+			), password)
 
-				contents, err := ioutil.ReadFile(outpath)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(contents).Should(Equal([]byte("hello from vizzini")))
-			})
+			Eventually(outsession).Should(gexec.Exit())
 
-			Context("when the daemon inherits the environment", func() {
-				BeforeEach(func() {
-					sshdArgs = append(sshdArgs, "-inheritDaemonEnv")
-				})
-
-				It("runs ssh commands with the container environment", func() {
-					target := directTargetFor(guid, 0, 2222)
-					session, err := gexec.Start(ssh(target,
-						"/usr/bin/env",
-					), GinkgoWriter, GinkgoWriter)
-					Ω(err).ShouldNot(HaveOccurred())
-
-					Eventually(session).Should(gexec.Exit(0))
-					Ω(session).Should(gbytes.Say("USER=" + user))
-					Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
-				})
-			})
+			contents, err := ioutil.ReadFile(outpath)
+			Ω(err).ShouldNot(HaveOccurred())
+			Ω(contents).Should(Equal([]byte("hello from vizzini")))
 		})
 	})
 
 	Context("{DOCKER} in a bare-bones docker image with /bin/sh", func() {
-		var keypath string
-
 		BeforeEach(func() {
 			user = "root"
 			rootfs = "docker:///busybox"
@@ -355,50 +336,107 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 				},
 				User: user,
 			}
-
-			sshdArgs = append(sshdArgs, "-authorizedKey="+userAuthorizedKey)
-
-			keypath = writeUserPrivateKeyFile()
-			sshClientArgs = append(sshClientArgs, "-i", keypath)
-		})
-
-		AfterEach(func() {
-			os.Remove(keypath)
 		})
 
 		It("runs an ssh command", func() {
-			target := directTargetFor(guid, 0, 2222)
-			session, err := gexec.Start(ssh(target,
-				"/bin/env",
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
+			cmd := ssh(target, "/bin/env")
+
+			session := runWithPassword(cmd, password)
 
 			Eventually(session).Should(gexec.Exit(0))
 			Ω(session).Should(gbytes.Say("USER=" + user))
+			Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
 		})
 
 		It("forwards ports", func() {
-			target := directTargetFor(guid, 0, 2222)
-			session, err := gexec.Start(sshTunnelTo(target,
-				23456,
-				9999,
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
-			Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
+			cmd := sshTunnelTo(target, 12345, 9999)
 
-			nc, err := gexec.Start(exec.Command(
-				"nc",
-				"127.0.0.1",
-				"23456",
-			), GinkgoWriter, GinkgoWriter)
-			Ω(err).ShouldNot(HaveOccurred())
+			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
+				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
 
-			Eventually(nc).Should(gexec.Exit(0))
-			Ω(nc).Should(gbytes.Say("inconceivable!"))
+				nc, err := gexec.Start(exec.Command(
+					"nc",
+					"127.0.0.1",
+					"12345",
+				), GinkgoWriter, GinkgoWriter)
+				Ω(err).ShouldNot(HaveOccurred())
 
-			session.Interrupt()
+				Eventually(nc).Should(gexec.Exit(0))
+				Ω(nc).Should(gbytes.Say("inconceivable!"))
+
+				session.Interrupt()
+			})
 
 			Eventually(session).Should(gexec.Exit())
 		})
 	})
 })
+
+func runWithPassword(cmd *exec.Cmd, password string) *gexec.Session {
+	return runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
+		Eventually(session).Should(gexec.Exit())
+	})
+}
+
+func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*gexec.Session, *os.File)) *gexec.Session {
+	passwordInput := password + "\n"
+
+	ptyMaster, ptySlave, err := pty.Open()
+	Ω(err).ShouldNot(HaveOccurred())
+	defer ptyMaster.Close()
+
+	cmd.Stdin = ptySlave
+	cmd.Stdout = ptySlave
+	cmd.Stderr = ptySlave
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setctty: true,
+		Setsid:  true,
+	}
+
+	session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	// Close our open reference to ptySlave so that PTY Master recieves EOF
+	ptySlave.Close()
+
+	sendPassword(ptyMaster, passwordInput)
+
+	done := make(chan struct{})
+	go func() {
+		io.Copy(GinkgoWriter, ptyMaster)
+		close(done)
+	}()
+
+	actions(session, ptyMaster)
+	Eventually(done).Should(BeClosed())
+	return session
+}
+
+func sendPassword(pty *os.File, password string) {
+	passwordPrompt := []byte("password: ")
+
+	b := make([]byte, 1)
+	buf := []byte{}
+	done := make(chan struct{})
+
+	go func() {
+		defer GinkgoRecover()
+		for {
+			n, err := pty.Read(b)
+			Expect(n).To(Equal(1))
+			Expect(err).NotTo(HaveOccurred())
+			buf = append(buf, b[0])
+			if bytes.HasSuffix(buf, passwordPrompt) {
+				break
+			}
+		}
+		n, err := pty.Write([]byte(password))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(len(password)))
+
+		close(done)
+	}()
+
+	Eventually(done).Should(BeClosed())
+}
