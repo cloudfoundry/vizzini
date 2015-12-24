@@ -73,12 +73,13 @@ func NewGuid() string {
 }
 
 var _ = BeforeSuite(func() {
+	var err error
 	timeout = 10 * time.Second
 	dockerTimeout = 120 * time.Second
 
 	timeoutArg := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
 	if timeoutArg != "" {
-		timeout, err := time.ParseDuration(timeoutArg)
+		timeout, err = time.ParseDuration(timeoutArg)
 		Ω(err).ShouldNot(HaveOccurred(), "invalid value '"+timeoutArg+"' for DEFAULT_EVENTUALLY_TIMEOUT")
 		fmt.Printf("Setting Default Eventually Timeout to %s\n", timeout)
 	}
@@ -90,7 +91,6 @@ var _ = BeforeSuite(func() {
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
 
-	var err error
 	bbsClient = initializeBBSClient()
 
 	consulClient, err := consuladapter.NewClient(consulAddress)
