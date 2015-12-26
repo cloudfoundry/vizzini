@@ -90,8 +90,7 @@ type sshTarget struct {
 	Port string
 }
 
-// LOCAL because not all SSH proxies have the Diego SSH authenticator enabled
-var _ = Describe("{LOCAL} SSH Tests", func() {
+var _ = Describe("SSH Tests", func() {
 	var (
 		password      string
 		target        sshTarget
