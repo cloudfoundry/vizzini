@@ -89,8 +89,9 @@ var _ = Describe("{LOCAL} SSH Tests", func() {
 
 	ssh := func(target sshTarget, args ...string) *exec.Cmd {
 		sshArgs := []string{
+			"-o", "User=" + target.User,
 			"-p", target.Port,
-			target.User + "@" + target.Host,
+			target.Host,
 		}
 		return secureCommand("ssh", append(sshArgs, args...)...)
 	}
