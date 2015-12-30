@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/onsi/say"
-	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -22,11 +21,9 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs"
 	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/consuladapter"
 )
 
 var bbsClient bbs.Client
-var serviceClient bbs.ServiceClient
 var domain string
 var otherDomain string
 var defaultRootFS string
@@ -36,7 +33,6 @@ var startTime time.Time
 var bbsAddress string
 var bbsClientCert string
 var bbsClientKey string
-var consulAddress string
 var routableDomainSuffix string
 var sshAddress string
 var sshHost string
@@ -52,7 +48,6 @@ func init() {
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.2:8889", "http address for the bbs (required)")
 	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
 	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
-	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
 	flag.StringVar(&sshAddress, "ssh-address", "ssh.bosh-lite.com:2222", "domain and port for the ssh proxy (required)")
 	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
@@ -61,10 +56,6 @@ func init() {
 
 	if bbsAddress == "" {
 		log.Fatal("i need a bbs address to talk to Diego...")
-	}
-
-	if consulAddress == "" {
-		log.Fatal("i need a consul address to talk to Diego...")
 	}
 
 	if sshAddress == "" {
@@ -104,19 +95,10 @@ var _ = BeforeSuite(func() {
 
 	bbsClient = initializeBBSClient()
 
-	consulClient, err := consuladapter.NewClient(consulAddress)
-	Ω(err).ShouldNot(HaveOccurred())
-
 	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
 	Ω(err).ShouldNot(HaveOccurred())
 
-	sessionMgr := consuladapter.NewSessionManager(consulClient)
-	consulSession, err := consuladapter.NewSession("vizzini", 10*time.Second, consulClient, sessionMgr)
-	Ω(err).ShouldNot(HaveOccurred())
-
 	logger = lagertest.NewTestLogger("vizzini")
-
-	serviceClient = bbs.NewServiceClient(consulSession, clock.NewClock())
 })
 
 var _ = BeforeEach(func() {
