@@ -22,5 +22,4 @@ ginkgo \
   "$@" \
   -- \
   --bbs-address=${BBS_ADDRESS} \
-  --consul-address=${CONSUL_ADDRESS} \
   --routable-domain-suffix=${ROUTABLE_DOMAIN_SUFFIX}
