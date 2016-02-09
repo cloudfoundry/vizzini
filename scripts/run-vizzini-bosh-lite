@@ -4,7 +4,6 @@ set -e -x
 
 ginkgo \
   -nodes=8 \
-  -skip="{LOCAL}" \
   -randomizeAllSpecs \
   -progress \
   -trace \
