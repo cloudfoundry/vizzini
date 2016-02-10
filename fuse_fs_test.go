@@ -18,20 +18,20 @@ var _ = Describe("FuseFS", func() {
 		lrp.Privileged = true
 		url = "http://" + RouteForGuid(guid) + "/env"
 
-		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+		Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 		Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 	})
 
 	It("should support FuseFS", func() {
 		resp, err := http.Post("http://"+RouteForGuid(guid)+"/fuse-fs/mount", "application/json", nil)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
 		resp, err = http.Get("http://" + RouteForGuid(guid) + "/fuse-fs/ls")
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(resp.StatusCode).Should(Equal(http.StatusOK))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		contents, err := ioutil.ReadAll(resp.Body)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(contents).Should(ContainSubstring("fuse-fs-works.txt"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(contents).To(ContainSubstring("fuse-fs-works.txt"))
 	})
 })

@@ -28,7 +28,7 @@ var _ = Describe("EventStream", func() {
 		var err error
 		desiredLRP = DesiredLRPWithGuid(guid)
 		eventSource, err = bbsClient.SubscribeToEvents()
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		done = make(chan struct{})
 		lock = &sync.Mutex{}

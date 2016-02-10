@@ -36,14 +36,14 @@ func TasksByDomainGetter(domain string) func() ([]*models.Task, error) {
 
 func ClearOutTasksInDomain(domain string) {
 	tasks, err := bbsClient.TasksByDomain(domain)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	for _, task := range tasks {
 		if task.State != models.Task_Completed {
 			bbsClient.CancelTask(task.TaskGuid)
 			Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(models.Task_Completed))
 		}
-		Ω(bbsClient.ResolvingTask(task.TaskGuid)).Should(Succeed())
-		Ω(bbsClient.DeleteTask(task.TaskGuid)).Should(Succeed())
+		Expect(bbsClient.ResolvingTask(task.TaskGuid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(task.TaskGuid)).To(Succeed())
 	}
 	Eventually(TasksByDomainGetter(domain)).Should(BeEmpty())
 }
@@ -131,9 +131,9 @@ func ActualByDomainGetter(domain string) func() ([]models.ActualLRP, error) {
 
 func ClearOutDesiredLRPsInDomain(domain string) {
 	lrps, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: domain})
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	for _, lrp := range lrps {
-		Ω(bbsClient.RemoveDesiredLRP(lrp.ProcessGuid)).Should(Succeed())
+		Expect(bbsClient.RemoveDesiredLRP(lrp.ProcessGuid)).To(Succeed())
 	}
 	Eventually(ActualByDomainGetter(domain)).Should(BeEmpty())
 }
@@ -245,8 +245,8 @@ func RouteForGuid(guid string) string {
 
 func DirectAddressFor(guid string, index int, containerPort uint32) string {
 	actualLRP, err := ActualGetter(guid, index)()
-	Ω(err).ShouldNot(HaveOccurred())
-	Ω(actualLRP).ShouldNot(BeZero())
+	Expect(err).NotTo(HaveOccurred())
+	Expect(actualLRP).NotTo(BeZero())
 
 	for _, portMapping := range actualLRP.Ports {
 		if portMapping.ContainerPort == containerPort {

@@ -170,7 +170,7 @@ var _ = Describe("SSH Tests", func() {
 			HostFingerprint: hostFingerprint,
 			PrivateKey:      userPrivateRSAKey,
 		})
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		sshRouteJSON := json.RawMessage(sshRoutePayload)
 		routes := models.Routes{
@@ -208,7 +208,7 @@ var _ = Describe("SSH Tests", func() {
 			Routes:   &routes,
 		}
 
-		Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+		Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 		Eventually(ActualGetter(guid, 0), startTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 	})
 
@@ -234,8 +234,8 @@ var _ = Describe("SSH Tests", func() {
 			session := runWithPassword(cmd, password)
 
 			Eventually(session).Should(gexec.Exit(0))
-			Ω(session).Should(gbytes.Say("USER=" + user))
-			Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
+			Expect(session).To(gbytes.Say("USER=" + user))
+			Expect(session).To(gbytes.Say("CUMBERBUND=cummerbund"))
 		})
 
 		It("runs an interactive ssh session", func() {
@@ -245,12 +245,12 @@ var _ = Describe("SSH Tests", func() {
 				Eventually(session).Should(gbytes.Say(user + "@"))
 
 				_, err := input.Write([]byte("export FOO=foo; echo ${FOO}bar\n"))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(session).Should(gbytes.Say("foobar"))
 
 				_, err = input.Write([]byte("exit\n"))
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(session.Err).Should(gbytes.Say("Connection to " + target.Host + " closed."))
 			})
@@ -269,10 +269,10 @@ var _ = Describe("SSH Tests", func() {
 					"127.0.0.1",
 					"12345",
 				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(nc).Should(gexec.Exit(0))
-				Ω(nc).Should(gbytes.Say("inconceivable!"))
+				Expect(nc).To(gbytes.Say("inconceivable!"))
 
 				session.Interrupt()
 			})
@@ -282,19 +282,19 @@ var _ = Describe("SSH Tests", func() {
 
 		It("copies files back and forth", func() {
 			dir, err := ioutil.TempDir("", "vizzini-ssh")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			defer os.RemoveAll(dir)
 
 			inpath := path.Join(dir, "inbound")
 			infile, err := os.Create(inpath)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			_, err = infile.Write([]byte("hello from vizzini"))
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			err = infile.Close()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			insession := runWithPassword(scp(target,
 				inpath,
@@ -312,8 +312,8 @@ var _ = Describe("SSH Tests", func() {
 			Eventually(outsession).Should(gexec.Exit())
 
 			contents, err := ioutil.ReadFile(outpath)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(contents).Should(Equal([]byte("hello from vizzini")))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contents).To(Equal([]byte("hello from vizzini")))
 		})
 	})
 
@@ -343,8 +343,8 @@ var _ = Describe("SSH Tests", func() {
 			session := runWithPassword(cmd, password)
 
 			Eventually(session).Should(gexec.Exit(0))
-			Ω(session).Should(gbytes.Say("USER=" + user))
-			Ω(session).Should(gbytes.Say("CUMBERBUND=cummerbund"))
+			Expect(session).To(gbytes.Say("USER=" + user))
+			Expect(session).To(gbytes.Say("CUMBERBUND=cummerbund"))
 		})
 
 		It("forwards ports", func() {
@@ -358,10 +358,10 @@ var _ = Describe("SSH Tests", func() {
 					"127.0.0.1",
 					"12345",
 				), GinkgoWriter, GinkgoWriter)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(nc).Should(gexec.Exit(0))
-				Ω(nc).Should(gbytes.Say("inconceivable!"))
+				Expect(nc).To(gbytes.Say("inconceivable!"))
 
 				session.Interrupt()
 			})
@@ -381,7 +381,7 @@ func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*ge
 	passwordInput := password + "\n"
 
 	ptyMaster, ptySlave, err := pty.Open()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	defer ptyMaster.Close()
 
 	cmd.Stdin = ptySlave
@@ -394,7 +394,7 @@ func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*ge
 	}
 
 	session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	// Close our open reference to ptySlave so that PTY Master recieves EOF
 	ptySlave.Close()

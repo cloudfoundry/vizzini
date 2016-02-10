@@ -27,19 +27,19 @@ var _ = Describe("Actions", func() {
 			))
 			taskDef.ResultFile = ""
 
-			Ω(bbsClient.DesireTask(guid, domain, taskDef)).Should(Succeed())
+			Expect(bbsClient.DesireTask(guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should fail the Task within the timeout window", func() {
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
 			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(models.Task_Completed))
 			task, err := bbsClient.TaskByGuid(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(task.GetFailed()).Should(BeTrue())
-			Ω(task.GetFailureReason()).Should(ContainSubstring("timeout"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(task.GetFailed()).To(BeTrue())
+			Expect(task.GetFailureReason()).To(ContainSubstring("timeout"))
 
-			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 		})
 	})
 
@@ -53,18 +53,18 @@ var _ = Describe("Actions", func() {
 				User: "vcap",
 			})
 
-			Ω(bbsClient.DesireTask(guid, domain, taskDef)).Should(Succeed())
+			Expect(bbsClient.DesireTask(guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should be possible to specify a working directory", func() {
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 			task, err := bbsClient.TaskByGuid(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(task.GetFailed()).Should(BeFalse())
-			Ω(task.GetResult()).Should(ContainSubstring("/etc"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(task.GetFailed()).To(BeFalse())
+			Expect(task.GetResult()).To(ContainSubstring("/etc"))
 
-			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 		})
 	})
 
@@ -82,9 +82,9 @@ var _ = Describe("Actions", func() {
 				}),
 			}
 
-			Ω(bbsClient.DesireLRP(desiredLRP)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(desiredLRP)).To(Succeed())
 			time.Sleep(3 * time.Second)
-			Ω(bbsClient.RemoveDesiredLRP(desiredLRP.ProcessGuid)).Should(Succeed())
+			Expect(bbsClient.RemoveDesiredLRP(desiredLRP.ProcessGuid)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
 	})

@@ -28,21 +28,21 @@ var _ = Describe("Tasks", func() {
 	Describe("Creating Tasks", func() {
 		Context("When the task is well formed (the happy path)", func() {
 			BeforeEach(func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			})
 
 			It("runs the task", func() {
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
 				task, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(task.TaskGuid).Should(Equal(guid))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(task.TaskGuid).To(Equal(guid))
 
-				Ω(task.Failed).Should(BeFalse())
-				Ω(task.Result).Should(ContainSubstring("some output"))
+				Expect(task.Failed).To(BeFalse())
+				Expect(task.Result).To(ContainSubstring("some output"))
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
@@ -52,59 +52,59 @@ var _ = Describe("Tasks", func() {
 
 				badGuid = "abc def"
 				err := bbsClient.DesireTask(badGuid, domain, task)
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 
 				badGuid = "abc/def"
-				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(badGuid, domain, task)).NotTo(Succeed())
 
 				badGuid = "abc,def"
-				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(badGuid, domain, task)).NotTo(Succeed())
 
 				badGuid = "abc.def"
-				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(badGuid, domain, task)).NotTo(Succeed())
 
 				badGuid = "abc∆def"
-				Ω(bbsClient.DesireTask(badGuid, domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(badGuid, domain, task)).NotTo(Succeed())
 			})
 		})
 
 		Context("when the task guid is not unique", func() {
 			It("should fail to create", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				err := bbsClient.DesireTask(guid, domain, task)
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceExists))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceExists))
 
 				By("even when the domain is different")
-				Ω(bbsClient.DesireTask(guid, otherDomain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, otherDomain, task)).NotTo(Succeed())
 
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
 		Context("when required fields are missing", func() {
 			It("should fail", func() {
 				By("not having TaskGuid")
-				Ω(bbsClient.DesireTask("", domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask("", domain, task)).NotTo(Succeed())
 
 				By("not having a domain")
-				Ω(bbsClient.DesireTask(guid, "", task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, "", task)).NotTo(Succeed())
 
 				By("not having any actions")
 				invalidTask := Task()
 				invalidTask.Action = nil
-				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, invalidTask)).NotTo(Succeed())
 
 				By("not having a rootfs")
 				invalidTask = Task()
 				invalidTask.RootFs = ""
-				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, invalidTask)).NotTo(Succeed())
 
 				By("having a malformed rootfs")
 				invalidTask = Task()
 				invalidTask.RootFs = "ploop"
-				Ω(bbsClient.DesireTask(guid, domain, invalidTask)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, invalidTask)).NotTo(Succeed())
 			})
 		})
 
@@ -112,7 +112,7 @@ var _ = Describe("Tasks", func() {
 			It("should fail", func() {
 				task.CpuWeight = 101
 				err := bbsClient.DesireTask(guid, domain, task)
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 			})
 		})
 
@@ -120,7 +120,7 @@ var _ = Describe("Tasks", func() {
 			It("should fail", func() {
 				task.Annotation = strings.Repeat("7", 1024*10+1)
 				err := bbsClient.DesireTask(guid, domain, task)
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidRequest))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 			})
 		})
 
@@ -131,21 +131,21 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", "echo 'some output' > /tmp/bar && exit 1"},
 					User: "vcap",
 				})
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			})
 
 			It("should be marked as failed and should not return the result file", func() {
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
 				task, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(task.TaskGuid).Should(Equal(guid))
-				Ω(task.Failed).Should(BeTrue())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(task.TaskGuid).To(Equal(guid))
+				Expect(task.Failed).To(BeTrue())
 
-				Ω(task.Result).Should(BeEmpty())
+				Expect(task.Result).To(BeEmpty())
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 	})
@@ -168,19 +168,19 @@ var _ = Describe("Tasks", func() {
 		})
 
 		It("should be possible to specify environment variables on both the Task and the RunAction", func() {
-			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+			Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
 			task, err := bbsClient.TaskByGuid(guid)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(task.Result).Should(ContainSubstring("CONTAINER_LEVEL=A"))
-			Ω(task.Result).Should(ContainSubstring("ACTION_LEVEL=C"))
-			Ω(task.Result).Should(ContainSubstring("OVERRIDE=D"))
-			Ω(task.Result).ShouldNot(ContainSubstring("OVERRIDE=B"))
+			Expect(task.Result).To(ContainSubstring("CONTAINER_LEVEL=A"))
+			Expect(task.Result).To(ContainSubstring("ACTION_LEVEL=C"))
+			Expect(task.Result).To(ContainSubstring("OVERRIDE=D"))
+			Expect(task.Result).NotTo(ContainSubstring("OVERRIDE=B"))
 
-			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 		})
 	})
 
@@ -194,19 +194,19 @@ var _ = Describe("Tasks", func() {
 			})
 			task.ResultFile = "/home/alice/payload"
 
-			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+			Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 		})
 
 		It("should succeed", func() {
 			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Completed), "Docker can be quite slow to spin up....")
 
 			task, err := bbsClient.TaskByGuid(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(task.Failed).Should(BeFalse())
-			Ω(task.Result).Should(ContainSubstring("down-the-rabbit-hole"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(task.Failed).To(BeFalse())
+			Expect(task.Result).To(ContainSubstring("down-the-rabbit-hole"))
 
-			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 		})
 	})
 
@@ -218,7 +218,7 @@ var _ = Describe("Tasks", func() {
 				lrpGuid = NewGuid()
 
 				lrp := DesiredLRPWithGuid(lrpGuid)
-				Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 				Eventually(EndpointCurler("http://" + RouteForGuid(lrpGuid) + "/env")).Should(Equal(http.StatusOK))
 
 				incrementCounterRoute := "http://" + RouteForGuid(lrpGuid) + "/counter"
@@ -235,7 +235,7 @@ var _ = Describe("Tasks", func() {
 					User: "vcap",
 				})
 
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			})
 
 			It("should cancel the task immediately", func() {
@@ -244,47 +244,47 @@ var _ = Describe("Tasks", func() {
 				By("verifying the counter is being incremented")
 				Eventually(GraceCounterGetter(lrpGuid)).Should(BeNumerically(">", 2))
 
-				Ω(bbsClient.CancelTask(guid)).Should(Succeed())
+				Expect(bbsClient.CancelTask(guid)).To(Succeed())
 
 				By("marking the task as completed")
 				task, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(task.State).Should(Equal(models.Task_Completed))
-				Ω(task.Failed).Should(BeTrue())
-				Ω(task.FailureReason).Should(Equal("task was cancelled"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(task.State).To(Equal(models.Task_Completed))
+				Expect(task.Failed).To(BeTrue())
+				Expect(task.FailureReason).To(Equal("task was cancelled"))
 
 				By("actually shutting down the container immediately, it should stop incrementing the counter")
 				counterAfterCancel, err := GraceCounterGetter(lrpGuid)()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				time.Sleep(2 * time.Second)
 
 				counterAfterSomeTime, err := GraceCounterGetter(lrpGuid)()
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(counterAfterSomeTime).Should(BeNumerically("<", counterAfterCancel+20))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(counterAfterSomeTime).To(BeNumerically("<", counterAfterCancel+20))
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should fail", func() {
-				Ω(bbsClient.CancelTask("floobeedoo")).ShouldNot(Succeed())
+				Expect(bbsClient.CancelTask("floobeedoo")).NotTo(Succeed())
 			})
 		})
 
 		Context("when the task is already completed", func() {
 			BeforeEach(func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 			})
 
 			It("should fail", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).ShouldNot(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).NotTo(Succeed())
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 	})
@@ -292,26 +292,26 @@ var _ = Describe("Tasks", func() {
 	Describe("Getting a task", func() {
 		Context("when the task exists", func() {
 			BeforeEach(func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			})
 
 			It("should succeed", func() {
 				Eventually(TaskGetter(guid)).ShouldNot(BeZero())
 				task, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(task.TaskGuid).Should(Equal(guid))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(task.TaskGuid).To(Equal(guid))
 
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should error", func() {
 				task, err := bbsClient.TaskByGuid("floobeedoo")
-				Ω(task).Should(BeZero())
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
+				Expect(task).To(BeZero())
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
@@ -320,70 +320,70 @@ var _ = Describe("Tasks", func() {
 		var otherGuids []string
 
 		BeforeEach(func() {
-			Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+			Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherTask := Task()
-				Ω(bbsClient.DesireTask(otherGuid, otherDomain, otherTask)).Should(Succeed())
+				Expect(bbsClient.DesireTask(otherGuid, otherDomain, otherTask)).To(Succeed())
 				Eventually(TaskGetter(otherGuid)).Should(HaveTaskState(models.Task_Completed))
 			}
 		})
 
 		AfterEach(func() {
-			Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-			Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			for _, otherGuid := range otherGuids {
-				Ω(bbsClient.ResolvingTask(otherGuid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(otherGuid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(otherGuid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(otherGuid)).To(Succeed())
 			}
 		})
 
 		It("should fetch tasks in the given domain", func() {
 			tasksInDomain, err := bbsClient.TasksByDomain(domain)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			tasksInOtherDomain, err := bbsClient.TasksByDomain(otherDomain)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
-			Ω(tasksInDomain).Should(HaveLen(1))
-			Ω(tasksInOtherDomain).Should(HaveLen(2))
-			Ω([]string{tasksInOtherDomain[0].TaskGuid, tasksInOtherDomain[1].TaskGuid}).Should(ConsistOf(otherGuids))
+			Expect(tasksInDomain).To(HaveLen(1))
+			Expect(tasksInOtherDomain).To(HaveLen(2))
+			Expect([]string{tasksInOtherDomain[0].TaskGuid, tasksInOtherDomain[1].TaskGuid}).To(ConsistOf(otherGuids))
 		})
 
 		It("should not error if a domain is empty", func() {
 			tasks, err := bbsClient.TasksByDomain("farfignoogan")
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(tasks).Should(BeEmpty())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tasks).To(BeEmpty())
 		})
 
 		It("should fetch all tasks", func() {
 			allTasks, err := bbsClient.Tasks()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
-			Ω(len(allTasks)).Should(BeNumerically(">=", 3))
+			Expect(len(allTasks)).To(BeNumerically(">=", 3))
 			taskGuids := []string{}
 			for _, task := range allTasks {
 				taskGuids = append(taskGuids, task.TaskGuid)
 			}
-			Ω(taskGuids).Should(ContainElement(guid))
-			Ω(taskGuids).Should(ContainElement(otherGuids[0]))
-			Ω(taskGuids).Should(ContainElement(otherGuids[1]))
+			Expect(taskGuids).To(ContainElement(guid))
+			Expect(taskGuids).To(ContainElement(otherGuids[0]))
+			Expect(taskGuids).To(ContainElement(otherGuids[1]))
 		})
 	})
 
 	Describe("Deleting Tasks", func() {
 		Context("when the task is in the completed state", func() {
 			It("should be deleted", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 				_, err := bbsClient.TaskByGuid(guid)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -394,24 +394,24 @@ var _ = Describe("Tasks", func() {
 					Args: []string{"-c", "sleep 2; echo 'some output' > /tmp/bar"},
 					User: "vcap",
 				})
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
 				err := bbsClient.ResolvingTask(guid)
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_InvalidStateTransition))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidStateTransition))
 
 				_, err = bbsClient.TasksByDomain(domain)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
 		Context("when the task does not exist", func() {
 			It("should not be deleted, and should error", func() {
 				err := bbsClient.ResolvingTask("floobeedoobee")
-				Ω(models.ConvertError(err).Type).Should(Equal(models.Error_ResourceNotFound))
+				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 			})
 		})
 	})
@@ -427,13 +427,13 @@ var _ = Describe("Tasks", func() {
 
 			server = ghttp.NewUnstartedServer()
 			l, err := net.Listen("tcp", "0.0.0.0:0")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			server.HTTPTestServer.Listener = l
 			server.HTTPTestServer.Start()
 
 			re := regexp.MustCompile(`:(\d+)$`)
 			port = re.FindStringSubmatch(server.URL())[1]
-			Ω(port).ShouldNot(BeZero())
+			Expect(port).NotTo(BeZero())
 
 			done = make(chan struct{})
 			server.AppendHandlers(ghttp.CombineHandlers(
@@ -442,7 +442,7 @@ var _ = Describe("Tasks", func() {
 				func(w http.ResponseWriter, req *http.Request) {
 					var receivedTask models.Task
 					json.NewDecoder(req.Body).Decode(&receivedTask)
-					Ω(receivedTask.TaskGuid).Should(Equal(guid))
+					Expect(receivedTask.TaskGuid).To(Equal(guid))
 					close(done)
 				},
 			))
@@ -460,7 +460,7 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("cleans up the task", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(func() bool {
 					_, err := bbsClient.TaskByGuid(guid)
@@ -475,7 +475,7 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("nonetheless, cleans up the task", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(func() bool {
 					_, err := bbsClient.TaskByGuid(guid)
@@ -497,14 +497,14 @@ var _ = Describe("Tasks", func() {
 					func(w http.ResponseWriter, req *http.Request) {
 						var receivedTask models.Task
 						json.NewDecoder(req.Body).Decode(&receivedTask)
-						Ω(receivedTask.TaskGuid).Should(Equal(guid))
+						Expect(receivedTask.TaskGuid).To(Equal(guid))
 						close(secondDone)
 					},
 				))
 			})
 
 			It("should retry", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(done).Should(BeClosed())
 				Eventually(secondDone).Should(BeClosed())
 				Eventually(func() bool {
@@ -520,7 +520,7 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should hit the callback", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(done).Should(BeClosed())
 
 				Eventually(func() bool {
@@ -538,17 +538,17 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(TaskGetter(guid), 5).Should(HaveTaskState(models.Task_Completed))
 
 				retreivedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				Ω(retreivedTask.Failed).Should(BeTrue())
-				Ω(retreivedTask.FailureReason).Should(ContainSubstring("insufficient resources"))
+				Expect(retreivedTask.Failed).To(BeTrue())
+				Expect(retreivedTask.FailureReason).To(ContainSubstring("insufficient resources"))
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 
@@ -558,17 +558,17 @@ var _ = Describe("Tasks", func() {
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+				Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 				Eventually(TaskGetter(guid), 5).Should(HaveTaskState(models.Task_Completed))
 
 				retreivedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				Ω(retreivedTask.Failed).Should(BeTrue())
-				Ω(retreivedTask.FailureReason).Should(ContainSubstring("found no compatible cell"))
+				Expect(retreivedTask.Failed).To(BeTrue())
+				Expect(retreivedTask.FailureReason).To(ContainSubstring("found no compatible cell"))
 
-				Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-				Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+				Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 			})
 		})
 	})

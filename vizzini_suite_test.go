@@ -70,7 +70,7 @@ func TestVizziniSuite(t *testing.T) {
 
 func NewGuid() string {
 	u, err := uuid.NewV4()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return domain + "-" + u.String()[:8]
 }
 
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 	timeoutArg := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
 	if timeoutArg != "" {
 		timeout, err = time.ParseDuration(timeoutArg)
-		Ω(err).ShouldNot(HaveOccurred(), "invalid value '"+timeoutArg+"' for DEFAULT_EVENTUALLY_TIMEOUT")
+		Expect(err).NotTo(HaveOccurred(), "invalid value '"+timeoutArg+"' for DEFAULT_EVENTUALLY_TIMEOUT")
 		fmt.Printf("Setting Default Eventually Timeout to %s\n", timeout)
 	}
 
@@ -96,7 +96,7 @@ var _ = BeforeSuite(func() {
 	bbsClient = initializeBBSClient()
 
 	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	logger = lagertest.NewTestLogger("vizzini")
 })
@@ -131,13 +131,13 @@ var _ = AfterSuite(func() {
 
 func initializeBBSClient() bbs.Client {
 	bbsURL, err := url.Parse(bbsAddress)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	if bbsURL.Scheme != "https" {
 		return bbs.NewClient(bbsAddress)
 	}
 
 	bbsClient, err := bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
 }

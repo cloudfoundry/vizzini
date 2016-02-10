@@ -26,6 +26,6 @@ func TestOneOffs(t *testing.T) {
 
 func NewGuid() string {
 	u, err := uuid.NewV4()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return u.String()
 }

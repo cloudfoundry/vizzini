@@ -20,13 +20,13 @@ var _ = Describe("Targetting different RootFSes", func() {
 			Args: []string{"-c", "bash --version > /tmp/bar"},
 			User: "vcap",
 		})
-		Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+		Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 	})
 
 	AfterEach(func() {
-		Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-		Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+		Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 	})
 
 	Describe("cflinuxfs2", func() {
@@ -36,8 +36,8 @@ var _ = Describe("Targetting different RootFSes", func() {
 
 		It("should run the cflinuxfs2 rootfs", func() {
 			completedTask, err := bbsClient.TaskByGuid(guid)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(completedTask.Result).Should(ContainSubstring(`bash, version 4.3.11`))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(completedTask.Result).To(ContainSubstring(`bash, version 4.3.11`))
 		})
 	})
 })

@@ -16,6 +16,6 @@ func CF(dir string, args ...string) *gexec.Session {
 	cf := exec.Command("cf", args...)
 	cf.Dir = dir
 	session, err := gexec.Start(cf, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return session
 }

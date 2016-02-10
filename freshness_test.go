@@ -11,7 +11,7 @@ var _ = Describe("Freshness", func() {
 	Describe("Creating a fresh domain", func() {
 		Context("with no TTL", func() {
 			It("should create a fresh domain that never disappears", func() {
-				Ω(bbsClient.UpsertDomain(domain, 0)).Should(Succeed())
+				Expect(bbsClient.UpsertDomain(domain, 0)).To(Succeed())
 				Consistently(bbsClient.Domains, 3).Should(ContainElement(domain))
 				bbsClient.UpsertDomain(domain, 1*time.Second) //to clear it out
 			})
@@ -19,16 +19,16 @@ var _ = Describe("Freshness", func() {
 
 		Context("with a TTL", func() {
 			It("should create a fresh domain that eventually disappears", func() {
-				Ω(bbsClient.UpsertDomain(domain, 2*time.Second)).Should(Succeed())
+				Expect(bbsClient.UpsertDomain(domain, 2*time.Second)).To(Succeed())
 
-				Ω(bbsClient.Domains()).Should(ContainElement(domain))
+				Expect(bbsClient.Domains()).To(ContainElement(domain))
 				Eventually(bbsClient.Domains, 5).ShouldNot(ContainElement(domain))
 			})
 		})
 
 		Context("with no domain", func() {
 			It("should error", func() {
-				Ω(bbsClient.UpsertDomain("", 0)).ShouldNot(Succeed())
+				Expect(bbsClient.UpsertDomain("", 0)).NotTo(Succeed())
 			})
 		})
 	})

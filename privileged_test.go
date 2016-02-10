@@ -22,13 +22,13 @@ var _ = Describe("Privileged", func() {
 			User: runUser,
 		})
 
-		Ω(bbsClient.DesireTask(guid, domain, task)).Should(Succeed())
+		Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
 		Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
 	})
 
 	AfterEach(func() {
-		Ω(bbsClient.ResolvingTask(guid)).Should(Succeed())
-		Ω(bbsClient.DeleteTask(guid)).Should(Succeed())
+		Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(guid)).To(Succeed())
 	})
 
 	Context("with a privileged container", func() {
@@ -43,10 +43,10 @@ var _ = Describe("Privileged", func() {
 
 			It("should run as root", func() {
 				completedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
-				Ω(completedTask.Result).Should(MatchRegexp(`groups=.*0\(root\)`))
-				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=0"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(completedTask.Result).To(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
+				Expect(completedTask.Result).To(MatchRegexp(`groups=.*0\(root\)`))
+				Expect(completedTask.Result).To(ContainSubstring("have_real_root=0"))
 			})
 		})
 
@@ -57,10 +57,10 @@ var _ = Describe("Privileged", func() {
 
 			It("should run as non-root", func() {
 				completedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
-				Ω(completedTask.Result).Should(MatchRegexp(`groups=.*0\(root\)`))
-				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(completedTask.Result).To(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
+				Expect(completedTask.Result).To(MatchRegexp(`groups=.*0\(root\)`))
+				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))
 			})
 		})
 	})
@@ -77,9 +77,9 @@ var _ = Describe("Privileged", func() {
 
 			It("should run as namespaced root", func() {
 				completedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(completedTask.Result).Should(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
-				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(completedTask.Result).To(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
+				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))
 			})
 		})
 
@@ -90,9 +90,9 @@ var _ = Describe("Privileged", func() {
 
 			It("should run as non-root", func() {
 				completedTask, err := bbsClient.TaskByGuid(guid)
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(completedTask.Result).Should(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
-				Ω(completedTask.Result).Should(ContainSubstring("have_real_root=1"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(completedTask.Result).To(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
+				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))
 			})
 		})
 	})

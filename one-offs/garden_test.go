@@ -27,7 +27,7 @@ var _ = Describe("Garden fails to delete multiple Docker containers", func() {
 			Handle:     handle,
 			RootFSPath: "docker:///onsi/grace-busybox",
 		})
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 
 		return gardenClient.Destroy(handle)
 	}
@@ -55,7 +55,7 @@ var _ = Describe("Garden fails to delete multiple Docker containers", func() {
 
 		wg.Wait()
 
-		Ω(dockerDeleteErrors).ShouldNot(BeEmpty(), "Looks like the deletes worked -- try again!")
+		Expect(dockerDeleteErrors).NotTo(BeEmpty(), "Looks like the deletes worked -- try again!")
 
 		fmt.Println("Succesfully entered The Bad State™")
 		for _, err := range dockerDeleteErrors {

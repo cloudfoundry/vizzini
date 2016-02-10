@@ -22,29 +22,29 @@ var _ = Describe("The container environment", func() {
 
 	getEnvs := func(url string) [][]string {
 		response, err := http.Get(url)
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(response.StatusCode).Should(Equal(http.StatusOK))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
 		envs := [][]string{}
 		err = json.NewDecoder(response.Body).Decode(&envs)
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred())
 		response.Body.Close()
 		return envs
 	}
 
 	Describe("InstanceGuid and InstanceIndex", func() {
 		BeforeEach(func() {
-			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
 			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			envs := getEnvs(url)
 
-			Ω(envs).Should(ContainElement([]string{"INSTANCE_INDEX", "0"}))
-			Ω(envs).Should(ContainElement([]string{"INSTANCE_GUID", actualLRP.InstanceGuid}))
+			Expect(envs).To(ContainElement([]string{"INSTANCE_INDEX", "0"}))
+			Expect(envs).To(ContainElement([]string{"INSTANCE_GUID", actualLRP.InstanceGuid}))
 
 		})
 	})
@@ -52,13 +52,13 @@ var _ = Describe("The container environment", func() {
 	//{LOCAL} because: Instance IP and PORT are not injected by default.  One needs to opt-into this feature.
 	Describe("{LOCAL} Instance IP and PORT", func() {
 		BeforeEach(func() {
-			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 			Eventually(EndpointCurler(url), 40).Should(Equal(http.StatusOK))
 		})
 
 		It("matches the ActualLRP's index and instance guid", func() {
 			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			type cfPortMapping struct {
 				External uint32 `json:"external"`
@@ -69,13 +69,13 @@ var _ = Describe("The container environment", func() {
 				{External: actualLRP.Ports[0].HostPort, Internal: actualLRP.Ports[0].ContainerPort},
 				{External: actualLRP.Ports[1].HostPort, Internal: actualLRP.Ports[1].ContainerPort},
 			})
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			envs := getEnvs(url)
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
-			Ω(envs).Should(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
+			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
+			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
+			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
+			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
 		})
 	})
 })

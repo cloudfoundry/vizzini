@@ -21,8 +21,8 @@ func graceIndices() map[string]int {
 
 	for i := 0; i < 100; i++ {
 		response, err := http.Get("http://grace.10.244.0.34.xip.io/index")
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(response.StatusCode).Should(Equal(http.StatusOK))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
 
 		if err != nil {
 			continue
@@ -41,22 +41,22 @@ func graceIndices() map[string]int {
 
 func stats() {
 	session, err := gexec.Start(exec.Command("veritas", "dump-store"), nil, nil)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(session, time.Minute).Should(gexec.Exit(0))
 	bbs := session.Out.Contents()
 
 	session, err = gexec.Start(exec.Command("veritas", "vitals"), nil, nil)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(session, time.Minute).Should(gexec.Exit(0))
 	vitals := session.Out.Contents()
 
 	session, err = gexec.Start(exec.Command("veritas", "executor-resources"), nil, nil)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(session).Should(gexec.Exit(0))
 	resources := session.Out.Contents()
 
 	session, err = gexec.Start(exec.Command("veritas", "executor-containers"), nil, nil)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	Eventually(session).Should(gexec.Exit(0))
 	containers := session.Out.Contents()
 
@@ -117,8 +117,8 @@ var _ = Describe("Blackbox", func() {
 
 		Eventually(session, 5*time.Minute).Should(gexec.Exit(0))
 		response, err := http.Get("http://grace-1.10.244.0.34.xip.io/ping")
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(response.StatusCode).Should(Equal(http.StatusOK))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
 
 		for {
 			vizzini.Printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
@@ -135,8 +135,8 @@ var _ = Describe("Blackbox", func() {
 			withStats(func() {
 				Eventually(session, 5*time.Minute).Should(gexec.Exit(0))
 				response, err := http.Get("http://grace.10.244.0.34.xip.io/ping")
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(response.StatusCode).Should(Equal(http.StatusOK))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusOK))
 			})
 
 			vizzini.Printf("\n\n >>>> Grace %d is up! Scaling up... <<<< \n\n", count)
@@ -163,8 +163,8 @@ var _ = Describe("Blackbox", func() {
 			withStats(func() {
 				Eventually(session, 5*time.Minute).Should(gexec.Exit(0))
 				response, err = http.Get("http://grace.10.244.0.34.xip.io/index")
-				Ω(err).ShouldNot(HaveOccurred())
-				Ω(response.StatusCode).ShouldNot(Equal(http.StatusOK))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(response.StatusCode).NotTo(Equal(http.StatusOK))
 			})
 			vizzini.Printf("\n\n >>>> Grace %d is down. <<<< \n\n", count)
 

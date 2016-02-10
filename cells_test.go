@@ -9,8 +9,8 @@ import (
 var _ = Describe("Cells", func() {
 	It("should return all cells", func() {
 		cells, err := bbsClient.Cells()
-		Ω(err).ShouldNot(HaveOccurred())
-		Ω(len(cells)).Should(BeNumerically(">=", 1))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(cells)).To(BeNumerically(">=", 1))
 
 		var cell_z1_0 *models.CellPresence
 		for _, cell := range cells {
@@ -20,11 +20,11 @@ var _ = Describe("Cells", func() {
 			}
 		}
 
-		Ω(cell_z1_0).ShouldNot(BeNil())
-		Ω(cell_z1_0.CellId).Should(Equal("cell_z1-0"))
-		Ω(cell_z1_0.Zone).Should(Equal("z1"))
-		Ω(cell_z1_0.Capacity.MemoryMb).Should(BeNumerically(">", 0))
-		Ω(cell_z1_0.Capacity.DiskMb).Should(BeNumerically(">", 0))
-		Ω(cell_z1_0.Capacity.Containers).Should(BeNumerically(">", 0))
+		Expect(cell_z1_0).NotTo(BeNil())
+		Expect(cell_z1_0.CellId).To(Equal("cell_z1-0"))
+		Expect(cell_z1_0.Zone).To(Equal("z1"))
+		Expect(cell_z1_0.Capacity.MemoryMb).To(BeNumerically(">", 0))
+		Expect(cell_z1_0.Capacity.DiskMb).To(BeNumerically(">", 0))
+		Expect(cell_z1_0.Capacity.Containers).To(BeNumerically(">", 0))
 	})
 })

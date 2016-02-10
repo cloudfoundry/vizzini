@@ -22,7 +22,7 @@ var _ = Describe("Routing Related Tests", func() {
 
 		BeforeEach(func() {
 			jar, err := cookiejar.New(nil)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 
 			httpClient = &http.Client{
 				Jar: jar,
@@ -31,23 +31,23 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
 
-			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 			Eventually(IndexCounter(guid, httpClient)).Should(Equal(3))
 		})
 
 		It("should only route to the stuck instance", func() {
 			resp, err := httpClient.Get("http://" + RouteForGuid(guid) + "/stick")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			resp.Body.Close()
 
 			//for some reason this isn't always 1!  it's sometimes 2....
-			Ω(IndexCounter(guid, httpClient)()).Should(BeNumerically("<", 3))
+			Expect(IndexCounter(guid, httpClient)()).To(BeNumerically("<", 3))
 
 			resp, err = httpClient.Get("http://" + RouteForGuid(guid) + "/unstick")
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			resp.Body.Close()
 
-			Ω(IndexCounter(guid, httpClient)()).Should(Equal(3))
+			Expect(IndexCounter(guid, httpClient)()).To(Equal(3))
 		})
 	})
 
@@ -58,7 +58,7 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp.Ports = []uint32{8080, 9999}
 			primaryURL = "http://" + RouteForGuid(guid) + "/env"
 
-			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 			Eventually(EndpointCurler(primaryURL)).Should(Equal(http.StatusOK))
 		})
 
@@ -66,38 +66,45 @@ var _ = Describe("Routing Related Tests", func() {
 			By("updating the LRP with a new route to a port 9999")
 			newRoute := RouteForGuid(NewGuid())
 			routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			routes = append(routes, cfroutes.CFRoute{
 				Hostnames: []string{newRoute},
 				Port:      9999,
 			})
 			routingInfo := routes.RoutingInfo()
-			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 				Routes: &routingInfo,
-			})).Should(Succeed())
+			})).To(
+
+				Succeed())
 
 			By("verifying that the new route is hooked up to the port")
 			Eventually(EndpointContentCurler("http://" + newRoute)).Should(Equal("grace side-channel"))
 
 			By("verifying that the original route is fine")
-			Ω(EndpointContentCurler(primaryURL)()).Should(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
+			Expect(EndpointContentCurler(primaryURL)()).To(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
 
 			By("adding a new route to the new port")
 			veryNewRoute := RouteForGuid(NewGuid())
 			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
 			routingInfo = routes.RoutingInfo()
-			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 				Routes: &routingInfo,
-			})).Should(Succeed())
+			})).To(
+
+				Succeed())
 
 			Eventually(EndpointContentCurler("http://" + veryNewRoute)).Should(Equal("grace side-channel"))
-			Ω(EndpointContentCurler("http://" + newRoute)()).Should(Equal("grace side-channel"))
-			Ω(EndpointContentCurler(primaryURL)()).Should(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
+			Expect(EndpointContentCurler("http://" + newRoute)()).To(Equal("grace side-channel"))
+			Expect(EndpointContentCurler(primaryURL)()).To(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
 
 			By("tearing down the new port")
-			Ω(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(guid, &models.DesiredLRPUpdate{
 				Routes: lrp.Routes,
-			})).Should(Succeed())
+			})).To(
+
+				Succeed())
+
 			Eventually(EndpointCurler("http://" + newRoute)).ShouldNot(Equal(http.StatusOK))
 		})
 	})
@@ -110,7 +117,7 @@ var _ = Describe("Routing Related Tests", func() {
 			url = "http://" + RouteForGuid(guid) + "/env"
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
-			Ω(bbsClient.DesireLRP(lrp)).Should(Succeed())
+			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
 				BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 				BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
@@ -152,14 +159,14 @@ var _ = Describe("Routing Related Tests", func() {
 
 			for i := 0; i < 4; i++ {
 				By(fmt.Sprintf("Scaling down then back up #%d", i+1))
-				Ω(bbsClient.UpdateDesiredLRP(guid, &updateToOne)).Should(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(guid, &updateToOne)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
 					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 				))
 
 				time.Sleep(200 * time.Millisecond)
 
-				Ω(bbsClient.UpdateDesiredLRP(guid, &updateToThree)).Should(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(guid, &updateToThree)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(guid)).Should(ConsistOf(
 					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 					BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
@@ -170,7 +177,7 @@ var _ = Describe("Routing Related Tests", func() {
 			close(done)
 
 			fmt.Fprintf(GinkgoWriter, "%d bad codes out of %d attempts (%.3f%%)", len(badCodes), attempts, float64(len(badCodes))/float64(attempts)*100)
-			Ω(len(badCodes)).Should(BeNumerically("<", float64(attempts)*0.01))
+			Expect(len(badCodes)).To(BeNumerically("<", float64(attempts)*0.01))
 		})
 	})
 })
