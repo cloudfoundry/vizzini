@@ -59,7 +59,7 @@ var _ = Describe("Privileged", func() {
 				completedTask, err := bbsClient.TaskByGuid(guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completedTask.Result).To(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
-				Expect(completedTask.Result).To(MatchRegexp(`groups=.*0\(root\)`))
+				Expect(completedTask.Result).To(MatchRegexp(`groups=\d{4,5}\(vcap\)`))
 				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))
 			})
 		})
