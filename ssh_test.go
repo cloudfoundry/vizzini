@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -98,10 +99,9 @@ var _ = Describe("SSH Tests", func() {
 		user          string
 		rootfs        string
 		startTimeout  time.Duration
+		gracePath     string
 		sshdArgs      []string
 		sshClientArgs []string
-		shellServer   models.RunAction
-		sshdMonitor   models.RunAction
 	)
 
 	secureCommand := func(cmd string, args ...string) *exec.Cmd {
@@ -182,25 +182,48 @@ var _ = Describe("SSH Tests", func() {
 			Domain:               domain,
 			Instances:            1,
 			EnvironmentVariables: []*models.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},
-			Setup: models.WrapAction(&models.DownloadAction{
-				Artifact: "lifecycle bundle",
-				From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
-				To:       "/tmp",
-				CacheKey: "lifecycle",
-				User:     user,
-			}),
+			CachedDependencies: []*models.CachedDependency{
+				&models.CachedDependency{
+					Name:     "grace",
+					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+					To:       "/tmp/grace",
+					CacheKey: "grace",
+				},
+				&models.CachedDependency{
+					Name:     "lifecycle bundle",
+					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					To:       "/tmp/lifecycle",
+					CacheKey: "lifecycle",
+				},
+			},
+			LegacyDownloadUser: user,
 			Action: models.WrapAction(models.Parallel(
 				&models.RunAction{
-					Path: "/tmp/diego-sshd",
+					Path: "/tmp/lifecycle/diego-sshd",
 					Args: append([]string{
 						"-address=0.0.0.0:2222",
 						"-logLevel=debug",
 					}, sshdArgs...),
 					User: user,
 				},
-				&shellServer,
+				&models.RunAction{
+					Path: gracePath,
+					User: user,
+					Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8888"}, {Name: "INSTANCE_INDEX", Value: "inconceivable!"}},
+				},
 			)),
-			Monitor:  models.WrapAction(&sshdMonitor),
+			Monitor: models.WrapAction(models.Parallel(
+				&models.RunAction{
+					Path: "/tmp/lifecycle/healthcheck",
+					Args: []string{"-port", "2222"},
+					User: user,
+				},
+				&models.RunAction{
+					Path: "/tmp/lifecycle/healthcheck",
+					Args: []string{"-port", "8888"},
+					User: user,
+				},
+			)),
 			RootFs:   rootfs,
 			MemoryMb: 128,
 			DiskMb:   128,
@@ -216,16 +239,7 @@ var _ = Describe("SSH Tests", func() {
 		BeforeEach(func() {
 			user = "vcap"
 			rootfs = defaultRootFS
-			shellServer = models.RunAction{
-				Path: "bash",
-				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l localhost 9999; done`},
-				User: user,
-			}
-			sshdMonitor = models.RunAction{
-				Path: "nc",
-				Args: []string{"-z", "0.0.0.0", "2222"},
-				User: user,
-			}
+			gracePath = "/tmp/grace/grace"
 		})
 
 		It("runs an ssh command", func() {
@@ -259,20 +273,20 @@ var _ = Describe("SSH Tests", func() {
 		})
 
 		It("forwards ports", func() {
-			cmd := sshTunnelTo(target, 12345, 9999)
+			cmd := sshTunnelTo(target, 12345, 8888)
 
 			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
 				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
 
-				nc, err := gexec.Start(exec.Command(
-					"nc",
-					"127.0.0.1",
-					"12345",
-				), GinkgoWriter, GinkgoWriter)
+				resp, err := http.Get("http://127.0.0.1:12345/index")
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(nc).Should(gexec.Exit(0))
-				Expect(nc).To(gbytes.Say("inconceivable!"))
+				defer resp.Body.Close()
+
+				payload, err := ioutil.ReadAll(resp.Body)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(string(payload)).To(Equal("inconceivable!"))
 
 				session.Interrupt()
 			})
@@ -320,21 +334,9 @@ var _ = Describe("SSH Tests", func() {
 	Context("{DOCKER} in a bare-bones docker image with /bin/sh", func() {
 		BeforeEach(func() {
 			user = "root"
-			rootfs = "docker:///busybox"
+			rootfs = "docker:///onsi/grace-busybox"
 			startTimeout = dockerTimeout
-			shellServer = models.RunAction{
-				Path: "sh",
-				Args: []string{"-c", `while true; do echo "inconceivable!" | nc -l 127.0.0.1 -p 9999; done`},
-				User: user,
-			}
-			sshdMonitor = models.RunAction{
-				Path: "sh",
-				Args: []string{
-					"-c",
-					"echo -n '' | telnet localhost 2222 >/dev/null 2>&1 && true",
-				},
-				User: user,
-			}
+			gracePath = "/grace"
 		})
 
 		It("runs an ssh command", func() {
@@ -348,20 +350,20 @@ var _ = Describe("SSH Tests", func() {
 		})
 
 		It("forwards ports", func() {
-			cmd := sshTunnelTo(target, 12345, 9999)
+			cmd := sshTunnelTo(target, 12345, 8888)
 
 			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
 				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
 
-				nc, err := gexec.Start(exec.Command(
-					"nc",
-					"127.0.0.1",
-					"12345",
-				), GinkgoWriter, GinkgoWriter)
+				resp, err := http.Get("http://127.0.0.1:12345/index")
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(nc).Should(gexec.Exit(0))
-				Expect(nc).To(gbytes.Say("inconceivable!"))
+				defer resp.Body.Close()
+
+				payload, err := ioutil.ReadAll(resp.Body)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(string(payload)).To(Equal("inconceivable!"))
 
 				session.Interrupt()
 			})
