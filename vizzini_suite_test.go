@@ -23,7 +23,7 @@ import (
 	"github.com/cloudfoundry-incubator/bbs/models"
 )
 
-var bbsClient bbs.Client
+var bbsClient bbs.InternalClient
 var domain string
 var otherDomain string
 var defaultRootFS string
@@ -129,7 +129,7 @@ var _ = AfterSuite(func() {
 	}
 })
 
-func initializeBBSClient() bbs.Client {
+func initializeBBSClient() bbs.InternalClient {
 	bbsURL, err := url.Parse(bbsAddress)
 	Expect(err).NotTo(HaveOccurred())
 
