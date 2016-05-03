@@ -350,12 +350,12 @@ var _ = Describe("SSH Tests", func() {
 		})
 
 		It("forwards ports", func() {
-			cmd := sshTunnelTo(target, 12345, 8888)
+			cmd := sshTunnelTo(target, 22345, 8888)
 
 			session := runInteractiveWithPassword(cmd, password, func(session *gexec.Session, _ *os.File) {
 				Eventually(session.Err).Should(gbytes.Say("Warning: Permanently added"))
 
-				resp, err := http.Get("http://127.0.0.1:12345/index")
+				resp, err := http.Get("http://127.0.0.1:22345/index")
 				Expect(err).NotTo(HaveOccurred())
 
 				defer resp.Body.Close()
