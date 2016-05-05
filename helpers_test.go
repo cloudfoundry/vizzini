@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/bbs/models"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
+	"github.com/pivotal-golang/lager"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	"github.com/onsi/ginkgo"
@@ -22,30 +23,30 @@ const CrashRestartTimeout = 30 * time.Second
 
 //Tasks
 
-func TaskGetter(guid string) func() (*models.Task, error) {
+func TaskGetter(logger lager.Logger, guid string) func() (*models.Task, error) {
 	return func() (*models.Task, error) {
-		return bbsClient.TaskByGuid(guid)
+		return bbsClient.TaskByGuid(logger, guid)
 	}
 }
 
-func TasksByDomainGetter(domain string) func() ([]*models.Task, error) {
+func TasksByDomainGetter(logger lager.Logger, domain string) func() ([]*models.Task, error) {
 	return func() ([]*models.Task, error) {
-		return bbsClient.TasksByDomain(domain)
+		return bbsClient.TasksByDomain(logger, domain)
 	}
 }
 
 func ClearOutTasksInDomain(domain string) {
-	tasks, err := bbsClient.TasksByDomain(domain)
+	tasks, err := bbsClient.TasksByDomain(logger, domain)
 	Expect(err).NotTo(HaveOccurred())
 	for _, task := range tasks {
 		if task.State != models.Task_Completed {
-			bbsClient.CancelTask(task.TaskGuid)
-			Eventually(TaskGetter(task.TaskGuid)).Should(HaveTaskState(models.Task_Completed))
+			bbsClient.CancelTask(logger, task.TaskGuid)
+			Eventually(TaskGetter(logger, task.TaskGuid)).Should(HaveTaskState(models.Task_Completed))
 		}
-		Expect(bbsClient.ResolvingTask(task.TaskGuid)).To(Succeed())
-		Expect(bbsClient.DeleteTask(task.TaskGuid)).To(Succeed())
+		Expect(bbsClient.ResolvingTask(logger, task.TaskGuid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(logger, task.TaskGuid)).To(Succeed())
 	}
-	Eventually(TasksByDomainGetter(domain)).Should(BeEmpty())
+	Eventually(TasksByDomainGetter(logger, domain)).Should(BeEmpty())
 }
 
 func Task() *models.TaskDefinition {
@@ -68,14 +69,14 @@ func Task() *models.TaskDefinition {
 
 //LRPs
 
-func LRPGetter(guid string) func() (*models.DesiredLRP, error) {
+func LRPGetter(logger lager.Logger, guid string) func() (*models.DesiredLRP, error) {
 	return func() (*models.DesiredLRP, error) {
-		return bbsClient.DesiredLRPByProcessGuid(guid)
+		return bbsClient.DesiredLRPByProcessGuid(logger, guid)
 	}
 }
 
-func ActualLRPByProcessGuidAndIndex(guid string, index int) (models.ActualLRP, error) {
-	actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(guid, index)
+func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int) (models.ActualLRP, error) {
+	actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
 	if err != nil {
 		return models.ActualLRP{}, err
 	}
@@ -83,8 +84,8 @@ func ActualLRPByProcessGuidAndIndex(guid string, index int) (models.ActualLRP, e
 	return *actualLRP, nil
 }
 
-func ActualsByProcessGuid(guid string) ([]models.ActualLRP, error) {
-	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(guid)
+func ActualsByProcessGuid(logger lager.Logger, guid string) ([]models.ActualLRP, error) {
+	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +93,8 @@ func ActualsByProcessGuid(guid string) ([]models.ActualLRP, error) {
 	return resolveActuals(actualLRPGroups), nil
 }
 
-func ActualsByDomain(domain string) ([]models.ActualLRP, error) {
-	actualLRPGroups, err := bbsClient.ActualLRPGroups(models.ActualLRPFilter{Domain: domain})
+func ActualsByDomain(logger lager.Logger, domain string) ([]models.ActualLRP, error) {
+	actualLRPGroups, err := bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{Domain: domain})
 	if err != nil {
 		return nil, err
 	}
@@ -111,31 +112,31 @@ func resolveActuals(actualLRPGroups []*models.ActualLRPGroup) []models.ActualLRP
 	return actualLRPs
 }
 
-func ActualGetter(guid string, index int) func() (models.ActualLRP, error) {
+func ActualGetter(logger lager.Logger, guid string, index int) func() (models.ActualLRP, error) {
 	return func() (models.ActualLRP, error) {
-		return ActualLRPByProcessGuidAndIndex(guid, index)
+		return ActualLRPByProcessGuidAndIndex(logger, guid, index)
 	}
 }
 
-func ActualByProcessGuidGetter(guid string) func() ([]models.ActualLRP, error) {
+func ActualByProcessGuidGetter(logger lager.Logger, guid string) func() ([]models.ActualLRP, error) {
 	return func() ([]models.ActualLRP, error) {
-		return ActualsByProcessGuid(guid)
+		return ActualsByProcessGuid(logger, guid)
 	}
 }
 
-func ActualByDomainGetter(domain string) func() ([]models.ActualLRP, error) {
+func ActualByDomainGetter(logger lager.Logger, domain string) func() ([]models.ActualLRP, error) {
 	return func() ([]models.ActualLRP, error) {
-		return ActualsByDomain(domain)
+		return ActualsByDomain(logger, domain)
 	}
 }
 
 func ClearOutDesiredLRPsInDomain(domain string) {
-	lrps, err := bbsClient.DesiredLRPs(models.DesiredLRPFilter{Domain: domain})
+	lrps, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{Domain: domain})
 	Expect(err).NotTo(HaveOccurred())
 	for _, lrp := range lrps {
-		Expect(bbsClient.RemoveDesiredLRP(lrp.ProcessGuid)).To(Succeed())
+		Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
 	}
-	Eventually(ActualByDomainGetter(domain)).Should(BeEmpty())
+	Eventually(ActualByDomainGetter(logger, domain)).Should(BeEmpty())
 }
 
 func EndpointCurler(endpoint string) func() (int, error) {
@@ -244,7 +245,7 @@ func RouteForGuid(guid string) string {
 }
 
 func DirectAddressFor(guid string, index int, containerPort uint32) string {
-	actualLRP, err := ActualGetter(guid, index)()
+	actualLRP, err := ActualGetter(logger, guid, index)()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(actualLRP).NotTo(BeZero())
 

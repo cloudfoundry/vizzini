@@ -52,14 +52,14 @@ var _ = Describe("Crashes", func() {
 
 	Describe("Annotating the Crash Reason", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("adds the crash reason to the application", func() {
 			MakeGraceExit(url, 17)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
-			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+			actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actualLRP.CrashReason).To(ContainSubstring("Exited with status 17"))
 		})
@@ -67,20 +67,20 @@ var _ = Describe("Crashes", func() {
 
 	Describe("backoff behavior", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("{SLOW} restarts the application immediately twice, and then starts backing it off, and updates the modification tag as it goes", func() {
-			actualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
+			actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
 			tag := actualLRP.ModificationTag
 
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 
-			restartedActualLRP, err := ActualLRPByProcessGuidAndIndex(guid, 0)
+			restartedActualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(restartedActualLRP.InstanceGuid).NotTo(Equal(actualLRP.InstanceGuid))
 			Expect(restartedActualLRP.ModificationTag.Epoch).To(Equal(tag.Epoch))
@@ -88,69 +88,69 @@ var _ = Describe("Crashes", func() {
 
 			By("immediately restarting #2")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
 
 			By("eventually restarting #3 (slow)")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
-			Consistently(ActualGetter(guid, 0), CrashRestartTimeout-5*time.Second).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
-			Eventually(ActualGetter(guid, 0), ConvergerInterval*2).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 3))
+			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+			Consistently(ActualGetter(logger, guid, 0), CrashRestartTimeout-5*time.Second).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval*2).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 3))
 			Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 		})
 
 		It("deletes the crashed ActualLRP when scaling down", func() {
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 
 			By("immediately restarting #2")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
 
 			By("eventually restarting #3")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 
 			By("deleting the DesiredLRP")
-			Expect(bbsClient.RemoveDesiredLRP(guid)).To(Succeed())
-			Eventually(ActualByProcessGuidGetter(guid)).Should(BeEmpty())
+			Expect(bbsClient.RemoveDesiredLRP(logger, guid)).To(Succeed())
+			Eventually(ActualByProcessGuidGetter(logger, guid)).Should(BeEmpty())
 		})
 	})
 
 	Describe("killing crashed applications", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("should delete the Crashed ActualLRP succesfully", func() {
 			By("immediately restarting #1")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 
 			By("immediately restarting #2")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 2))
 
 			By("eventually restarting #3")
 			MakeGraceExit(url, 1)
-			Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 
 			actualLRPKey := models.NewActualLRPKey(guid, 0, domain)
-			Expect(bbsClient.RetireActualLRP(&actualLRPKey)).To(Succeed())
-			Eventually(ActualByProcessGuidGetter(guid)).Should(BeEmpty())
+			Expect(bbsClient.RetireActualLRP(logger, &actualLRPKey)).To(Succeed())
+			Eventually(ActualByProcessGuidGetter(logger, guid)).Should(BeEmpty())
 		})
 	})
 
 	Context("with no monitor action", func() {
 		Context("when running a single action", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 			})
 
 			It("comes up as soon as the process starts", func() {
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 
 			Context("when the process dies with exit code 0", func() {
@@ -159,7 +159,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("gets restarted immediately", func() {
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 					Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 				})
 			})
@@ -170,7 +170,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("gets restarted immediately", func() {
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 					Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 				})
 			})
@@ -191,7 +191,7 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 					))
-					Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
 
@@ -201,7 +201,7 @@ var _ = Describe("Crashes", func() {
 					})
 
 					It("gets restarted immediately", func() {
-						Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+						Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 						Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 					})
 				})
@@ -221,7 +221,7 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 					))
-					Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
 
@@ -231,7 +231,7 @@ var _ = Describe("Crashes", func() {
 					})
 
 					It("does not crash", func() {
-						Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+						Consistently(ActualGetter(logger, guid, 0), 5).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 					})
 				})
 			})
@@ -256,15 +256,15 @@ var _ = Describe("Crashes", func() {
 					User: "vcap",
 				})
 
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				directURL = "http://" + DirectAddressFor(guid, 0, 8080)
 				indirectURL = "http://" + RouteForGuid(guid)
 			})
 
 			It("enters the running state", func() {
-				Expect(ActualGetter(guid, 0)()).To(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Expect(ActualGetter(logger, guid, 0)()).To(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 
 			Context("when the process dies with exit code 0", func() {
@@ -273,7 +273,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("does not get marked as crashed (may have daemonized)", func() {
-					Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 0))
+					Consistently(ActualGetter(logger, guid, 0), 3).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 0))
 				})
 			})
 
@@ -286,8 +286,8 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("{SLOW} is marked as crashed", func() {
-					Consistently(ActualGetter(guid, 0), 2).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning), "Banking on the fact that the health check runs every thirty seconds and is unlikely to run immediately")
-					Eventually(ActualGetter(guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Consistently(ActualGetter(logger, guid, 0), 2).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning), "Banking on the fact that the health check runs every thirty seconds and is unlikely to run immediately")
+					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
@@ -297,7 +297,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("is marked as crashed (immediately)", func() {
-					Eventually(ActualGetter(guid, 0), HealthyCheckInterval/3).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval/3).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
@@ -318,7 +318,7 @@ var _ = Describe("Crashes", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("being marked as crashed")
-					Eventually(ActualGetter(guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 					By("tearing down the process -- this reaches out to the container's direct address and ensures we can't reach it")
 					_, err = httpClient.Get(directURL + "/env")
@@ -334,8 +334,8 @@ var _ = Describe("Crashes", func() {
 					User: "vcap",
 				})
 
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
 			})
 
 			Context("when the process dies with exit code 0", func() {
@@ -349,7 +349,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("does not get marked as crash, as it has presumably daemonized and we are waiting on the health check", func() {
-					Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateClaimed, 0))
+					Consistently(ActualGetter(logger, guid, 0), 3).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateClaimed, 0))
 				})
 			})
 
@@ -364,7 +364,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("gets marked as crashed (immediately)", func() {
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
@@ -374,8 +374,8 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("never enters the running state and is marked as crashed after the StartTimeout", func() {
-					Consistently(ActualGetter(guid, 0), 3).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
-					Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Consistently(ActualGetter(logger, guid, 0), 3).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
+					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
@@ -385,7 +385,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("never enters the running state, and never crashes", func() {
-					Consistently(ActualGetter(guid, 0), 5).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateClaimed, 0))
+					Consistently(ActualGetter(logger, guid, 0), 5).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateClaimed, 0))
 				})
 			})
 		})

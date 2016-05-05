@@ -22,13 +22,13 @@ var _ = Describe("Privileged", func() {
 			User: runUser,
 		})
 
-		Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
-		Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
+		Expect(bbsClient.DesireTask(logger, guid, domain, task)).To(Succeed())
+		Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Completed))
 	})
 
 	AfterEach(func() {
-		Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
-		Expect(bbsClient.DeleteTask(guid)).To(Succeed())
+		Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 	})
 
 	Context("with a privileged container", func() {
@@ -42,7 +42,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as root", func() {
-				completedTask, err := bbsClient.TaskByGuid(guid)
+				completedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completedTask.Result).To(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
 				Expect(completedTask.Result).To(MatchRegexp(`groups=.*0\(root\)`))
@@ -56,7 +56,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as non-root", func() {
-				completedTask, err := bbsClient.TaskByGuid(guid)
+				completedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completedTask.Result).To(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
 				Expect(completedTask.Result).To(MatchRegexp(`groups=\d{4,5}\(vcap\)`))
@@ -76,7 +76,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as namespaced root", func() {
-				completedTask, err := bbsClient.TaskByGuid(guid)
+				completedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completedTask.Result).To(ContainSubstring("uid=0(root)"), "If this fails, then your executor may not be configured to allow privileged actions")
 				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))
@@ -89,7 +89,7 @@ var _ = Describe("Privileged", func() {
 			})
 
 			It("should run as non-root", func() {
-				completedTask, err := bbsClient.TaskByGuid(guid)
+				completedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completedTask.Result).To(MatchRegexp(`uid=\d{4,5}\(vcap\)`))
 				Expect(completedTask.Result).To(ContainSubstring("have_real_root=1"))

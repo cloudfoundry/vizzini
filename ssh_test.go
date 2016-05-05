@@ -231,8 +231,8 @@ var _ = Describe("SSH Tests", func() {
 			Routes:   &routes,
 		}
 
-		Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-		Eventually(ActualGetter(guid, 0), startTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Eventually(ActualGetter(logger, guid, 0), startTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 	})
 
 	Context("in a fully-featured preloaded rootfs", func() {

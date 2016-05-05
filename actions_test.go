@@ -27,19 +27,19 @@ var _ = Describe("Actions", func() {
 			))
 			taskDef.ResultFile = ""
 
-			Expect(bbsClient.DesireTask(guid, domain, taskDef)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should fail the Task within the timeout window", func() {
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Running))
-			Eventually(TaskGetter(guid), 10).Should(HaveTaskState(models.Task_Completed))
-			task, err := bbsClient.TaskByGuid(guid)
+			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Running))
+			Eventually(TaskGetter(logger, guid), 10).Should(HaveTaskState(models.Task_Completed))
+			task, err := bbsClient.TaskByGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeTrue())
 			Expect(task.GetFailureReason()).To(ContainSubstring("timeout"))
 
-			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 		})
 	})
 
@@ -53,18 +53,18 @@ var _ = Describe("Actions", func() {
 				User: "vcap",
 			})
 
-			Expect(bbsClient.DesireTask(guid, domain, taskDef)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should be possible to specify a working directory", func() {
-			Eventually(TaskGetter(guid)).Should(HaveTaskState(models.Task_Completed))
-			task, err := bbsClient.TaskByGuid(guid)
+			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Completed))
+			task, err := bbsClient.TaskByGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeFalse())
 			Expect(task.GetResult()).To(ContainSubstring("/etc"))
 
-			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 		})
 	})
 
@@ -82,10 +82,10 @@ var _ = Describe("Actions", func() {
 				}),
 			}
 
-			Expect(bbsClient.DesireLRP(desiredLRP)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
 			time.Sleep(3 * time.Second)
-			Expect(bbsClient.RemoveDesiredLRP(desiredLRP.ProcessGuid)).To(Succeed())
-			Eventually(ActualByProcessGuidGetter(desiredLRP.ProcessGuid), 5).Should(BeEmpty())
+			Expect(bbsClient.RemoveDesiredLRP(logger, desiredLRP.ProcessGuid)).To(Succeed())
+			Eventually(ActualByProcessGuidGetter(logger, desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
 	})
 })

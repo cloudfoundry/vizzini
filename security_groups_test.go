@@ -19,11 +19,11 @@ var _ = Describe("Security groups", func() {
 		listenerGuid = NewGuid()
 		listener = DesiredLRPWithGuid(listenerGuid)
 
-		Expect(bbsClient.DesireLRP(listener)).To(Succeed())
-		Eventually(ActualGetter(listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, models.ActualLRPStateRunning))
+		Expect(bbsClient.DesireLRP(logger, listener)).To(Succeed())
+		Eventually(ActualGetter(logger, listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, models.ActualLRPStateRunning))
 		Eventually(EndpointCurler("http://" + RouteForGuid(listenerGuid) + "/env")).Should(Equal(http.StatusOK))
 
-		listenerActual, err := ActualLRPByProcessGuidAndIndex(listenerGuid, 0)
+		listenerActual, err := ActualLRPByProcessGuidAndIndex(logger, listenerGuid, 0)
 		Expect(err).NotTo(HaveOccurred())
 		protectedURL = fmt.Sprintf("http://%s:%d/env", listenerActual.Address, listenerActual.Ports[0].HostPort)
 	})
@@ -36,8 +36,8 @@ var _ = Describe("Security groups", func() {
 			allowedCallerGuid, disallowedCallerGuid = NewGuid(), NewGuid()
 			allowedCaller, disallowedCaller = DesiredLRPWithGuid(allowedCallerGuid), DesiredLRPWithGuid(disallowedCallerGuid)
 
-			Expect(bbsClient.DesireLRP(disallowedCaller)).To(Succeed())
-			Eventually(ActualGetter(disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, models.ActualLRPStateRunning))
+			Expect(bbsClient.DesireLRP(logger, disallowedCaller)).To(Succeed())
+			Eventually(ActualGetter(logger, disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(disallowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 
 			allowedCaller.EgressRules = []*models.SecurityGroupRule{
@@ -47,8 +47,8 @@ var _ = Describe("Security groups", func() {
 				},
 			}
 
-			Expect(bbsClient.DesireLRP(allowedCaller)).To(Succeed())
-			Eventually(ActualGetter(allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, models.ActualLRPStateRunning))
+			Expect(bbsClient.DesireLRP(logger, allowedCaller)).To(Succeed())
+			Eventually(ActualGetter(logger, allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(allowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 		})
 
@@ -98,24 +98,24 @@ var _ = Describe("Security groups", func() {
 		})
 
 		It("should allow access to the opened up location", func() {
-			Expect(bbsClient.DesireTask(allowedTaskGuid, domain, allowedTask)).To(Succeed())
-			Expect(bbsClient.DesireTask(disallowedTaskGuid, domain, disallowedTask)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, allowedTaskGuid, domain, allowedTask)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, disallowedTaskGuid, domain, disallowedTask)).To(Succeed())
 
-			Eventually(TaskGetter(allowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
-			Eventually(TaskGetter(disallowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
+			Eventually(TaskGetter(logger, allowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
+			Eventually(TaskGetter(logger, disallowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 
-			task, err := bbsClient.TaskByGuid(disallowedTaskGuid)
+			task, err := bbsClient.TaskByGuid(logger, disallowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(true))
 
-			task, err = bbsClient.TaskByGuid(allowedTaskGuid)
+			task, err = bbsClient.TaskByGuid(logger, allowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(false))
 
-			Expect(bbsClient.ResolvingTask(allowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(allowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.ResolvingTask(disallowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(disallowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, allowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, allowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, disallowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, disallowedTaskGuid)).To(Succeed())
 		})
 	})
 })

@@ -27,21 +27,21 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit exceeds the contents to be copied in", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 		})
 
 		Context("when the disk limit is less than the contents to be copied in", func() {
 			It("should crash", func() {
 				lrp.DiskMb = 4
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail
 				//when we delete the DesiredLRP if the application is in the middle of restarting it looks like we need to wiat for a convergence
 				//loop to eventually clean it up.  This is likely a bug, though it's not crticial.
-				Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+				Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 			})
 		})
 	})
@@ -61,21 +61,21 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit exceeds the size of the docker image", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0), 120).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0), 120).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 		})
 
 		Context("when the disk limit is less than the size of the docker image", func() {
 			It("should crash", func() {
 				lrp.DiskMb = 4
-				Expect(bbsClient.DesireLRP(lrp)).To(Succeed())
-				Eventually(ActualGetter(guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
+				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail
 				//when we delete the DesiredLRP if the application is in the middle of restarting it looks like we need to wiat for a convergence
 				//loop to eventually clean it up.  This is likely a bug, though it's not crticial.
-				Eventually(ActualGetter(guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
+				Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 			})
 		})
 	})

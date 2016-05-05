@@ -120,7 +120,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	for _, domain := range []string{domain, otherDomain} {
-		bbsClient.UpsertDomain(domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
+		bbsClient.UpsertDomain(logger, domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
 	}
 
 	for _, domain := range []string{domain, otherDomain} {

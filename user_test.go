@@ -23,21 +23,21 @@ var _ = Describe("Users", func() {
 			})
 			task.ResultFile = "/tmp/output"
 
-			Expect(bbsClient.DesireTask(guid, domain, task)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, guid, domain, task)).To(Succeed())
 		})
 
 		It("runs an action as alice", func() {
-			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Running))
-			Eventually(TaskGetter(guid), 120).Should(HaveTaskState(models.Task_Completed))
+			Eventually(TaskGetter(logger, guid), 120).Should(HaveTaskState(models.Task_Running))
+			Eventually(TaskGetter(logger, guid), 120).Should(HaveTaskState(models.Task_Completed))
 
-			task, err := bbsClient.TaskByGuid(guid)
+			task, err := bbsClient.TaskByGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(task.Failed).To(BeFalse())
 			Expect(task.Result).To(ContainSubstring("alice"))
 
-			Expect(bbsClient.ResolvingTask(guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 		})
 	})
 })
