@@ -370,7 +370,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("and there is a StartTimeout", func() {
 				BeforeEach(func() {
-					lrp.StartTimeout = 5
+					lrp.StartTimeoutMs = 5000
 				})
 
 				It("never enters the running state and is marked as crashed after the StartTimeout", func() {
@@ -381,7 +381,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("and there is no start timeout", func() {
 				BeforeEach(func() {
-					lrp.StartTimeout = 0
+					lrp.StartTimeoutMs = 0
 				})
 
 				It("never enters the running state, and never crashes", func() {
