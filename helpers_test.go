@@ -22,6 +22,7 @@ const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
 const GraceTarballURL = "http://onsi-public.s3.amazonaws.com/grace.tar.gz"
+const GraceTarballURLSHAChecksum = "8540eec19bd22ff3fb69d3771123a43ca34e0634"
 const GraceBusyboxImageURL = "docker:///onsi/grace-busybox"
 
 //Tasks
@@ -273,9 +274,11 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		Instances:   1,
 		CachedDependencies: []*models.CachedDependency{
 			&models.CachedDependency{
-				From:     GraceTarballURL,
-				To:       "/tmp/grace",
-				CacheKey: "grace",
+				From:              GraceTarballURL,
+				To:                "/tmp/grace",
+				CacheKey:          "grace",
+				ChecksumAlgorithm: "sha1",
+				ChecksumValue:     GraceTarballURLSHAChecksum,
 			},
 		},
 		LegacyDownloadUser: "vcap",
