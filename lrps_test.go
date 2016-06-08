@@ -161,7 +161,7 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			lrp.Setup = models.WrapAction(models.Serial(
 				&models.DownloadAction{
-					From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+					From:     GraceTarballURL,
 					To:       ".",
 					CacheKey: "grace",
 					User:     "vcap",
@@ -189,7 +189,7 @@ var _ = Describe("LRPs", func() {
 
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
-			lrp.RootFs = "docker:///onsi/grace-busybox"
+			lrp.RootFs = GraceBusyboxImageURL
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
 				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",

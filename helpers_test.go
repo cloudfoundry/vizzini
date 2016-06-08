@@ -21,6 +21,9 @@ const HealthyCheckInterval = 30 * time.Second
 const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
+const GraceTarballURL = "http://onsi-public.s3.amazonaws.com/grace.tar.gz"
+const GraceBusyboxImageURL = "docker:///onsi/grace-busybox"
+
 //Tasks
 
 func TaskGetter(logger lager.Logger, guid string) func() (*models.Task, error) {
@@ -270,7 +273,7 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		Instances:   1,
 		CachedDependencies: []*models.CachedDependency{
 			&models.CachedDependency{
-				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+				From:     GraceTarballURL,
 				To:       "/tmp/grace",
 				CacheKey: "grace",
 			},

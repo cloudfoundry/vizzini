@@ -17,7 +17,7 @@ var _ = Describe("DiskLimits", func() {
 	Describe("with a preloaded rootfs, the disk limit is applied to the COW layer", func() {
 		BeforeEach(func() {
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
-				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+				From:     GraceTarballURL,
 				To:       ".",
 				CacheKey: "grace",
 				User:     "vcap",
@@ -48,7 +48,7 @@ var _ = Describe("DiskLimits", func() {
 
 	Describe("{DOCKER} with a docker-image rootfs", func() {
 		BeforeEach(func() {
-			lrp.RootFs = "docker:///onsi/grace-busybox"
+			lrp.RootFs = GraceBusyboxImageURL
 			lrp.Setup = nil //note: we copy nothing in, the docker image on its own should cause this failure
 			lrp.Action = models.WrapAction(&models.RunAction{
 				Path: "/grace",
