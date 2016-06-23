@@ -13,4 +13,4 @@ Vizzini is a suite of tests that runs against the Diego BBS API.
   they are fast and can safely be run in parallel.
 
 
-#### Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry-incubator/diego-design-notes)
+#### Learn more about Diego and its components at [diego-design-notes](https://github.com/cloudfoundry/diego-design-notes)
