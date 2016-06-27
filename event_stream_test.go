@@ -3,8 +3,8 @@ package vizzini_test
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/bbs/events"
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs/events"
+	"code.cloudfoundry.org/bbs/models"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"

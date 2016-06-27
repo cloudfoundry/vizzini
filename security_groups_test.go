@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs/models"
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

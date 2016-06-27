@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs"
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/bbs/models"
 )
 
 var bbsClient bbs.InternalClient

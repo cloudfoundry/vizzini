@@ -17,7 +17,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 
-	"github.com/cloudfoundry-incubator/bbs/models"
+	"code.cloudfoundry.org/bbs/models"
 	ssh_routes "github.com/cloudfoundry-incubator/diego-ssh/routes"
 
 	. "github.com/cloudfoundry-incubator/vizzini/matchers"
