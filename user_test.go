@@ -1,7 +1,7 @@
 package vizzini_test
 
 import (
-	. "github.com/cloudfoundry-incubator/vizzini/matchers"
+	. "code.cloudfoundry.org/vizzini/matchers"
 
 	"code.cloudfoundry.org/bbs/models"
 

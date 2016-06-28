@@ -20,7 +20,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	ssh_routes "github.com/cloudfoundry-incubator/diego-ssh/routes"
 
-	. "github.com/cloudfoundry-incubator/vizzini/matchers"
+	. "code.cloudfoundry.org/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

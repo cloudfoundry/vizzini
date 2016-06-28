@@ -1,4 +1,4 @@
 FROM busybox
-MAINTAINER https://github.com/cloudfoundry-incubator/vizzini
+MAINTAINER https://code.cloudfoundry.org/vizzini
 
 RUN adduser -D -s /bin/sh alice

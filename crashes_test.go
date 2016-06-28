@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	. "github.com/cloudfoundry-incubator/vizzini/matchers"
+	. "code.cloudfoundry.org/vizzini/matchers"
 
 	"code.cloudfoundry.org/bbs/models"
 	. "github.com/onsi/ginkgo"

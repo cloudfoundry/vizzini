@@ -2,7 +2,7 @@ package vizzini_test
 
 import (
 	"code.cloudfoundry.org/bbs/models"
-	. "github.com/cloudfoundry-incubator/vizzini/matchers"
+	. "code.cloudfoundry.org/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
