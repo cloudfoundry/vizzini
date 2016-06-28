@@ -1,5 +1,7 @@
 # Vizzini
 
+**Note**: This repository should be imported as `code.cloudfoundry.org/vizzini`.
+
 [Inconceivable tests!](http://www.imdb.com/character/ch0003791/)
 
 Vizzini is a suite of tests that runs against the Diego BBS API.
