@@ -140,7 +140,8 @@ func ClearOutDesiredLRPsInDomain(domain string) {
 	for _, lrp := range lrps {
 		Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
 	}
-	Eventually(ActualByDomainGetter(logger, domain)).Should(BeEmpty())
+	// Wait enough time for the Grace app to exit if it was run with -catchTerminate
+	Eventually(ActualByDomainGetter(logger, domain), 11*time.Second).Should(BeEmpty())
 }
 
 func EndpointCurler(endpoint string) func() (int, error) {

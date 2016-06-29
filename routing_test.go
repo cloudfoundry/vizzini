@@ -180,4 +180,31 @@ var _ = Describe("Routing Related Tests", func() {
 			Expect(len(badCodes)).To(BeNumerically("<", float64(attempts)*0.01))
 		})
 	})
+
+	Describe("scaling down an LRP", func() {
+		var url string
+
+		BeforeEach(func() {
+			lrp = DesiredLRPWithGuid(guid)
+			lrp.Action.RunAction.Args = []string{"-catchTerminate"}
+			lrp.Instances = 5
+
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			url = fmt.Sprintf("http://%s", RouteForGuid(lrp.ProcessGuid))
+			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+		})
+
+		It("quickly stops routing to the removed indices", func() {
+			instanceCount := int32(1)
+			Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid,
+				&models.DesiredLRPUpdate{
+					Instances:  &instanceCount,
+					Routes:     lrp.Routes,
+					Annotation: &lrp.Annotation})).To(Succeed())
+
+			time.Sleep(1 * time.Second)
+
+			Consistently(EndpointContentCurler(url + "/index")).Should(Equal("0"))
+		})
+	})
 })
