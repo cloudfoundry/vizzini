@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
-	"github.com/pivotal-golang/lager"
 
 	. "code.cloudfoundry.org/vizzini/matchers"
 	"github.com/onsi/ginkgo"

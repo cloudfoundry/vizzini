@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"os"
 
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/onsi/say"
-	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/lager/lagertest"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
