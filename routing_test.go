@@ -186,12 +186,17 @@ var _ = Describe("Routing Related Tests", func() {
 
 		BeforeEach(func() {
 			lrp = DesiredLRPWithGuid(guid)
-			lrp.Action.RunAction.Args = []string{"-catchTerminate"}
+			lrp.Action = models.WrapAction(&models.RunAction{
+				Path: "/tmp/grace/grace",
+				Args: []string{"-catchTerminate"},
+				User: "vcap",
+				Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+			})
 			lrp.Instances = 5
 
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			url = fmt.Sprintf("http://%s", RouteForGuid(lrp.ProcessGuid))
-			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
+			Eventually(IndexCounter(guid)).Should(Equal(int(lrp.Instances)))
 		})
 
 		It("quickly stops routing to the removed indices", func() {
@@ -202,9 +207,8 @@ var _ = Describe("Routing Related Tests", func() {
 					Routes:     lrp.Routes,
 					Annotation: &lrp.Annotation})).To(Succeed())
 
-			time.Sleep(1 * time.Second)
-
-			Consistently(EndpointContentCurler(url + "/index")).Should(Equal("0"))
+			Eventually(IndexCounter(guid), 2*time.Second).Should(Equal(1))
+			Consistently(IndexCounter(guid), 5*time.Second).Should(Equal(1))
 		})
 	})
 })
