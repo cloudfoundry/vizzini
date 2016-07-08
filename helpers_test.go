@@ -171,9 +171,13 @@ func EndpointContentCurler(endpoint string) func() (string, error) {
 }
 
 func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() (int, error) {
+	return IndexCounterWithAttempts(guid, 100, optionalHttpClient...)
+}
+
+func IndexCounterWithAttempts(guid string, attempts int, optionalHttpClient ...*http.Client) func() (int, error) {
 	return func() (int, error) {
 		counts := map[int]bool{}
-		for i := 0; i < 100; i++ {
+		for i := 0; i < attempts; i++ {
 			index, err := GetIndexFromEndpointFor(guid, optionalHttpClient...)
 			if err != nil {
 				return 0, err

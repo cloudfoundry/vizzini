@@ -207,8 +207,8 @@ var _ = Describe("Routing Related Tests", func() {
 					Routes:     lrp.Routes,
 					Annotation: &lrp.Annotation})).To(Succeed())
 
-			Eventually(IndexCounter(guid), 2*time.Second).Should(Equal(1))
-			Consistently(IndexCounter(guid), 5*time.Second).Should(Equal(1))
+			Eventually(IndexCounterWithAttempts(guid, 10), 2*time.Second).Should(Equal(1))
+			Consistently(IndexCounterWithAttempts(guid, 10), 5*time.Second).Should(Equal(1))
 		})
 	})
 })
