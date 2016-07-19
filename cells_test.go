@@ -26,5 +26,6 @@ var _ = Describe("Cells", func() {
 		Expect(cell_z1_0.Capacity.MemoryMb).To(BeNumerically(">", 0))
 		Expect(cell_z1_0.Capacity.DiskMb).To(BeNumerically(">", 0))
 		Expect(cell_z1_0.Capacity.Containers).To(BeNumerically(">", 0))
+		Expect(len(cell_z1_0.RootfsProviders)).To(BeNumerically(">", 0))
 	})
 })
