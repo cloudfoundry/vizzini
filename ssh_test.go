@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -136,11 +139,22 @@ var _ = Describe("SSH Tests", func() {
 	}
 
 	scp := func(target sshTarget, args ...string) *exec.Cmd {
-		sshArgs := []string{
+		scpArgs := []string{
 			"-o", "User=" + target.User,
 			"-P", target.Port,
+			"-vvv",
 		}
-		return secureCommand("scp", append(sshArgs, args...)...)
+		return secureCommand("scp", append(scpArgs, args...)...)
+	}
+
+	sftp := func(target sshTarget, args ...string) *exec.Cmd {
+		sftpArgs := []string{
+			"-v",
+			"-P", target.Port,
+			"-o", "User=" + target.User,
+			fmt.Sprintf("diego:%s/0@%s", guid, sshHost),
+		}
+		return secureCommand("sftp", append(sftpArgs, args...)...)
 	}
 
 	BeforeEach(func() {
@@ -294,41 +308,119 @@ var _ = Describe("SSH Tests", func() {
 			Eventually(session).Should(gexec.Exit())
 		})
 
-		It("copies files back and forth", func() {
-			dir, err := ioutil.TempDir("", "vizzini-ssh")
-			Expect(err).NotTo(HaveOccurred())
+		Describe("scp", func() {
+			var (
+				dir    string
+				err    error
+				inpath string
+			)
+			BeforeEach(func() {
+				dir, err = ioutil.TempDir("", "vizzini-ssh")
+				Expect(err).NotTo(HaveOccurred())
 
-			defer os.RemoveAll(dir)
+				inpath = path.Join(dir, "inbound")
+				infile, err := os.Create(inpath)
+				Expect(err).NotTo(HaveOccurred())
 
-			inpath := path.Join(dir, "inbound")
-			infile, err := os.Create(inpath)
-			Expect(err).NotTo(HaveOccurred())
+				_, err = infile.Write([]byte("hello from vizzini"))
+				Expect(err).NotTo(HaveOccurred())
 
-			_, err = infile.Write([]byte("hello from vizzini"))
-			Expect(err).NotTo(HaveOccurred())
+				err = infile.Close()
+				Expect(err).NotTo(HaveOccurred())
+			})
+			AfterEach(func() {
+				os.RemoveAll(dir)
+			})
+			It("copies files back and forth", func() {
 
-			err = infile.Close()
-			Expect(err).NotTo(HaveOccurred())
+				insession := runWithPassword(scp(target,
+					inpath,
+					target.Host+":in-container",
+				), password)
 
-			insession := runWithPassword(scp(target,
-				inpath,
-				target.Host+":in-container",
-			), password)
+				Eventually(insession).Should(gexec.Exit())
 
-			Eventually(insession).Should(gexec.Exit())
+				outpath := path.Join(dir, "outbound")
+				outsession := runWithPassword(scp(target,
+					target.Host+":in-container",
+					outpath,
+				), password)
 
-			outpath := path.Join(dir, "outbound")
-			outsession := runWithPassword(scp(target,
-				target.Host+":in-container",
-				outpath,
-			), password)
+				Eventually(outsession).Should(gexec.Exit())
 
-			Eventually(outsession).Should(gexec.Exit())
-
-			contents, err := ioutil.ReadFile(outpath)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(contents).To(Equal([]byte("hello from vizzini")))
+				contents, err := ioutil.ReadFile(outpath)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(contents).To(Equal([]byte("hello from vizzini")))
+			})
 		})
+
+		Describe("sftp", func() {
+			var (
+				sourceDir, targetDir             string
+				generatedFile, generatedFileName string
+				generatedFileInfo                os.FileInfo
+				err                              error
+			)
+
+			BeforeEach(func() {
+				sourceDir, err = ioutil.TempDir("", "sftp-source")
+				Expect(err).NotTo(HaveOccurred())
+
+				fileContents := make([]byte, 1024)
+				b, err := rand.Read(fileContents)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(b).To(Equal(len(fileContents)))
+
+				generatedFileName = "binary.dat"
+				generatedFile = filepath.Join(sourceDir, generatedFileName)
+
+				err = ioutil.WriteFile(generatedFile, fileContents, 0644)
+				Expect(err).NotTo(HaveOccurred())
+
+				generatedFileInfo, err = os.Stat(generatedFile)
+				Expect(err).NotTo(HaveOccurred())
+
+				targetDir, err = ioutil.TempDir("", "sftp-target")
+				Expect(err).NotTo(HaveOccurred())
+
+			})
+
+			AfterEach(func() {
+				os.RemoveAll(sourceDir)
+				os.RemoveAll(targetDir)
+			})
+
+			It("defaults to $HOME as the remote working directory", func() {
+				runInteractiveWithPassword(sftp(target), password, func(session *gexec.Session, ptyMaster *os.File) {
+					io.Copy(ptyMaster, strings.NewReader("pwd\n"))
+					Eventually(session.Buffer()).Should(gbytes.Say("working directory: /home/vcap"))
+					ptyMaster.Write([]byte("exit\n"))
+					Eventually(session).Should(gexec.Exit())
+				})
+			})
+
+			It("can send and receive files", func() {
+				insession := runInteractiveWithPassword(sftp(target), password,
+					func(session *gexec.Session, ptyMaster *os.File) {
+						input := &bytes.Buffer{}
+						input.WriteString("mkdir files\n")
+						input.WriteString("cd files\n")
+						input.WriteString("lcd " + sourceDir + "\n")
+						input.WriteString("put " + generatedFileName + "\n")
+						input.WriteString("lcd " + targetDir + "\n")
+						input.WriteString("get " + generatedFileName + "\n")
+
+						io.Copy(ptyMaster, input)
+						ptyMaster.Write([]byte("exit\n"))
+						Eventually(session).Should(gexec.Exit())
+					})
+
+				Eventually(insession).Should(gexec.Exit())
+				compareDir(sourceDir, targetDir)
+
+			})
+		})
+
 	})
 
 	Context("{DOCKER} in a bare-bones docker image with /bin/sh", func() {
@@ -382,6 +474,8 @@ func runWithPassword(cmd *exec.Cmd, password string) *gexec.Session {
 func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*gexec.Session, *os.File)) *gexec.Session {
 	passwordInput := password + "\n"
 
+	// Create pty pseudo-terminal so that ptyMaster can input password when
+	// prompted
 	ptyMaster, ptySlave, err := pty.Open()
 	Expect(err).NotTo(HaveOccurred())
 	defer ptyMaster.Close()
@@ -440,4 +534,49 @@ func sendPassword(pty *os.File, password string) {
 	}()
 
 	Eventually(done).Should(BeClosed())
+}
+
+func compareDir(actualDir, expectedDir string) {
+	actualDirInfo, err := os.Stat(actualDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	expectedDirInfo, err := os.Stat(expectedDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(actualDirInfo.Mode()).To(Equal(expectedDirInfo.Mode()))
+
+	actualFiles, err := ioutil.ReadDir(actualDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	expectedFiles, err := ioutil.ReadDir(actualDir)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(len(actualFiles)).To(Equal(len(expectedFiles)))
+	for i, actualFile := range actualFiles {
+		expectedFile := expectedFiles[i]
+		if actualFile.IsDir() {
+			compareDir(filepath.Join(actualDir, actualFile.Name()), filepath.Join(expectedDir, expectedFile.Name()))
+		} else {
+			compareFile(filepath.Join(actualDir, actualFile.Name()), filepath.Join(expectedDir, expectedFile.Name()))
+		}
+	}
+}
+
+func compareFile(actualFile, expectedFile string) {
+	actualFileInfo, err := os.Stat(actualFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	expectedFileInfo, err := os.Stat(expectedFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(actualFileInfo.Mode()).To(Equal(expectedFileInfo.Mode()))
+	Expect(actualFileInfo.Size()).To(Equal(expectedFileInfo.Size()))
+
+	actualContents, err := ioutil.ReadFile(actualFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	expectedContents, err := ioutil.ReadFile(expectedFile)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(actualContents).To(Equal(expectedContents))
 }
