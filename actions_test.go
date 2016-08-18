@@ -1,6 +1,8 @@
 package vizzini_test
 
 import (
+	"strconv"
+
 	"time"
 
 	. "code.cloudfoundry.org/vizzini/matchers"
@@ -62,6 +64,36 @@ var _ = Describe("Actions", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeFalse())
 			Expect(task.GetResult()).To(ContainSubstring("/etc"))
+
+			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
+		})
+
+	})
+
+	Describe("Run action resource limits", func() {
+		var processLimit uint64 = 117
+		BeforeEach(func() {
+			taskDef = Task()
+			taskDef.Action = models.WrapAction(&models.RunAction{
+				Path: "bash",
+				Dir:  "/etc",
+				Args: []string{"-c", "ulimit -u > /tmp/bar"},
+				User: "vcap",
+				ResourceLimits: &models.ResourceLimits{
+					Nproc: &processLimit,
+				},
+			})
+
+			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
+		})
+
+		It("is possible to limit the number of processes", func() {
+			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Completed))
+			task, err := bbsClient.TaskByGuid(logger, guid)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(task.GetFailed()).To(BeFalse())
+			Expect(task.GetResult()).To(ContainSubstring(strconv.FormatUint(processLimit, 10)))
 
 			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
 			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
