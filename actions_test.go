@@ -72,7 +72,7 @@ var _ = Describe("Actions", func() {
 	})
 
 	Describe("Run action resource limits", func() {
-		var processLimit uint64 = 117
+		var processLimit uint64 = 23790
 		BeforeEach(func() {
 			taskDef = Task()
 			taskDef.Action = models.WrapAction(&models.RunAction{
