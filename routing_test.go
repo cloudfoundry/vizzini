@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
+	"code.cloudfoundry.org/routing-info/cfroutes"
 
 	. "code.cloudfoundry.org/vizzini/matchers"
 	. "github.com/onsi/ginkgo"

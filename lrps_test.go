@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "code.cloudfoundry.org/vizzini/matchers"
-	"github.com/cloudfoundry-incubator/routing-info/cfroutes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
