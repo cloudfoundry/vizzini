@@ -191,18 +191,39 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 					))
+				})
+
+				JustBeforeEach(func() {
 					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
 
 				Context("when one of the actions finishes", func() {
 					BeforeEach(func() {
+						Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 						MakeGraceExit(url, 0)
 					})
 
 					It("gets restarted immediately", func() {
 						Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 						Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
+					})
+				})
+
+				Context("when lot of subprocesses fail", func() {
+					BeforeEach(func() {
+						actions := []models.ActionInterface{}
+						for i := 0; i < 200; i++ {
+							actions = append(actions, &models.RunAction{
+								Path: "bash",
+								Args: []string{"-c", "exit 1"},
+								User: "vcap",
+							})
+						}
+						lrp.Action = models.WrapAction(models.Codependent(actions...))
+					})
+
+					It("the crash count is incremented", func() {
+						Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 					})
 				})
 			})
