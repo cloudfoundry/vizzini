@@ -198,7 +198,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				Context("when one of the actions finishes", func() {
-					BeforeEach(func() {
+					JustBeforeEach(func() {
 						Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 						MakeGraceExit(url, 0)
 					})
