@@ -223,7 +223,7 @@ var _ = Describe("Crashes", func() {
 					})
 
 					It("the crash count is incremented", func() {
-						Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
+						Eventually(ActualGetter(logger, guid, 0), 20*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 					})
 				})
 			})
