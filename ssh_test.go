@@ -358,7 +358,6 @@ var _ = Describe("SSH Tests", func() {
 			var (
 				sourceDir, targetDir             string
 				generatedFile, generatedFileName string
-				generatedFileInfo                os.FileInfo
 				err                              error
 			)
 
@@ -377,7 +376,7 @@ var _ = Describe("SSH Tests", func() {
 				err = ioutil.WriteFile(generatedFile, fileContents, 0644)
 				Expect(err).NotTo(HaveOccurred())
 
-				generatedFileInfo, err = os.Stat(generatedFile)
+				_, err = os.Stat(generatedFile)
 				Expect(err).NotTo(HaveOccurred())
 
 				targetDir, err = ioutil.TempDir("", "sftp-target")

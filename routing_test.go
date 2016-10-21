@@ -182,7 +182,6 @@ var _ = Describe("Routing Related Tests", func() {
 	})
 
 	Describe("scaling down an LRP", func() {
-		var url string
 
 		BeforeEach(func() {
 			lrp = DesiredLRPWithGuid(guid)
@@ -195,7 +194,6 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp.Instances = 5
 
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			url = fmt.Sprintf("http://%s", RouteForGuid(lrp.ProcessGuid))
 			Eventually(IndexCounter(guid)).Should(Equal(int(lrp.Instances)))
 		})
 
