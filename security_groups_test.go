@@ -2,6 +2,7 @@ package vizzini_test
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -11,21 +12,11 @@ import (
 )
 
 var _ = Describe("Security groups", func() {
-	var listener *models.DesiredLRP
-	var listenerGuid string
-	var protectedURL string
+	var gorouterIP string
 
 	BeforeEach(func() {
-		listenerGuid = NewGuid()
-		listener = DesiredLRPWithGuid(listenerGuid)
-
-		Expect(bbsClient.DesireLRP(logger, listener)).To(Succeed())
-		Eventually(ActualGetter(logger, listenerGuid, 0)).Should(BeActualLRPWithState(listenerGuid, 0, models.ActualLRPStateRunning))
-		Eventually(EndpointCurler("http://" + RouteForGuid(listenerGuid) + "/env")).Should(Equal(http.StatusOK))
-
-		listenerActual, err := ActualLRPByProcessGuidAndIndex(logger, listenerGuid, 0)
-		Expect(err).NotTo(HaveOccurred())
-		protectedURL = fmt.Sprintf("http://%s:%d/env", listenerActual.Address, listenerActual.Ports[0].HostPort)
+		gorouterIPs, _ := net.LookupIP(RouteForGuid("foo"))
+		gorouterIP = gorouterIPs[0].String()
 	})
 
 	Context("for LRPs", func() {
@@ -52,19 +43,20 @@ var _ = Describe("Security groups", func() {
 			Eventually(EndpointCurler("http://" + RouteForGuid(allowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 		})
 
-		It("should allow access to the opened up location", func() {
-			urlToProxyThroughDisallowedCaller := fmt.Sprintf("http://"+RouteForGuid(disallowedCallerGuid)+"/curl?url=%s", protectedURL)
-			urlToProxyThroughAllowedCaller := fmt.Sprintf("http://"+RouteForGuid(allowedCallerGuid)+"/curl?url=%s", protectedURL)
+		It("should allow access to an internal IP", func() {
+			urlToProxyThroughDisallowedCaller := fmt.Sprintf("http://"+RouteForGuid(disallowedCallerGuid)+"/curl?url=http://%s:80", gorouterIP)
+			urlToProxyThroughAllowedCaller := fmt.Sprintf("http://"+RouteForGuid(allowedCallerGuid)+"/curl?url=http://%s:80", gorouterIP)
 
-			By("verifiying that calling into the VPC is disallowed")
+			By("verifiying that without egress rules, this network call is disallowed")
 			resp, err := http.Get(urlToProxyThroughDisallowedCaller)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 
-			By("asserting that opening up the security group rules allow us to call into the VPC")
+			By("asserting that opening up the security group rule allows us to call into the internal IP")
 			resp, err = http.Get(urlToProxyThroughAllowedCaller)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			// Any reply from the gorouter indicates that the application security group is in place
+			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -77,15 +69,16 @@ var _ = Describe("Security groups", func() {
 			allowedTask, disallowedTask = Task(), Task()
 			allowedTask.ResultFile, disallowedTask.ResultFile = "", ""
 
+			// Test whether the process can establish a tcp connection on port 80 to the internal IP
 			disallowedTask.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
-				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
+				Args: []string{"-c", fmt.Sprintf("nc -w 2 %s 80", gorouterIP)},
 				User: "vcap",
 			})
 
 			allowedTask.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
-				Args: []string{"-c", fmt.Sprintf("curl %s", protectedURL)},
+				Args: []string{"-c", fmt.Sprintf("nc -w 2 %s 80", gorouterIP)},
 				User: "vcap",
 			})
 
@@ -97,17 +90,19 @@ var _ = Describe("Security groups", func() {
 			}
 		})
 
-		It("should allow access to the opened up location", func() {
+		It("should allow access to an internal IP", func() {
 			Expect(bbsClient.DesireTask(logger, allowedTaskGuid, domain, allowedTask)).To(Succeed())
 			Expect(bbsClient.DesireTask(logger, disallowedTaskGuid, domain, disallowedTask)).To(Succeed())
 
 			Eventually(TaskGetter(logger, allowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 			Eventually(TaskGetter(logger, disallowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 
+			By("verifiying that without egress rules, this network call is disallowed")
 			task, err := bbsClient.TaskByGuid(logger, disallowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(true))
 
+			By("asserting that opening up the security group rule allows us to call into the internal IP")
 			task, err = bbsClient.TaskByGuid(logger, allowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(false))
