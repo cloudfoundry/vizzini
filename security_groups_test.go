@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 
@@ -12,11 +11,19 @@ import (
 )
 
 var _ = Describe("Security groups", func() {
-	var gorouterIP string
+	var gorouterLBIP string
 
 	BeforeEach(func() {
-		gorouterIPs, _ := net.LookupIP(RouteForGuid("foo"))
-		gorouterIP = gorouterIPs[0].String()
+		routeToResolve := RouteForGuid("anything")
+
+		ips, err := net.LookupIP(routeToResolve)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(ips)).To(BeNumerically(">", 0), "failed to resolve "+routeToResolve)
+
+		ip := ips[0]
+		Expect(ip.To4()).NotTo(BeNil(), "failed to resolve "+routeToResolve+" to an IPv4 address")
+
+		gorouterLBIP = ip.String()
 	})
 
 	Context("for LRPs", func() {
@@ -44,8 +51,9 @@ var _ = Describe("Security groups", func() {
 		})
 
 		It("should allow access to an internal IP", func() {
-			urlToProxyThroughDisallowedCaller := fmt.Sprintf("http://"+RouteForGuid(disallowedCallerGuid)+"/curl?url=http://%s:80", gorouterIP)
-			urlToProxyThroughAllowedCaller := fmt.Sprintf("http://"+RouteForGuid(allowedCallerGuid)+"/curl?url=http://%s:80", gorouterIP)
+			endpoint := "/curl?url=http://" + gorouterLBIP + ":80"
+			urlToProxyThroughDisallowedCaller := "http://" + RouteForGuid(disallowedCallerGuid) + endpoint
+			urlToProxyThroughAllowedCaller := "http://" + RouteForGuid(allowedCallerGuid) + endpoint
 
 			By("verifiying that without egress rules, this network call is disallowed")
 			resp, err := http.Get(urlToProxyThroughDisallowedCaller)
@@ -70,17 +78,14 @@ var _ = Describe("Security groups", func() {
 			allowedTask.ResultFile, disallowedTask.ResultFile = "", ""
 
 			// Test whether the process can establish a tcp connection on port 80 to the internal IP
-			disallowedTask.Action = models.WrapAction(&models.RunAction{
+			ncAction := models.WrapAction(&models.RunAction{
 				Path: "bash",
-				Args: []string{"-c", fmt.Sprintf("nc -w 2 %s 80", gorouterIP)},
+				Args: []string{"-c", "nc -w 2 " + gorouterLBIP + " 80"},
 				User: "vcap",
 			})
 
-			allowedTask.Action = models.WrapAction(&models.RunAction{
-				Path: "bash",
-				Args: []string{"-c", fmt.Sprintf("nc -w 2 %s 80", gorouterIP)},
-				User: "vcap",
-			})
+			disallowedTask.Action = ncAction
+			allowedTask.Action = ncAction
 
 			allowedTask.EgressRules = []*models.SecurityGroupRule{
 				{
