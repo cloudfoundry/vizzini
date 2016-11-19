@@ -382,7 +382,7 @@ var _ = Describe("LRPs", func() {
 				otherLRP.Domain = otherDomain
 				Expect(bbsClient.DesireLRP(logger, otherLRP)).To(Succeed())
 				url := "http://" + RouteForGuid(otherGuid) + "/env"
-				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK), "LRP '"+otherGuid+"' failed to become routable within the timeout")
 			}
 		})
 
@@ -479,18 +479,20 @@ var _ = Describe("LRPs", func() {
 			BeforeEach(func() {
 				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 
-				otherDomainLRP1 = DesiredLRPWithGuid(NewGuid())
+				otherGuid1 := NewGuid()
+				otherDomainLRP1 = DesiredLRPWithGuid(otherGuid1)
 				otherDomainLRP1.Instances = 2
 				otherDomainLRP1.Domain = otherDomain
 				Expect(bbsClient.DesireLRP(logger, otherDomainLRP1)).To(Succeed())
 
-				otherDomainLRP2 = DesiredLRPWithGuid(NewGuid())
+				otherGuid2 := NewGuid()
+				otherDomainLRP2 = DesiredLRPWithGuid(otherGuid2)
 				otherDomainLRP2.Domain = otherDomain
 				Expect(bbsClient.DesireLRP(logger, otherDomainLRP2)).To(Succeed())
 
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-				Eventually(IndexCounter(otherDomainLRP1.ProcessGuid)).Should(Equal(2))
-				Eventually(IndexCounter(otherDomainLRP2.ProcessGuid)).Should(Equal(1))
+				Eventually(IndexCounter(otherDomainLRP1.ProcessGuid)).Should(Equal(2), "LRP '"+otherGuid1+"' instances failed to come up")
+				Eventually(IndexCounter(otherDomainLRP2.ProcessGuid)).Should(Equal(1), "LRP '"+otherGuid2+"' instances failed to come up")
 			})
 
 			It("returns said instances", func() {
