@@ -1,6 +1,7 @@
 package vizzini_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -17,7 +18,7 @@ var _ = Describe("LRPs", func() {
 	var url string
 
 	BeforeEach(func() {
-		url = "http://" + RouteForGuid(guid) + "/env"
+		url = "http://" + RouteForGuid(guid) + "/env?json=true"
 		lrp = DesiredLRPWithGuid(guid)
 	})
 
@@ -146,14 +147,19 @@ var _ = Describe("LRPs", func() {
 		It("should be possible to specify environment variables on both the DesiredLRP and the RunAction", func() {
 			resp, err := http.Get(url)
 			Expect(err).NotTo(HaveOccurred())
-			body, err := ioutil.ReadAll(resp.Body)
-			Expect(err).NotTo(HaveOccurred())
-			resp.Body.Close()
+			defer resp.Body.Close()
 
-			Expect(body).To(ContainSubstring("AARDVARK"))
-			Expect(body).To(ContainSubstring("COYOTE"))
-			Expect(body).To(ContainSubstring("DAQUIRI"))
-			Expect(body).NotTo(ContainSubstring("BANANA"))
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			Expect(err).NotTo(HaveOccurred())
+
+			env := [][]string{}
+			err = json.Unmarshal(bodyBytes, &env)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(env).To(ContainElement([]string{"CONTAINER_LEVEL", "AARDVARK"}))
+			Expect(env).To(ContainElement([]string{"ACTION_LEVEL", "COYOTE"}))
+			Expect(env).To(ContainElement([]string{"OVERRIDE", "DAQUIRI"}))
+			Expect(env).NotTo(ContainElement([]string{"OVERRIDE", "BANANA"}))
 		})
 	})
 
