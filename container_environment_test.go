@@ -76,6 +76,7 @@ var _ = Describe("The container environment", func() {
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
+			Expect(envs).To(ContainElement(ContainElement("CF_INSTANCE_INTERNAL_IP")))
 		})
 	})
 })
