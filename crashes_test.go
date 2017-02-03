@@ -212,7 +212,7 @@ var _ = Describe("Crashes", func() {
 				Context("when lot of subprocesses fail", func() {
 					BeforeEach(func() {
 						actions := []models.ActionInterface{}
-						for i := 0; i < 200; i++ {
+						for i := 0; i < 100; i++ {
 							actions = append(actions, &models.RunAction{
 								Path: "bash",
 								Args: []string{"-c", "exit 1"},
