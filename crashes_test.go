@@ -208,24 +208,6 @@ var _ = Describe("Crashes", func() {
 						Eventually(EndpointCurler(url+"/env")).Should(Equal(http.StatusOK), "This can be removed when #89463754 lands")
 					})
 				})
-
-				Context("when lot of subprocesses fail", func() {
-					BeforeEach(func() {
-						actions := []models.ActionInterface{}
-						for i := 0; i < 100; i++ {
-							actions = append(actions, &models.RunAction{
-								Path: "bash",
-								Args: []string{"-c", "exit 1"},
-								User: "vcap",
-							})
-						}
-						lrp.Action = models.WrapAction(models.Codependent(actions...))
-					})
-
-					It("the crash count is incremented", func() {
-						Eventually(ActualGetter(logger, guid, 0), 20*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-					})
-				})
 			})
 
 			Context("in parallel", func() {
