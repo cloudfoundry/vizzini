@@ -231,7 +231,7 @@ var _ = Describe("Tasks", func() {
 				}
 				task.Action = models.WrapAction(&models.RunAction{
 					Path: "bash",
-					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST; sleep 0.05; done", incrementCounterRoute)},
+					Args: []string{"-c", fmt.Sprintf("while true; do curl %s -X POST -d 'body'; sleep 0.05; done", incrementCounterRoute)},
 					User: "vcap",
 				})
 
