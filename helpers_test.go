@@ -60,14 +60,15 @@ func Task() *models.TaskDefinition {
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
 			User: "vcap",
 		}),
-		RootFs:     defaultRootFS,
-		MemoryMb:   128,
-		DiskMb:     128,
-		CpuWeight:  100,
-		LogGuid:    guid,
-		LogSource:  "VIZ",
-		ResultFile: "/tmp/bar",
-		Annotation: "arbitrary-data",
+		RootFs:        defaultRootFS,
+		MemoryMb:      128,
+		DiskMb:        128,
+		CpuWeight:     100,
+		LogGuid:       guid,
+		LogSource:     "VIZ",
+		ResultFile:    "/tmp/bar",
+		Annotation:    "arbitrary-data",
+		PlacementTags: PlacementTags(),
 	}
 }
 
@@ -274,9 +275,10 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 	}.RoutingInfo()
 
 	return &models.DesiredLRP{
-		ProcessGuid: guid,
-		Domain:      domain,
-		Instances:   1,
+		ProcessGuid:   guid,
+		PlacementTags: PlacementTags(),
+		Domain:        domain,
+		Instances:     1,
 		CachedDependencies: []*models.CachedDependency{
 			&models.CachedDependency{
 				From:              GraceTarballURL,
@@ -307,4 +309,8 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		LogSource:  "VIZ",
 		Annotation: "arbitrary-data",
 	}
+}
+
+func PlacementTags() []string {
+	return repPlacementTags
 }

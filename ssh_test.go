@@ -193,6 +193,7 @@ var _ = Describe("SSH Tests", func() {
 
 		lrp = &models.DesiredLRP{
 			ProcessGuid:          guid,
+			PlacementTags:        PlacementTags(),
 			Domain:               domain,
 			Instances:            1,
 			EnvironmentVariables: []*models.EnvironmentVariable{{Name: "CUMBERBUND", Value: "cummerbund"}},

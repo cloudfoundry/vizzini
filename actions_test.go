@@ -103,10 +103,11 @@ var _ = Describe("Actions", func() {
 	Describe("Cancelling Downloads", func() {
 		It("should cancel the download", func() {
 			desiredLRP := &models.DesiredLRP{
-				ProcessGuid: guid,
-				RootFs:      defaultRootFS,
-				Domain:      domain,
-				Instances:   1,
+				PlacementTags: PlacementTags(),
+				ProcessGuid:   guid,
+				RootFs:        defaultRootFS,
+				Domain:        domain,
+				Instances:     1,
 				Action: models.WrapAction(&models.DownloadAction{
 					From: "https://s3-us-west-1.amazonaws.com/onsi-public/foo.zip",
 					To:   "/tmp",
