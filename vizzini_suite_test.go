@@ -1,6 +1,7 @@
 package vizzini_test
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -33,6 +34,7 @@ var startTime time.Time
 var bbsAddress string
 var bbsClientCert string
 var bbsClientKey string
+var repPlacementTags multiArgList
 var routableDomainSuffix string
 var sshAddress string
 var sshHost string
@@ -52,6 +54,7 @@ func init() {
 	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
+	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
 	flag.Parse()
 
 	if bbsAddress == "" {
@@ -140,4 +143,19 @@ func initializeBBSClient() bbs.InternalClient {
 	bbsClient, err := bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
+}
+
+type multiArgList []string
+
+func (p *multiArgList) String() string {
+	return fmt.Sprintf("%v", *p)
+}
+
+func (p *multiArgList) Set(value string) error {
+	if value == "" {
+		return errors.New("Cannot set blank value")
+	}
+
+	*p = append(*p, value)
+	return nil
 }
