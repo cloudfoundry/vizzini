@@ -23,26 +23,30 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 )
 
-var bbsClient bbs.InternalClient
-var domain string
-var otherDomain string
-var defaultRootFS string
-var guid string
-var startTime time.Time
+var (
+	bbsClient     bbs.InternalClient
+	domain        string
+	otherDomain   string
+	defaultRootFS string
+	guid          string
+	startTime     time.Time
 
-var bbsAddress string
-var bbsClientCert string
-var bbsClientKey string
-var routableDomainSuffix string
-var sshAddress string
-var sshHost string
-var sshPort string
-var sshPassword string
-var hostAddress string
-var logger lager.Logger
+	bbsAddress           string
+	bbsClientCert        string
+	bbsClientKey         string
+	routableDomainSuffix string
+	sshAddress           string
+	sshHost              string
+	sshPort              string
+	sshPassword          string
+	hostAddress          string
+	logger               lager.Logger
 
-var timeout time.Duration
-var dockerTimeout time.Duration
+	timeout       time.Duration
+	dockerTimeout time.Duration
+
+	enableDeclarativeHealthCheck bool
+)
 
 func init() {
 	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.2:8889", "http address for the bbs (required)")
@@ -52,6 +56,7 @@ func init() {
 	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
+	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
 	flag.Parse()
 
 	if bbsAddress == "" {

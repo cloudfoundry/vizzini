@@ -163,6 +163,52 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
+	Describe("Specifying declarative health check", func() {
+		BeforeEach(func() {
+			lrp.Setup = models.WrapAction(models.Serial(
+				&models.DownloadAction{
+					From:     GraceTarballURL,
+					To:       ".",
+					CacheKey: "grace",
+					User:     "vcap",
+				},
+				&models.DownloadAction{
+					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					To:       "/tmp/lifecycle",
+					CacheKey: "buildpack-app-lifecycle",
+					User:     "vcap",
+				},
+			))
+			// check the wrong port to ensure the check definition is actually being used
+			lrp.Monitor = models.WrapAction(&models.RunAction{
+				Path: "/tmp/lifecycle/healthcheck",
+				Args: []string{"-port=8090", "-uri=/ping"},
+				User: "vcap",
+			})
+
+			lrp.CheckDefinition = &models.CheckDefinition{
+				Checks: []*models.Check{
+					{
+						HttpCheck: &models.HTTPCheck{
+							Port: 8080,
+							Path: "/ping",
+						},
+					},
+				},
+			}
+
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		})
+
+		It("should run", func() {
+			if !enableDeclarativeHealthCheck {
+				Skip("declarative are not enabeld")
+			}
+
+			Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning)))
+		})
+	})
+
 	Describe("Specifying HTTP-based health check (move to inigo or DATs once CC can specify an HTTP-based health-check)", func() {
 		BeforeEach(func() {
 			lrp.Setup = models.WrapAction(models.Serial(
@@ -179,6 +225,7 @@ var _ = Describe("LRPs", func() {
 					User:     "vcap",
 				},
 			))
+
 			lrp.Monitor = models.WrapAction(&models.RunAction{
 				Path: "/tmp/lifecycle/healthcheck",
 				Args: []string{"-port=8080", "-uri=/ping"},
