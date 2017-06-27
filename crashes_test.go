@@ -61,7 +61,7 @@ var _ = Describe("Crashes", func() {
 			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateRunning, 1))
 			actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actualLRP.CrashReason).To(ContainSubstring("Exited with status 17"))
+			Expect(actualLRP.CrashReason).To(ContainSubstring("Exit status 17"))
 		})
 	})
 
