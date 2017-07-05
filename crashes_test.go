@@ -211,10 +211,6 @@ var _ = Describe("Crashes", func() {
 			})
 
 			Context("with a failing check definition", func() {
-				if !enableDeclarativeHealthCheck {
-					Skip("declarative are not enabeld")
-				}
-
 				JustBeforeEach(func() {
 					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
@@ -254,6 +250,10 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
+							if !enableDeclarativeHealthCheck {
+								Skip("declarative are not enabeld")
+							}
+
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
@@ -300,6 +300,10 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
+							if !enableDeclarativeHealthCheck {
+								Skip("declarative are not enabeld")
+							}
+
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
@@ -324,6 +328,10 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
+							if !enableDeclarativeHealthCheck {
+								Skip("declarative are not enabeld")
+							}
+
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
@@ -354,6 +362,10 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
+							if !enableDeclarativeHealthCheck {
+								Skip("declarative are not enabeld")
+							}
+
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
