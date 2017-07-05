@@ -210,157 +210,159 @@ var _ = Describe("Crashes", func() {
 				})
 			})
 
-			Context("with a failing monitor action", func() {
-				Context("with a long running healthcheck", func() {
-					JustBeforeEach(func() {
-						Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-						Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
+			Context("with a failing check definition", func() {
+				if !enableDeclarativeHealthCheck {
+					Skip("declarative are not enabeld")
+				}
+
+				JustBeforeEach(func() {
+					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
+				})
+
+				Context("when failing readiness", func() {
+					BeforeEach(func() {
+						lrp.Action = models.WrapAction(
+							models.Parallel(
+								&models.RunAction{
+									Path: "/tmp/grace/grace",
+									Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+									User: "vcap",
+								},
+							),
+						)
+						lrp.StartTimeoutMs = 3000
 					})
 
-					Context("when failing readiness", func() {
+					Context("with both http and tcp healthcheck", func() {
 						BeforeEach(func() {
-							lrp.Action = models.WrapAction(
-								models.Parallel(
-									&models.RunAction{
-										Path: "/tmp/grace/grace",
-										Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-										User: "vcap",
+							lrp.CheckDefinition = &models.CheckDefinition{
+								Checks: []*models.Check{
+									{
+										TcpCheck: &models.TCPCheck{
+											Port: 9090,
+										},
 									},
-								),
-							)
-							lrp.StartTimeoutMs = 3000
+									{
+										HttpCheck: &models.HTTPCheck{
+											Port: 9090,
+											Path: "/ping",
+										},
+									},
+								},
+							}
 						})
 
-						Context("with both http and tcp healthcheck", func() {
-							BeforeEach(func() {
-								lrp.CheckDefinition = &models.CheckDefinition{
-									Checks: []*models.Check{
-										{
-											TcpCheck: &models.TCPCheck{
-												Port: 9090,
-											},
-										},
-										{
-											HttpCheck: &models.HTTPCheck{
-												Port: 9090,
-												Path: "/ping",
-											},
+						It("shows the monitor crash reasons", func() {
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+
+							actualLRP, err := ActualGetter(logger, guid, 0)()
+							Expect(err).NotTo(HaveOccurred())
+
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance never healthy after 3s"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 9090: connection refused;"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 9090: connection refused"))
+						})
+					})
+				})
+
+				Context("when failing liveness", func() {
+					BeforeEach(func() {
+						lrp.Action = models.WrapAction(
+							models.Parallel(
+								&models.RunAction{
+									Path: "bash",
+									Args: []string{"-c", "while true; do sleep 1; done"},
+									User: "vcap",
+								},
+								&models.RunAction{
+									Path: "/tmp/grace/grace",
+									Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+									Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
+									User: "vcap",
+								},
+							),
+						)
+					})
+
+					Context("with http healthcheck", func() {
+						BeforeEach(func() {
+							lrp.CheckDefinition = &models.CheckDefinition{
+								Checks: []*models.Check{
+									{
+										HttpCheck: &models.HTTPCheck{
+											Port: 8080,
+											Path: "/ping",
 										},
 									},
-								}
-							})
+								},
+							}
+						})
 
-							It("shows the monitor crash reasons", func() {
-								Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+						It("shows the monitor crash reasons", func() {
+							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
-								actualLRP, err := ActualGetter(logger, guid, 0)()
-								Expect(err).NotTo(HaveOccurred())
+							actualLRP, err := ActualGetter(logger, guid, 0)()
+							Expect(err).NotTo(HaveOccurred())
 
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Instance never healthy after 3s"))
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 9090: connection refused;"))
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 9090: connection refused"))
-							})
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make HTTP request to '/ping' on port 8080: connection refused; cancelled"))
 						})
 					})
 
-					Context("when failing liveness", func() {
+					Context("with tcp healthcheck", func() {
 						BeforeEach(func() {
-							lrp.Action = models.WrapAction(
-								models.Parallel(
-									&models.RunAction{
-										Path: "bash",
-										Args: []string{"-c", "while true; do sleep 1; done"},
-										User: "vcap",
+							lrp.CheckDefinition = &models.CheckDefinition{
+								Checks: []*models.Check{
+									{
+										TcpCheck: &models.TCPCheck{
+											Port: 8080,
+										},
 									},
-									&models.RunAction{
-										Path: "/tmp/grace/grace",
-										Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-										Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
-										User: "vcap",
-									},
-								),
-							)
+								},
+							}
 						})
 
-						Context("with http healthcheck", func() {
-							BeforeEach(func() {
-								lrp.CheckDefinition = &models.CheckDefinition{
-									Checks: []*models.Check{
-										{
-											HttpCheck: &models.HTTPCheck{
-												Port: 8080,
-												Path: "/ping",
-											},
+						It("shows the monitor crash reasons", func() {
+							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+
+							actualLRP, err := ActualGetter(logger, guid, 0)()
+							Expect(err).NotTo(HaveOccurred())
+
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make TCP connection to port 8080: connection refused; cancelled"))
+						})
+					})
+
+					Context("with both http and tcp healthcheck", func() {
+						BeforeEach(func() {
+							lrp.CheckDefinition = &models.CheckDefinition{
+								Checks: []*models.Check{
+									{
+										TcpCheck: &models.TCPCheck{
+											Port: 8080,
 										},
 									},
-								}
-							})
-
-							It("shows the monitor crash reasons", func() {
-								Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
-								Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-								actualLRP, err := ActualGetter(logger, guid, 0)()
-								Expect(err).NotTo(HaveOccurred())
-
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make HTTP request to '/ping' on port 8080: connection refused; cancelled"))
-							})
+									{
+										HttpCheck: &models.HTTPCheck{
+											Port: 8080,
+											Path: "/ping",
+										},
+									},
+								},
+							}
 						})
 
-						Context("with tcp healthcheck", func() {
-							BeforeEach(func() {
-								lrp.CheckDefinition = &models.CheckDefinition{
-									Checks: []*models.Check{
-										{
-											TcpCheck: &models.TCPCheck{
-												Port: 8080,
-											},
-										},
-									},
-								}
-							})
+						It("shows the monitor crash reasons", func() {
+							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
-							It("shows the monitor crash reasons", func() {
-								Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
-								Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+							actualLRP, err := ActualGetter(logger, guid, 0)()
+							Expect(err).NotTo(HaveOccurred())
 
-								actualLRP, err := ActualGetter(logger, guid, 0)()
-								Expect(err).NotTo(HaveOccurred())
-
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make TCP connection to port 8080: connection refused; cancelled"))
-							})
-						})
-
-						Context("with both http and tcp healthcheck", func() {
-							BeforeEach(func() {
-								lrp.CheckDefinition = &models.CheckDefinition{
-									Checks: []*models.Check{
-										{
-											TcpCheck: &models.TCPCheck{
-												Port: 8080,
-											},
-										},
-										{
-											HttpCheck: &models.HTTPCheck{
-												Port: 8080,
-												Path: "/ping",
-											},
-										},
-									},
-								}
-							})
-
-							It("shows the monitor crash reasons", func() {
-								Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
-								Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
-
-								actualLRP, err := ActualGetter(logger, guid, 0)()
-								Expect(err).NotTo(HaveOccurred())
-
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 8080: connection refused;"))
-								Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused;"))
-							})
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 8080: connection refused;"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused;"))
 						})
 					})
 				})
