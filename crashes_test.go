@@ -213,7 +213,6 @@ var _ = Describe("Crashes", func() {
 			Context("with a failing check definition", func() {
 				JustBeforeEach(func() {
 					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
 				})
 
 				Context("when failing readiness", func() {
