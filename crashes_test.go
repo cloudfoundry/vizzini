@@ -259,7 +259,7 @@ var _ = Describe("Crashes", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance never healthy after 3s"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 9090: connection refused;"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 9090: connection refused"))
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 9090: connection refused"))
 						})
 					})
@@ -309,7 +309,7 @@ var _ = Describe("Crashes", func() {
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
 
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make HTTP request to '/ping' on port 8080: connection refused; cancelled"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make HTTP request to '/ping' on port 8080: connection refused"))
 						})
 					})
 
@@ -337,7 +337,7 @@ var _ = Describe("Crashes", func() {
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
 
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make TCP connection to port 8080: connection refused; cancelled"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Failed to make TCP connection to port 8080: connection refused"))
 						})
 					})
 
@@ -372,8 +372,8 @@ var _ = Describe("Crashes", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 8080: connection refused;"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused;"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 8080: connection refused"))
+							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused"))
 						})
 					})
 				})
