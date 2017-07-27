@@ -277,7 +277,6 @@ var _ = Describe("Crashes", func() {
 								&models.RunAction{
 									Path: "/tmp/grace/grace",
 									Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
-									Args: []string{"-exitAfter=2s", "-exitAfterCode=0"},
 									User: "vcap",
 								},
 							),
@@ -304,6 +303,7 @@ var _ = Describe("Crashes", func() {
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							MakeGraceExit(url, 0)
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
@@ -332,6 +332,7 @@ var _ = Describe("Crashes", func() {
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							MakeGraceExit(url, 0)
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
@@ -366,6 +367,7 @@ var _ = Describe("Crashes", func() {
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+							MakeGraceExit(url, 0)
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
