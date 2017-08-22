@@ -374,8 +374,10 @@ var _ = Describe("Crashes", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make TCP connection to port 8080: connection refused"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused"))
+							Expect(actualLRP.CrashReason).To(SatisfyAny(
+								ContainSubstring("Failed to make TCP connection to port 8080: connection refused"),
+								ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused"),
+							))
 						})
 					})
 				})
