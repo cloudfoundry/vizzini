@@ -250,7 +250,7 @@ var _ = Describe("Crashes", func() {
 
 						It("shows the monitor crash reasons", func() {
 							if !enableDeclarativeHealthCheck {
-								Skip("declarative are not enabeld")
+								Skip("declarative are not enabled")
 							}
 
 							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
@@ -299,7 +299,7 @@ var _ = Describe("Crashes", func() {
 
 						It("shows the monitor crash reasons", func() {
 							if !enableDeclarativeHealthCheck {
-								Skip("declarative are not enabeld")
+								Skip("declarative are not enabled")
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
@@ -328,7 +328,7 @@ var _ = Describe("Crashes", func() {
 
 						It("shows the monitor crash reasons", func() {
 							if !enableDeclarativeHealthCheck {
-								Skip("declarative are not enabeld")
+								Skip("declarative are not enabled")
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
@@ -363,7 +363,7 @@ var _ = Describe("Crashes", func() {
 
 						It("shows the monitor crash reasons", func() {
 							if !enableDeclarativeHealthCheck {
-								Skip("declarative are not enabeld")
+								Skip("declarative are not enabled")
 							}
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
