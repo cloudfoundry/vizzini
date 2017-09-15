@@ -474,15 +474,15 @@ func runWithPassword(cmd *exec.Cmd, password string) *gexec.Session {
 func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*gexec.Session, *os.File)) *gexec.Session {
 	passwordInput := password + "\n"
 
-	// Create pty pseudo-terminal so that ptyMaster can input password when
+	// Create pty pseudo-terminal so that ptyClient can input password when
 	// prompted
-	ptyMaster, ptySlave, err := pty.Open()
+	ptyClient, ptyServer, err := pty.Open()
 	Expect(err).NotTo(HaveOccurred())
-	defer ptyMaster.Close()
+	defer ptyClient.Close()
 
-	cmd.Stdin = ptySlave
-	cmd.Stdout = ptySlave
-	cmd.Stderr = ptySlave
+	cmd.Stdin = ptyServer
+	cmd.Stdout = ptyServer
+	cmd.Stderr = ptyServer
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setctty: true,
@@ -492,18 +492,18 @@ func runInteractiveWithPassword(cmd *exec.Cmd, password string, actions func(*ge
 	session, err := gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 	Expect(err).NotTo(HaveOccurred())
 
-	// Close our open reference to ptySlave so that PTY Master recieves EOF
-	ptySlave.Close()
+	// Close our open reference to ptyServer so that PTYClient recieves EOF
+	ptyServer.Close()
 
-	sendPassword(ptyMaster, passwordInput)
+	sendPassword(ptyClient, passwordInput)
 
 	done := make(chan struct{})
 	go func() {
-		io.Copy(GinkgoWriter, ptyMaster)
+		io.Copy(GinkgoWriter, ptyClient)
 		close(done)
 	}()
 
-	actions(session, ptyMaster)
+	actions(session, ptyClient)
 	Eventually(done).Should(BeClosed())
 	return session
 }
