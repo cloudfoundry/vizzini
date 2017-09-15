@@ -49,8 +49,7 @@ var _ = Describe("The container environment", func() {
 		})
 	})
 
-	//{LOCAL} because: Instance IP and PORT are not injected by default.  One needs to opt-into this feature.
-	Describe("{LOCAL} Instance IP and PORT", func() {
+	Describe("Instance IP and PORT", func() {
 		BeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url), 40).Should(Equal(http.StatusOK))
