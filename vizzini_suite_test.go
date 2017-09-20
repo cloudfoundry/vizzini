@@ -48,6 +48,7 @@ var (
 	dockerTimeout time.Duration
 
 	enableDeclarativeHealthCheck bool
+	enableContainerProxyTests    bool
 )
 
 func init() {
@@ -59,6 +60,7 @@ func init() {
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
+	flag.BoolVar(&enableContainerProxyTests, "enable-container-proxy-tests", false, "true if the rep is configured to run an envoy proxy in the container")
 	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
 	flag.Parse()
 

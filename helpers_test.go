@@ -269,6 +269,21 @@ func DirectAddressFor(guid string, index int, containerPort uint32) string {
 	return ""
 }
 
+func TLSDirectAddressFor(guid string, index int, containerPort uint32) string {
+	actualLRP, err := ActualGetter(logger, guid, index)()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(actualLRP).NotTo(BeZero())
+
+	for _, portMapping := range actualLRP.Ports {
+		if portMapping.ContainerPort == containerPort {
+			return fmt.Sprintf("%s:%d", actualLRP.Address, portMapping.HostTlsProxyPort)
+		}
+	}
+
+	ginkgo.Fail(fmt.Sprintf("could not find port %d for ActualLRP %d with ProcessGuid %s", containerPort, index, guid))
+	return ""
+}
+
 func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 	routingInfo := cfroutes.CFRoutes{
 		{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
