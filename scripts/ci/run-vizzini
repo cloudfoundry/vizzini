@@ -15,7 +15,6 @@ go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo \
   -nodes=8 \
-  -skip="{LOCAL}" \
   -randomizeAllSpecs \
   -progress \
   -trace \

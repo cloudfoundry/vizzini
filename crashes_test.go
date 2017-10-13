@@ -477,9 +477,7 @@ var _ = Describe("Crashes", func() {
 				})
 			})
 
-			//{LOCAL} because: this test attempts to communicate with the container *directly* to ensure the process has been torn down
-			//this is not possible against a remote installation as it entails connecting directly into the VPC
-			Context("{LOCAL} when the monitor subsequently fails", func() {
+			Context("when the monitor subsequently fails", func() {
 				BeforeEach(func() {
 					TellGraceToDeleteFile(indirectURL, "up")
 				})
