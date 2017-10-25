@@ -78,10 +78,10 @@ var _ = Describe("Actions", func() {
 			taskDef.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Dir:  "/etc",
-				Args: []string{"-c", "ulimit -u > /tmp/bar"},
+				Args: []string{"-c", "ulimit -n > /tmp/bar"},
 				User: "vcap",
 				ResourceLimits: &models.ResourceLimits{
-					Nproc: &processLimit,
+					Nofile: &processLimit,
 				},
 			})
 
