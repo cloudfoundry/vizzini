@@ -14,7 +14,7 @@ var _ = Describe("Security groups", func() {
 	var gorouterLBIP string
 
 	BeforeEach(func() {
-		routeToResolve := RouteForGuid("anything")
+		routeToResolve := "www.example.com"
 
 		ips, err := net.LookupIP(routeToResolve)
 		Expect(err).NotTo(HaveOccurred())
