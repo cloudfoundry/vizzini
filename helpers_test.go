@@ -21,9 +21,9 @@ const HealthyCheckInterval = 30 * time.Second
 const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
-const GraceTarballURL = "http://onsi-public.s3.amazonaws.com/grace.tar.gz"
+const GraceTarballURL = "https://storage.googleapis.com/diego-assets-bucket/grace.tar.gz"
 const GraceTarballURLSHAChecksum = "8540eec19bd22ff3fb69d3771123a43ca34e0634"
-const GraceBusyboxImageURL = "docker:///onsi/grace-busybox"
+const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 //Tasks
 
