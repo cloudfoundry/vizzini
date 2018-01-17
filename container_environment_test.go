@@ -18,6 +18,9 @@ var _ = Describe("The container environment", func() {
 		url = "http://" + RouteForGuid(guid) + "/env?json=true"
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Ports = []uint32{8080, 5000}
+
+		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 	})
 
 	getEnvs := func(url string) [][]string {
@@ -31,12 +34,7 @@ var _ = Describe("The container environment", func() {
 		return envs
 	}
 
-	Describe("InstanceGuid and InstanceIndex", func() {
-		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-		})
-
+	Describe("INSTANCE_INDEX and INSTANCE_GUID", func() {
 		It("matches the ActualLRP's index and instance guid", func() {
 			actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
@@ -45,17 +43,11 @@ var _ = Describe("The container environment", func() {
 
 			Expect(envs).To(ContainElement([]string{"INSTANCE_INDEX", "0"}))
 			Expect(envs).To(ContainElement([]string{"INSTANCE_GUID", actualLRP.InstanceGuid}))
-
 		})
 	})
 
-	Describe("Instance IP and PORT", func() {
-		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(EndpointCurler(url), 40).Should(Equal(http.StatusOK))
-		})
-
-		It("matches the ActualLRP's index and instance guid", func() {
+	Describe("networking environment variables", func() {
+		It("matches the network info on the ActualLRP", func() {
 			actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -77,6 +69,10 @@ var _ = Describe("The container environment", func() {
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
+		})
+
+		It("includes CF_INSTANCE_INTERNAL_IP", func() {
+			envs := getEnvs(url)
 			Expect(envs).To(ContainElement(ContainElement("CF_INSTANCE_INTERNAL_IP")))
 		})
 	})
