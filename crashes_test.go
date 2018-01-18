@@ -487,14 +487,14 @@ var _ = Describe("Crashes", func() {
 						Timeout: time.Second,
 					}
 
-					By("first validate that we can connect to the container directly")
+					By("first validate that we can connect to the container directly using " + directURL)
 					_, err := httpClient.Get(directURL + "/env")
 					Expect(err).NotTo(HaveOccurred())
 
 					By("being marked as crashed")
 					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
-					By("tearing down the process -- this reaches out to the container's direct address and ensures we can't reach it")
+					By("tearing down the process -- this reaches out to the container's direct address " + directURL + " and ensures we can't reach it")
 					_, err = httpClient.Get(directURL + "/env")
 					Expect(err).To(HaveOccurred())
 				})
