@@ -1,6 +1,8 @@
 package vizzini_test
 
 import (
+	"time"
+
 	"code.cloudfoundry.org/bbs/models"
 	. "code.cloudfoundry.org/vizzini/matchers"
 
@@ -12,6 +14,12 @@ var _ = Describe("Privileged", func() {
 	var task *models.TaskDefinition
 	var runUser string
 	var containerPrivileged bool
+
+	BeforeEach(func() {
+		if timeout == DefaultEventuallyTimeout {
+			SetDefaultEventuallyTimeout(time.Second * 15)
+		}
+	})
 
 	JustBeforeEach(func() {
 		task = Task()
@@ -27,6 +35,7 @@ var _ = Describe("Privileged", func() {
 	})
 
 	AfterEach(func() {
+		defer SetDefaultEventuallyTimeout(timeout)
 		Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
 		Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 	})

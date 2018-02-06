@@ -84,16 +84,18 @@ func NewGuid() string {
 	return domain + "-" + u.String()[:8]
 }
 
+const DefaultEventuallyTimeout = 10 * time.Second
+
 var _ = BeforeSuite(func() {
 	var err error
-	timeout = 10 * time.Second
+	timeout = DefaultEventuallyTimeout
 	dockerTimeout = 120 * time.Second
 
 	timeoutArg := os.Getenv("DEFAULT_EVENTUALLY_TIMEOUT")
 	if timeoutArg != "" {
 		timeout, err = time.ParseDuration(timeoutArg)
 		Expect(err).NotTo(HaveOccurred(), "invalid value '"+timeoutArg+"' for DEFAULT_EVENTUALLY_TIMEOUT")
-		fmt.Printf("Setting Default Eventually Timeout to %s\n", timeout)
+		fmt.Fprintf(GinkgoWriter, "Setting Default Eventually Timeout to %s\n", timeout)
 	}
 
 	SetDefaultEventuallyTimeout(timeout)
