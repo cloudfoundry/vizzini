@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/url"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -142,13 +141,6 @@ var _ = AfterSuite(func() {
 })
 
 func initializeBBSClient() bbs.InternalClient {
-	bbsURL, err := url.Parse(bbsAddress)
-	Expect(err).NotTo(HaveOccurred())
-
-	if bbsURL.Scheme != "https" {
-		return bbs.NewClient(bbsAddress)
-	}
-
 	bbsClient, err := bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
