@@ -211,7 +211,6 @@ var _ = Describe("SSH Tests", func() {
 					CacheKey: "lifecycle",
 				},
 			},
-			LegacyDownloadUser: user,
 			Action: models.WrapAction(models.Parallel(
 				&models.RunAction{
 					Path: "/tmp/lifecycle/diego-sshd",

@@ -303,7 +303,6 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 				ChecksumValue:     GraceTarballURLSHAChecksum,
 			},
 		},
-		LegacyDownloadUser: "vcap",
 		Action: models.WrapAction(&models.RunAction{
 			Path: "/tmp/grace/grace",
 			User: "vcap",
