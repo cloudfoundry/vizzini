@@ -194,7 +194,7 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp.Instances = 5
 
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(IndexCounter(guid)).Should(Equal(int(lrp.Instances)))
+			Eventually(IndexCounter(guid), 15).Should(Equal(int(lrp.Instances)))
 		})
 
 		It("quickly stops routing to the removed indices", func() {
