@@ -113,6 +113,12 @@ var _ = Describe("Actions", func() {
 					To:   "/tmp",
 					User: "vcap",
 				}),
+				MemoryMb:   128,
+				DiskMb:     128,
+				CpuWeight:  100,
+				LogGuid:    guid,
+				LogSource:  "VIZ",
+				Annotation: "arbitrary-data",
 			}
 
 			Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
