@@ -521,7 +521,7 @@ var _ = Describe("Tasks", func() {
 
 			It("should hit the callback", func() {
 				Expect(bbsClient.DesireTask(logger, guid, domain, task)).To(Succeed())
-				Eventually(done).Should(BeClosed())
+				Eventually(done, taskFailureTimeout).Should(BeClosed())
 
 				Eventually(func() bool {
 					_, err := bbsClient.TaskByGuid(logger, guid)
@@ -537,9 +537,9 @@ var _ = Describe("Tasks", func() {
 				task.MemoryMb = 1024 * 1024
 			})
 
-			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
+			It("should allow creation of the task but should mark the task as failed", func() {
 				Expect(bbsClient.DesireTask(logger, guid, domain, task)).To(Succeed())
-				Eventually(TaskGetter(logger, guid), 5).Should(HaveTaskState(models.Task_Completed))
+				Eventually(TaskGetter(logger, guid), taskFailureTimeout).Should(HaveTaskState(models.Task_Completed))
 
 				retreivedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())
@@ -557,9 +557,9 @@ var _ = Describe("Tasks", func() {
 				task.RootFs = models.PreloadedRootFS("fruitfs")
 			})
 
-			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
+			It("should allow creation of the task but should mark the task as failed", func() {
 				Expect(bbsClient.DesireTask(logger, guid, domain, task)).To(Succeed())
-				Eventually(TaskGetter(logger, guid), 5).Should(HaveTaskState(models.Task_Completed))
+				Eventually(TaskGetter(logger, guid), taskFailureTimeout).Should(HaveTaskState(models.Task_Completed))
 
 				retreivedTask, err := bbsClient.TaskByGuid(logger, guid)
 				Expect(err).NotTo(HaveOccurred())

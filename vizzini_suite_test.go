@@ -42,6 +42,7 @@ var (
 	sshPassword          string
 	hostAddress          string
 	logger               lager.Logger
+	maxTaskRetries       int
 
 	timeout       time.Duration
 	dockerTimeout time.Duration
@@ -61,6 +62,7 @@ func init() {
 	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
 	flag.BoolVar(&enableContainerProxyTests, "enable-container-proxy-tests", false, "true if the rep is configured to run an envoy proxy in the container")
 	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
+	flag.IntVar(&maxTaskRetries, "max-task-retries", 0, "BBS max_task_retries configuration")
 	flag.Parse()
 
 	if bbsAddress == "" {
@@ -85,6 +87,8 @@ func NewGuid() string {
 
 const DefaultEventuallyTimeout = 10 * time.Second
 
+var taskFailureTimeout time.Duration
+
 var _ = BeforeSuite(func() {
 	var err error
 	timeout = DefaultEventuallyTimeout
@@ -108,6 +112,9 @@ var _ = BeforeSuite(func() {
 
 	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
 	Expect(err).NotTo(HaveOccurred())
+
+	// conservative taskFailureTimeout since tasks retries happen during convergence
+	taskFailureTimeout = ConvergerInterval * time.Duration(maxTaskRetries+1)
 
 	logger = lagertest.NewTestLogger("vizzini")
 })
