@@ -85,7 +85,8 @@ func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int)
 	if err != nil {
 		return models.ActualLRP{}, err
 	}
-	actualLRP, _ := actualLRPGroup.Resolve()
+	actualLRP, _, err := actualLRPGroup.Resolve()
+	Expect(err).NotTo(HaveOccurred())
 	return *actualLRP, nil
 }
 
@@ -110,7 +111,8 @@ func ActualsByDomain(logger lager.Logger, domain string) ([]models.ActualLRP, er
 func resolveActuals(actualLRPGroups []*models.ActualLRPGroup) []models.ActualLRP {
 	actualLRPs := make([]models.ActualLRP, 0, len(actualLRPGroups))
 	for _, actualLRPGroup := range actualLRPGroups {
-		actualLRP, _ := actualLRPGroup.Resolve()
+		actualLRP, _, err := actualLRPGroup.Resolve()
+		Expect(err).NotTo(HaveOccurred())
 		actualLRPs = append(actualLRPs, *actualLRP)
 	}
 

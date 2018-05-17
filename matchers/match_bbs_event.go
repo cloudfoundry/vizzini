@@ -110,7 +110,10 @@ func (matcher *ActualLRPCreatedEventMatcher) Match(actual interface{}) (success 
 	if !ok {
 		return false, fmt.Errorf("ActualLRPCreatedEventMatcher matcher expects a models.ActualLRPCreatedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	actualLRP, _ := event.ActualLrpGroup.Resolve()
+	actualLRP, _, err := event.ActualLrpGroup.Resolve()
+	if err != nil {
+		return false, err
+	}
 	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
@@ -144,7 +147,10 @@ func (matcher *ActualLRPChangedEventMatcher) Match(actual interface{}) (success 
 		return false, fmt.Errorf("ActualLRPChangedEventMatcher matcher expects a models.ActualLRPChangedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
 
-	actualLRP, _ := event.After.Resolve()
+	actualLRP, _, err := event.After.Resolve()
+	if err != nil {
+		return false, err
+	}
 	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index) && actualLRP.State == matcher.State, nil
 }
 
@@ -175,7 +181,10 @@ func (matcher *ActualLRPRemovedEventMatcher) Match(actual interface{}) (success 
 	if !ok {
 		return false, fmt.Errorf("ActualLRPRemovedEventMatcher matcher expects a models.ActualLRPRemovedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	actualLRP, _ := event.ActualLrpGroup.Resolve()
+	actualLRP, _, err := event.ActualLrpGroup.Resolve()
+	if err != nil {
+		return false, err
+	}
 	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
