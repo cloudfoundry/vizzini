@@ -47,8 +47,9 @@ var (
 	timeout       time.Duration
 	dockerTimeout time.Duration
 
-	enableDeclarativeHealthCheck bool
-	enableContainerProxyTests    bool
+	enableDeclarativeHealthCheck   bool
+	enableContainerProxyTests      bool
+	enablePrivilegedContainerTests bool
 )
 
 func init() {
@@ -61,6 +62,7 @@ func init() {
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
 	flag.BoolVar(&enableContainerProxyTests, "enable-container-proxy-tests", false, "true if the rep is configured to run an envoy proxy in the container")
+	flag.BoolVar(&enablePrivilegedContainerTests, "enable-privileged-container-tests", true, "false if garden is setup to be rootless")
 	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
 	flag.IntVar(&maxTaskRetries, "max-task-retries", 0, "BBS max_task_retries configuration")
 	flag.Parse()
