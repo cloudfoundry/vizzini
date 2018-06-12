@@ -14,6 +14,9 @@ var _ = Describe("FuseFS", func() {
 	var url string
 
 	BeforeEach(func() {
+		if !enablePrivilegedContainerTests {
+			Skip("privileged container tests are disabled")
+		}
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Privileged = true
 		url = "http://" + RouteForGuid(guid) + "/env"
