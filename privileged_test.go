@@ -16,9 +16,6 @@ var _ = Describe("Privileged", func() {
 	var containerPrivileged bool
 
 	BeforeEach(func() {
-		if !enablePrivilegedContainerTests {
-			Skip("privileged container tests are disabled")
-		}
 		if timeout == DefaultEventuallyTimeout {
 			SetDefaultEventuallyTimeout(time.Second * 15)
 		}
@@ -45,6 +42,10 @@ var _ = Describe("Privileged", func() {
 
 	Context("with a privileged container", func() {
 		BeforeEach(func() {
+			if !enablePrivilegedContainerTests {
+				Skip("privileged container tests are disabled")
+			}
+
 			containerPrivileged = true
 		})
 
