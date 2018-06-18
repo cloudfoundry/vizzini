@@ -191,10 +191,45 @@ var _ = Describe("Routing Related Tests", func() {
 				User: "vcap",
 				Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
 			})
-			lrp.Instances = 5
 
+			lrp.Instances = 5
+		})
+
+		JustBeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 			Eventually(IndexCounter(guid), 15).Should(Equal(int(lrp.Instances)))
+		})
+
+		Context("and the LRP has a setup step", func() {
+			BeforeEach(func() {
+				// simulate the same LRP structure found in CF. It turns out we broke
+				// this in https://www.pivotaltracker.com/story/show/156776776, and
+				// only discovered it later in
+				// https://www.pivotaltracker.com/story/show/156522178.
+				lrp.Setup = models.WrapAction(&models.RunAction{
+					Path: "bash",
+					Args: []string{"-c", "echo hi"},
+					User: "vcap",
+				})
+			})
+
+			It("finish outstanding requests", func() {
+				errCh := make(chan error, 1)
+				go func() {
+					resp, err := http.Get("http://" + RouteForGuid(guid) + "/sleep/8s")
+					resp.Body.Close()
+					errCh <- err
+				}()
+
+				instanceCount := int32(0)
+				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid,
+					&models.DesiredLRPUpdate{
+						Instances:  &instanceCount,
+						Routes:     lrp.Routes,
+						Annotation: &lrp.Annotation})).To(Succeed())
+
+				Consistently(errCh, 5*time.Second).ShouldNot(Receive())
+			})
 		})
 
 		It("quickly stops routing to the removed indices", func() {
@@ -204,7 +239,6 @@ var _ = Describe("Routing Related Tests", func() {
 					Instances:  &instanceCount,
 					Routes:     lrp.Routes,
 					Annotation: &lrp.Annotation})).To(Succeed())
-
 			Eventually(IndexCounterWithAttempts(guid, 10), 2*time.Second).Should(Equal(1))
 			Consistently(IndexCounterWithAttempts(guid, 10), 5*time.Second).Should(Equal(1))
 		})

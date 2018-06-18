@@ -22,7 +22,7 @@ const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
 const GraceTarballURL = "https://storage.googleapis.com/diego-assets-bucket/grace.tar.gz"
-const GraceTarballURLSHAChecksum = "cb50182d3b592758cef5eae11f17e5df6780bf06"
+const GraceTarballURLSHAChecksum = "b98d75d7c7e3afe2d24e3c97339b15957a8f146a"
 const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 //Tasks
