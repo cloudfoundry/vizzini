@@ -49,6 +49,9 @@ var (
 
 	enableDeclarativeHealthCheck   bool
 	enableContainerProxyTests      bool
+	proxyClientCert                string
+	proxyClientKey                 string
+	proxyCA                        string
 	enablePrivilegedContainerTests bool
 )
 
@@ -62,6 +65,9 @@ func init() {
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
 	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
 	flag.BoolVar(&enableContainerProxyTests, "enable-container-proxy-tests", false, "true if the rep is configured to run an envoy proxy in the container")
+	flag.StringVar(&proxyCA, "proxy-ca", "", "proxy ssl CA used to verify container proxy server certificates (required if `enable-container-proxy-tests` is true)")
+	flag.StringVar(&proxyClientCert, "proxy-client-cert", "", "proxy client SSL certificate to present to container proxies")
+	flag.StringVar(&proxyClientKey, "proxy-client-key", "", "proxy client SSL private key to use with container proxies")
 	flag.BoolVar(&enablePrivilegedContainerTests, "enable-privileged-container-tests", true, "false if garden is setup to be rootless")
 	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
 	flag.IntVar(&maxTaskRetries, "max-task-retries", 0, "BBS max_task_retries configuration")

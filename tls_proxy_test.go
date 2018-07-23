@@ -3,9 +3,13 @@ package vizzini_test
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/cfhttp"
 	. "code.cloudfoundry.org/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -13,7 +17,10 @@ import (
 )
 
 var _ = Describe("TLS Proxy", func() {
-	var lrp *models.DesiredLRP
+	var (
+		lrp       *models.DesiredLRP
+		actualLRP models.ActualLRP
+	)
 
 	BeforeEach(func() {
 		if !enableContainerProxyTests {
@@ -22,19 +29,22 @@ var _ = Describe("TLS Proxy", func() {
 
 		lrp = DesiredLRPWithGuid(guid)
 		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-		Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+		actualGetterFn := ActualGetter(logger, guid, 0)
+		Eventually(actualGetterFn).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
+		var err error
+		actualLRP, err = actualGetterFn()
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("proxies traffic to the application process inside the container", func() {
 		directURL := "https://" + TLSDirectAddressFor(guid, 0, 8080)
 
+		tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+		Expect(err).NotTo(HaveOccurred())
+
 		client := http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					// the instance cred cert uses the internal container ip which causes
-					// the request to fail since we can only talk to the host ip adddress
-					InsecureSkipVerify: true,
-				},
+				TLSClientConfig: tlsConfig,
 			},
 		}
 		resp, err := client.Get(directURL)
@@ -47,17 +57,13 @@ var _ = Describe("TLS Proxy", func() {
 	Describe("has a valid certificate", func() {
 		var (
 			certs []*x509.Certificate
-			lrp   models.ActualLRP
 		)
 
 		BeforeEach(func() {
-			conn, err := tls.Dial("tcp", TLSDirectAddressFor(guid, 0, 8080), &tls.Config{
-				// the instance cred cert uses the internal container ip which causes the
-				// request to fail since we can only talk to the host ip adddress. ignore
-				// the cert verification and do some manual assertion on the cert
-				// contents
-				InsecureSkipVerify: true,
-			})
+			tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+			Expect(err).NotTo(HaveOccurred())
+
+			conn, err := tls.Dial("tcp", TLSDirectAddressFor(guid, 0, 8080), tlsConfig)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = conn.Handshake()
@@ -67,12 +73,39 @@ var _ = Describe("TLS Proxy", func() {
 			Expect(connState.HandshakeComplete).To(BeTrue())
 			certs = connState.PeerCertificates
 			Expect(certs).To(HaveLen(2)) // the instance identity cert + CA
-			lrp, err = ActualGetter(logger, guid, 0)()
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("has a common name that matches the instance guid", func() {
-			Expect(certs[0].Subject.CommonName).To(Equal(lrp.InstanceGuid))
+			Expect(certs[0].Subject.CommonName).To(Equal(actualLRP.InstanceGuid))
 		})
 	})
 })
+
+func containerProxyTLSConfig(instanceGuid string) (*tls.Config, error) {
+	caCertPool := x509.NewCertPool()
+	if proxyCA == "" {
+		return nil, errors.New("proxy CA file not provided")
+	}
+	certBytes, err := ioutil.ReadFile(proxyCA)
+	if err != nil {
+		return nil, fmt.Errorf("failed read ca cert file: %s", err.Error())
+	}
+
+	if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
+		return nil, errors.New("unable to load ca cert")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+
+	if proxyClientCert != "" && proxyClientKey != "" {
+		tlsConfig, err = cfhttp.NewTLSConfigWithCertPool(proxyClientCert, proxyClientKey, caCertPool)
+		if err != nil {
+			return nil, err
+		}
+	}
+	tlsConfig.ServerName = instanceGuid
+
+	return tlsConfig, nil
+}
