@@ -200,6 +200,15 @@ var _ = Describe("Routing Related Tests", func() {
 			Eventually(IndexCounter(guid), 15).Should(Equal(int(lrp.Instances)))
 		})
 
+		AfterEach(func() {
+			Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
+			Eventually(func() []*models.ActualLRPGroup {
+				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, lrp.ProcessGuid)
+				Expect(err).NotTo(HaveOccurred())
+				return lrps
+			}, 15*time.Second).Should(BeEmpty()) // 15s to give enough time for grace to be SIGKILLed
+		})
+
 		Context("and the LRP has a setup step", func() {
 			BeforeEach(func() {
 				// simulate the same LRP structure found in CF. It turns out we broke
