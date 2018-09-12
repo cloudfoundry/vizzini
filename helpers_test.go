@@ -173,48 +173,43 @@ func EndpointContentCurler(endpoint string) func() (string, error) {
 	}
 }
 
-func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() (int, error) {
+func IndexCounter(guid string, optionalHttpClient ...*http.Client) func() int {
 	return IndexCounterWithAttempts(guid, 100, optionalHttpClient...)
 }
 
-func IndexCounterWithAttempts(guid string, attempts int, optionalHttpClient ...*http.Client) func() (int, error) {
-	return func() (int, error) {
+func IndexCounterWithAttempts(guid string, attempts int, optionalHttpClient ...*http.Client) func() int {
+	return func() int {
 		counts := map[int]bool{}
 		for i := 0; i < attempts; i++ {
-			index, err := GetIndexFromEndpointFor(guid, optionalHttpClient...)
-			if err != nil {
-				return 0, err
-			}
+			index := GetIndexFromEndpointFor(guid, optionalHttpClient...)
 			if index == -1 {
 				continue
 			}
 			counts[index] = true
 		}
-		return len(counts), nil
+		return len(counts)
 	}
 }
 
-func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) (int, error) {
+func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) int {
 	httpClient := http.DefaultClient
 	if len(optionalHttpClient) == 1 {
 		httpClient = optionalHttpClient[0]
 	}
 	url := "http://" + RouteForGuid(guid) + "/index"
 	resp, err := httpClient.Get(url)
-	if err != nil {
-		return 0, err
-	}
+	Expect(err).NotTo(HaveOccurred())
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return -1, nil
+		return -1
 	}
 	content, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	if err != nil {
-		return 0, err
-	}
+	Expect(err).NotTo(HaveOccurred())
 
-	return strconv.Atoi(string(content))
+	index, err := strconv.Atoi(string(content))
+	Expect(err).NotTo(HaveOccurred())
+	return index
 }
 
 func GraceCounterGetter(guid string) func() (int, error) {
