@@ -147,29 +147,23 @@ func ClearOutDesiredLRPsInDomain(domain string) {
 	Eventually(ActualByDomainGetter(logger, domain), timeout+time.Second).Should(BeEmpty())
 }
 
-func EndpointCurler(endpoint string) func() (int, error) {
-	return func() (int, error) {
+func EndpointCurler(endpoint string) func() int {
+	return func() int {
 		resp, err := http.Get(endpoint)
-		if err != nil {
-			return 0, err
-		}
+		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
-		return resp.StatusCode, nil
+		return resp.StatusCode
 	}
 }
 
-func EndpointContentCurler(endpoint string) func() (string, error) {
-	return func() (string, error) {
+func EndpointContentCurler(endpoint string) func() string {
+	return func() string {
 		resp, err := http.Get(endpoint)
-		if err != nil {
-			return "", err
-		}
+		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()
 		content, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
-		return string(content), nil
+		Expect(err).NotTo(HaveOccurred())
+		return string(content)
 	}
 }
 

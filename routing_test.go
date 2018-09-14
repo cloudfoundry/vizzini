@@ -138,7 +138,7 @@ var _ = Describe("Routing Related Tests", func() {
 						t.Stop()
 					case <-t.C:
 						attempts += 1
-						code, _ := EndpointCurler(url)()
+						code := EndpointCurler(url)()
 						if code != http.StatusOK {
 							badCodes = append(badCodes, code)
 						}
