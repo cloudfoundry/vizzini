@@ -206,7 +206,7 @@ var _ = Describe("Routing Related Tests", func() {
 				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, lrp.ProcessGuid)
 				Expect(err).NotTo(HaveOccurred())
 				return lrps
-			}, 15*time.Second).Should(BeEmpty()) // 15s to give enough time for grace to be SIGKILLed
+			}, 20*time.Second).Should(BeEmpty())
 		})
 
 		Context("and the LRP has a setup step", func() {

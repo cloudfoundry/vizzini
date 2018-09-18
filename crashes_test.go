@@ -304,7 +304,7 @@ var _ = Describe("Crashes", func() {
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							MakeGraceExit(url, 0)
-							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+10*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
@@ -333,7 +333,7 @@ var _ = Describe("Crashes", func() {
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							MakeGraceExit(url, 0)
-							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+10*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
@@ -368,7 +368,7 @@ var _ = Describe("Crashes", func() {
 
 							Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 							MakeGraceExit(url, 0)
-							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+							Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+10*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
@@ -492,7 +492,7 @@ var _ = Describe("Crashes", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("being marked as crashed")
-					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+5*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(logger, guid, 0), HealthyCheckInterval+10*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 
 					By("tearing down the process -- this reaches out to the container's direct address " + directURL + " and ensures we can't reach it")
 					_, err = httpClient.Get(directURL + "/env")
