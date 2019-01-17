@@ -11,7 +11,6 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/routing-info/cfroutes"
-
 	. "code.cloudfoundry.org/vizzini/matchers"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,7 +21,7 @@ const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
 const GraceTarballURL = "https://storage.googleapis.com/diego-assets-bucket/grace.tar.gz"
-const GraceTarballURLSHAChecksum = "8540eec19bd22ff3fb69d3771123a43ca34e0634"
+const GraceTarballURLSHAChecksum = "b98d75d7c7e3afe2d24e3c97339b15957a8f146a"
 const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
 
 //Tasks
