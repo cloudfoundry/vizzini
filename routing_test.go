@@ -146,16 +146,11 @@ var _ = Describe("Routing Related Tests", func() {
 				}
 			}()
 
-			var three = int32(3)
-			var one = int32(1)
+			updateToThree := models.DesiredLRPUpdate{}
+			updateToThree.SetInstances(3)
 
-			updateToThree := models.DesiredLRPUpdate{
-				Instances: &three,
-			}
-
-			updateToOne := models.DesiredLRPUpdate{
-				Instances: &one,
-			}
+			updateToOne := models.DesiredLRPUpdate{}
+			updateToOne.SetInstances(1)
 
 			for i := 0; i < 4; i++ {
 				By(fmt.Sprintf("Scaling down then back up #%d", i+1))
@@ -230,24 +225,23 @@ var _ = Describe("Routing Related Tests", func() {
 					errCh <- err
 				}()
 
-				instanceCount := int32(0)
-				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid,
-					&models.DesiredLRPUpdate{
-						Instances:  &instanceCount,
-						Routes:     lrp.Routes,
-						Annotation: &lrp.Annotation})).To(Succeed())
+				dlu := &models.DesiredLRPUpdate{Routes: lrp.Routes}
+				dlu.SetInstances(0)
+				dlu.SetAnnotation(lrp.Annotation)
+
+				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
 
 				Consistently(errCh, 5*time.Second).ShouldNot(Receive())
 			})
 		})
 
 		It("quickly stops routing to the removed indices", func() {
-			instanceCount := int32(1)
-			Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid,
-				&models.DesiredLRPUpdate{
-					Instances:  &instanceCount,
-					Routes:     lrp.Routes,
-					Annotation: &lrp.Annotation})).To(Succeed())
+			dlu := &models.DesiredLRPUpdate{Routes: lrp.Routes}
+			dlu.SetInstances(1)
+			dlu.SetAnnotation(lrp.Annotation)
+
+			Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
+
 			Eventually(IndexCounterWithAttempts(guid, 10), 2*time.Second).Should(Equal(1))
 			Consistently(IndexCounterWithAttempts(guid, 10), 5*time.Second).Should(Equal(1))
 		})

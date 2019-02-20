@@ -64,10 +64,9 @@ var _ = Describe("LRPs", func() {
 				lrp.Instances = 0
 				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
 
-				two := int32(2)
-				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, &models.DesiredLRPUpdate{
-					Instances: &two,
-				})).To(Succeed())
+				dlu := &models.DesiredLRPUpdate{}
+				dlu.SetInstances(2)
+				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
 
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
@@ -283,19 +282,17 @@ var _ = Describe("LRPs", func() {
 		Context("By explicitly updating it", func() {
 			Context("when the LRP exists", func() {
 				It("allows updating instances", func() {
-					two := int32(2)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
-						Instances: &two,
-					})).To(Succeed())
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetInstances(2)
+					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 				})
 
 				It("allows scaling down to 0", func() {
-					zero := int32(0)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
-						Instances: &zero,
-					})).To(Succeed())
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetInstances(0)
+					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(0))
 				})
@@ -318,11 +315,9 @@ var _ = Describe("LRPs", func() {
 
 				It("allows updating annotations", func() {
 					annotation := "my new annotation"
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
-						Annotation: &annotation,
-					})).To(
-
-						Succeed())
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetAnnotation(annotation)
+					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
 
 					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
 					Expect(err).NotTo(HaveOccurred())
@@ -330,8 +325,6 @@ var _ = Describe("LRPs", func() {
 				})
 
 				It("allows multiple simultaneous updates", func() {
-					two := int32(2)
-					annotation := "my new annotation"
 
 					newRoute := RouteForGuid(NewGuid())
 					routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
@@ -340,13 +333,10 @@ var _ = Describe("LRPs", func() {
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					routingInfo := routes.RoutingInfo()
 
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
-						Instances:  &two,
-						Routes:     &routingInfo,
-						Annotation: &annotation,
-					})).To(
-
-						Succeed())
+					dlu := &models.DesiredLRPUpdate{Routes: &routingInfo}
+					dlu.SetInstances(2)
+					dlu.SetAnnotation("my new annotation")
+					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 
@@ -365,12 +355,9 @@ var _ = Describe("LRPs", func() {
 					Expect(fetchedLRP.ModificationTag).To(Equal(tag))
 
 					By("modifying when a change is made")
-					two := int32(2)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
-						Instances: &two,
-					})).To(
-
-						Succeed())
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetInstances(2)
+					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 
@@ -383,10 +370,9 @@ var _ = Describe("LRPs", func() {
 
 			Context("when the LRP does not exist", func() {
 				It("errors", func() {
-					two := int32(2)
-					err := bbsClient.UpdateDesiredLRP(logger, "flooberdoobey", &models.DesiredLRPUpdate{
-						Instances: &two,
-					})
+					dlu := &models.DesiredLRPUpdate{}
+					dlu.SetInstances(2)
+					err := bbsClient.UpdateDesiredLRP(logger, "flooberdoobey", dlu)
 					Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 				})
 			})

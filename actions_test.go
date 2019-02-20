@@ -75,14 +75,14 @@ var _ = Describe("Actions", func() {
 		var processLimit uint64 = 23790
 		BeforeEach(func() {
 			taskDef = Task()
+			rl := &models.ResourceLimits{}
+			rl.SetNofile(processLimit)
 			taskDef.Action = models.WrapAction(&models.RunAction{
-				Path: "bash",
-				Dir:  "/etc",
-				Args: []string{"-c", "ulimit -n > /tmp/bar"},
-				User: "vcap",
-				ResourceLimits: &models.ResourceLimits{
-					Nofile: &processLimit,
-				},
+				Path:           "bash",
+				Dir:            "/etc",
+				Args:           []string{"-c", "ulimit -n > /tmp/bar"},
+				User:           "vcap",
+				ResourceLimits: rl,
 			})
 
 			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
