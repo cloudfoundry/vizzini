@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/cfhttp"
+	"code.cloudfoundry.org/tlsconfig"
 	. "code.cloudfoundry.org/vizzini/matchers"
 
 	. "github.com/onsi/ginkgo"
@@ -100,10 +100,16 @@ func containerProxyTLSConfig(instanceGuid string) (*tls.Config, error) {
 	}
 
 	if proxyClientCert != "" && proxyClientKey != "" {
-		tlsConfig, err = cfhttp.NewTLSConfigWithCertPool(proxyClientCert, proxyClientKey, caCertPool)
+		tlsConfig, err = tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(proxyClientCert, proxyClientKey),
+		).Server(
+			tlsconfig.WithClientAuthentication(caCertPool),
+		)
 		if err != nil {
 			return nil, err
 		}
+		tlsConfig.RootCAs = caCertPool // proxy operates as a client and server
 	}
 	tlsConfig.ServerName = instanceGuid
 
