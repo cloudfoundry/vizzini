@@ -10,7 +10,6 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gstruct"
 )
 
 func MakeGraceExit(baseURL string, status int) {
@@ -380,36 +379,6 @@ var _ = Describe("Crashes", func() {
 								ContainSubstring("Failed to make HTTP request to '/ping' on port 8080: connection refused"),
 							))
 						})
-					})
-				})
-
-				Context("when lot of subprocesses fail", func() {
-					BeforeEach(func() {
-						actions := []models.ActionInterface{}
-						for i := 0; i < 200; i++ {
-							actions = append(actions, &models.RunAction{
-								Path: "bash",
-								Args: []string{"-c", "exit 0"},
-								User: "vcap",
-							})
-						}
-						lrp.Action = models.WrapAction(models.Codependent(actions...))
-					})
-
-					It("the ActualLRP crashes with the correct reason", func() {
-						Eventually(ActualGetter(logger, guid, 0), 30*time.Second).Should(
-							gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-								"ActualLRPKey": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-									"ProcessGuid": Equal(guid),
-									"Index":       Equal(int32(0)),
-								}),
-								"CrashCount": Equal(int32(1)),
-								"CrashReason": And(
-									MatchRegexp("200 error\\(s\\) occurred:\n\n\\* Codependent step exited.*"),
-									HaveLen(1024),
-								),
-							}),
-						)
 					})
 				})
 			})
