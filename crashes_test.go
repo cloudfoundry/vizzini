@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	. "code.cloudfoundry.org/vizzini/matchers"
-
 	"code.cloudfoundry.org/bbs/models"
+	. "code.cloudfoundry.org/vizzini/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gstruct"
 )
 
 func MakeGraceExit(baseURL string, status int) {
@@ -215,15 +215,27 @@ var _ = Describe("Crashes", func() {
 						for i := 0; i < 200; i++ {
 							actions = append(actions, &models.RunAction{
 								Path: "bash",
-								Args: []string{"-c", "exit 1"},
+								Args: []string{"-c", "exit 0"},
 								User: "vcap",
 							})
 						}
 						lrp.Action = models.WrapAction(models.Codependent(actions...))
 					})
 
-					It("the crash count is incremented", func() {
-						Eventually(ActualGetter(logger, guid, 0), 20*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					It("the ActualLRP crashes with the correct reason", func() {
+						Eventually(ActualGetter(logger, guid, 0), 30*time.Second).Should(
+							gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+								"ActualLRPKey": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
+									"ProcessGuid": Equal(guid),
+									"Index":       Equal(int32(0)),
+								}),
+								"CrashCount": Equal(int32(1)),
+								"CrashReason": And(
+									MatchRegexp("200 error\\(s\\) occurred:\n\n\\* Codependent step exited.*"),
+									HaveLen(1024),
+								),
+							}),
+						)
 					})
 				})
 			})
