@@ -31,7 +31,7 @@ If you are using old manifest generation, simply run the following commands to g
 
 bosh deployment /path/to/vizzini/manifest.yml
 bosh deploy
-bosh run errand diego-vizzini
+bosh run-errand vizzini
 ```
 
 If you are using [cf-deployment](https://github.com/cloudfoundry/cf-deployment/) you can simply deploy again using [this operations file](https://github.com/cloudfoundry/diego-release/blob/develop/operations/add-vizzini-errand.yml), e.g.:

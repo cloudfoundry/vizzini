@@ -122,7 +122,7 @@ var _ = Describe("Actions", func() {
 			}
 
 			Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
-			time.Sleep(3 * time.Second)
+			Eventually(ActualGetter(logger, desiredLRP.ProcessGuid, 0)).Should(BeActualLRPWithState(desiredLRP.ProcessGuid, 0, "RUNNING"))
 			Expect(bbsClient.RemoveDesiredLRP(logger, desiredLRP.ProcessGuid)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(logger, desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
