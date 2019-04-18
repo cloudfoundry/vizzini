@@ -29,15 +29,15 @@ var _ = Describe("Targetting different RootFSes", func() {
 		Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
 	})
 
-	Describe("cflinuxfs2", func() {
+	Describe("cflinuxfs3", func() {
 		BeforeEach(func() {
-			rootFS = models.PreloadedRootFS("cflinuxfs2")
+			rootFS = models.PreloadedRootFS("cflinuxfs3")
 		})
 
-		It("should run the cflinuxfs2 rootfs", func() {
+		It("should run the cflinuxfs3 rootfs", func() {
 			completedTask, err := bbsClient.TaskByGuid(logger, guid)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(completedTask.Result).To(ContainSubstring(`bash, version 4.3.11`))
+			Expect(completedTask.Result).To(ContainSubstring(`bash, version 4.4.19`))
 		})
 	})
 })
