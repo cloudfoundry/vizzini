@@ -99,7 +99,7 @@ var _ = BeforeSuite(func() {
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
-	defaultRootFS = models.PreloadedRootFS("cflinuxfs2")
+	defaultRootFS = models.PreloadedRootFS("cflinuxfs3")
 
 	bbsClient = initializeBBSClient()
 
