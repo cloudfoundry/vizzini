@@ -262,8 +262,9 @@ var _ = Describe("SSH Tests", func() {
 			session := runWithPassword(cmd, password)
 
 			Eventually(session).Should(gexec.Exit(0))
-			Expect(session).To(gbytes.Say("USER=" + user))
-			Expect(session).To(gbytes.Say("CUMBERBUND=cummerbund"))
+			output := session.Out.Contents()
+			Expect(output).To(ContainSubstring("USER=" + user))
+			Expect(output).To(ContainSubstring("CUMBERBUND=cummerbund"))
 		})
 
 		It("runs an interactive ssh session", func() {
