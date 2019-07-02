@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
-	"code.cloudfoundry.org/bbs/models"
 )
 
 var bbsClient bbs.InternalClient
@@ -52,6 +51,7 @@ func init() {
 	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
 	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
 	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
+	flag.StringVar(&defaultRootFS, "default-rootfs", "", "default rootfs to run Tasks and LRPs with")
 	flag.Parse()
 
 	if bbsAddress == "" {
@@ -91,7 +91,11 @@ var _ = BeforeSuite(func() {
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
-	defaultRootFS = models.PreloadedRootFS("cflinuxfs3")
+
+	rootfsURI, err := url.Parse(defaultRootFS)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(rootfsURI.Scheme).To(Equal("preloaded"))
+	Expect(rootfsURI.Opaque).NotTo(BeEmpty())
 
 	bbsClient = initializeBBSClient()
 
