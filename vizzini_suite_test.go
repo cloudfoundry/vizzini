@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/url"
 	"os"
 
 	"code.cloudfoundry.org/lager"
@@ -20,7 +21,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs"
-	"code.cloudfoundry.org/bbs/models"
 )
 
 var (
@@ -71,6 +71,7 @@ func init() {
 	flag.BoolVar(&enablePrivilegedContainerTests, "enable-privileged-container-tests", true, "false if garden is setup to be rootless")
 	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
 	flag.IntVar(&maxTaskRetries, "max-task-retries", 0, "BBS max_task_retries configuration")
+	flag.StringVar(&defaultRootFS, "default-rootfs", "", "default rootfs to run Tasks and LRPs with")
 	flag.Parse()
 
 	if bbsAddress == "" {
@@ -114,7 +115,11 @@ var _ = BeforeSuite(func() {
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
-	defaultRootFS = models.PreloadedRootFS("cflinuxfs3")
+
+	rootfsURI, err := url.Parse(defaultRootFS)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(rootfsURI.Scheme).To(Equal("preloaded"))
+	Expect(rootfsURI.Opaque).NotTo(BeEmpty())
 
 	bbsClient = initializeBBSClient()
 
