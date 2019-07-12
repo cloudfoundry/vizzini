@@ -131,6 +131,7 @@ var _ = Describe("Routing Related Tests", func() {
 			attempts := 0
 
 			go func() {
+				defer GinkgoRecover()
 				t := time.NewTicker(10 * time.Millisecond)
 				for {
 					select {
