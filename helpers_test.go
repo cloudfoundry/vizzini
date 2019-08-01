@@ -87,7 +87,7 @@ func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int)
 		return models.ActualLRP{}, err
 	}
 	if len(lrps) != 1 {
-		return models.ActualLRP{}, err
+		return models.ActualLRP{}, fmt.Errorf("found more than one or no matching ActualLRP ProcessGuid: %s Index: %d", guid, index)
 	}
 	return *lrps[0], nil
 }
