@@ -81,42 +81,42 @@ func LRPGetter(logger lager.Logger, guid string) func() (*models.DesiredLRP, err
 }
 
 func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int) (models.ActualLRP, error) {
-	actualLRPGroup, err := bbsClient.ActualLRPGroupByProcessGuidAndIndex(logger, guid, index)
+	i := int32(index)
+	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
 	if err != nil {
 		return models.ActualLRP{}, err
 	}
-	actualLRP, _, err := actualLRPGroup.Resolve()
-	Expect(err).NotTo(HaveOccurred())
-	return *actualLRP, nil
+	if len(lrps) != 1 {
+		return models.ActualLRP{}, err
+	}
+	return *lrps[0], nil
 }
 
 func ActualsByProcessGuid(logger lager.Logger, guid string) ([]models.ActualLRP, error) {
-	actualLRPGroups, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, guid)
+	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: guid})
 	if err != nil {
 		return nil, err
 	}
+	actualLRPs := make([]models.ActualLRP, len(lrps))
+	for k, v := range lrps {
+		actualLRPs[k] = *v
+	}
 
-	return resolveActuals(actualLRPGroups), nil
+	return actualLRPs, nil
 }
 
 func ActualsByDomain(logger lager.Logger, domain string) ([]models.ActualLRP, error) {
-	actualLRPGroups, err := bbsClient.ActualLRPGroups(logger, models.ActualLRPFilter{Domain: domain})
+	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{Domain: domain})
 	if err != nil {
 		return nil, err
 	}
 
-	return resolveActuals(actualLRPGroups), nil
-}
-
-func resolveActuals(actualLRPGroups []*models.ActualLRPGroup) []models.ActualLRP {
-	actualLRPs := make([]models.ActualLRP, 0, len(actualLRPGroups))
-	for _, actualLRPGroup := range actualLRPGroups {
-		actualLRP, _, err := actualLRPGroup.Resolve()
-		Expect(err).NotTo(HaveOccurred())
-		actualLRPs = append(actualLRPs, *actualLRP)
+	actualLRPs := make([]models.ActualLRP, len(lrps))
+	for k, v := range lrps {
+		actualLRPs[k] = *v
 	}
 
-	return actualLRPs
+	return actualLRPs, nil
 }
 
 func ActualGetter(logger lager.Logger, guid string, index int) func() (models.ActualLRP, error) {

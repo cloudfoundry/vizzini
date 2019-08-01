@@ -198,8 +198,8 @@ var _ = Describe("Routing Related Tests", func() {
 
 		AfterEach(func() {
 			Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
-			Eventually(func() []*models.ActualLRPGroup {
-				lrps, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, lrp.ProcessGuid)
+			Eventually(func() []*models.ActualLRP {
+				lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid})
 				Expect(err).NotTo(HaveOccurred())
 				return lrps
 			}, 20*time.Second).Should(BeEmpty())
