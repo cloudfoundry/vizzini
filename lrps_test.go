@@ -239,6 +239,69 @@ var _ = Describe("LRPs", func() {
 		})
 	})
 
+	Describe("specifying sidecars on an LRP", func() {
+		var (
+			sidecar1Route string
+			sidecar2Route string
+		)
+
+		BeforeEach(func() {
+			sidecar1Route = RouteForGuid("sidecar-1-" + guid)
+			sidecar2Route = RouteForGuid("sidecar-2-" + guid)
+			routingInfo := cfroutes.CFRoutes{
+				{Port: 8080, Hostnames: []string{RouteForGuid(guid)}},
+				{Port: 8090, Hostnames: []string{sidecar1Route}},
+				{Port: 8100, Hostnames: []string{sidecar2Route}},
+			}.RoutingInfo()
+			lrp.Routes = &routingInfo
+			lrp.Ports = []uint32{8080, 8090, 8100}
+			lrp.Sidecars = []*models.Sidecar{
+				{
+					Action: models.WrapAction(&models.RunAction{
+						Path: "/tmp/grace/grace",
+						User: "vcap",
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8090"}},
+					}),
+				},
+				{
+					Action: models.WrapAction(&models.RunAction{
+						Path: "/tmp/grace/grace",
+						User: "vcap",
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8100"}},
+					}),
+				},
+			}
+
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		})
+
+		It("should run", func() {
+			Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning)))
+			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
+			Eventually(EndpointCurler("http://" + sidecar1Route + "/env")).Should(Equal(http.StatusOK))
+			Eventually(EndpointCurler("http://" + sidecar2Route + "/env")).Should(Equal(http.StatusOK))
+		})
+
+	})
+
+	Describe("when a sidecar crashes", func() {
+		BeforeEach(func() {
+			lrp.Sidecars = append(lrp.Sidecars, &models.Sidecar{
+				Action: models.WrapAction(&models.RunAction{
+					User: "vcap",
+					Path: "/bin/bash",
+					Args: []string{"-c", "exit 1"},
+				}),
+			})
+
+			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		})
+
+		It("gets marked as crashed (immediately)", func() {
+			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+		})
+	})
+
 	Describe("{DOCKER} Creating a Docker-based LRP", func() {
 		BeforeEach(func() {
 			lrp.RootFs = GraceBusyboxImageURL
