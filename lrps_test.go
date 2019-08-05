@@ -260,14 +260,14 @@ var _ = Describe("LRPs", func() {
 					Action: models.WrapAction(&models.RunAction{
 						Path: "/tmp/grace/grace",
 						User: "vcap",
-						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8090"}},
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8090"}, {Name: "SECONDARY_PORT", Value: "9090"}},
 					}),
 				},
 				{
 					Action: models.WrapAction(&models.RunAction{
 						Path: "/tmp/grace/grace",
 						User: "vcap",
-						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8100"}},
+						Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8100"}, {Name: "SECONDARY_PORT", Value: "9100"}},
 					}),
 				},
 			}

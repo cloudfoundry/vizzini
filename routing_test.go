@@ -55,7 +55,7 @@ var _ = Describe("Routing Related Tests", func() {
 		var primaryURL string
 		BeforeEach(func() {
 			lrp = DesiredLRPWithGuid(guid)
-			lrp.Ports = []uint32{8080, 8081}
+			lrp.Ports = []uint32{8080, 9999}
 			primaryURL = "http://" + RouteForGuid(guid) + "/env"
 
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
@@ -63,13 +63,13 @@ var _ = Describe("Routing Related Tests", func() {
 		})
 
 		It("should be able to route to multiple ports", func() {
-			By("updating the LRP with a new route to a port 8081")
+			By("updating the LRP with a new route to a port 9999")
 			newRoute := RouteForGuid(NewGuid())
 			routes, err := cfroutes.CFRoutesFromRoutingInfo(*lrp.Routes)
 			Expect(err).NotTo(HaveOccurred())
 			routes = append(routes, cfroutes.CFRoute{
 				Hostnames: []string{newRoute},
-				Port:      8081,
+				Port:      9999,
 			})
 			routingInfo := routes.RoutingInfo()
 			Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
