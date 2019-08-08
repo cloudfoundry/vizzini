@@ -544,7 +544,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("and there is a StartTimeout", func() {
 				BeforeEach(func() {
-					lrp.StartTimeoutMs = 5000
+					lrp.StartTimeoutMs = 3000
 				})
 
 				It("never enters the running state and is marked as crashed after the StartTimeout", func() {
