@@ -150,10 +150,7 @@ func ClearOutDesiredLRPsInDomain(domain string) {
 func EndpointCurler(endpoint string) func() int {
 	return func() int {
 		resp, err := http.Get(endpoint)
-		// workaround the GCP Load Balancer issue until our case with GCP is resolved
-		if err != nil {
-			return -1
-		}
+		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
 		return resp.StatusCode
 	}
@@ -162,10 +159,7 @@ func EndpointCurler(endpoint string) func() int {
 func EndpointContentCurler(endpoint string) func() string {
 	return func() string {
 		resp, err := http.Get(endpoint)
-		// workaround the GCP Load Balancer issue until our case with GCP is resolved
-		if err != nil {
-			return ""
-		}
+		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()
 		content, err := ioutil.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
@@ -198,10 +192,7 @@ func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) in
 	}
 	url := "http://" + RouteForGuid(guid) + "/index"
 	resp, err := httpClient.Get(url)
-	// workaround the GCP Load Balancer issue until our case with GCP is resolved
-	if err != nil {
-		return -1
-	}
+	Expect(err).NotTo(HaveOccurred())
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		return -1
