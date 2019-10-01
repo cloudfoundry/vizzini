@@ -538,7 +538,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("gets marked as crashed (immediately)", func() {
-					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithCrashCount(guid, 0, 1))
+					Eventually(ActualGetter(logger, guid, 0), 30*time.Second).Should(BeActualLRPWithCrashCount(guid, 0, 1))
 				})
 			})
 
