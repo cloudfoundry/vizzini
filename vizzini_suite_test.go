@@ -1,64 +1,52 @@
 package vizzini_test
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/url"
 	"os"
-
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/onsi/say"
-
-	"github.com/nu7hatch/gouuid"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"testing"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
+	vizziniconfig "code.cloudfoundry.org/vizzini/config"
+	"github.com/nu7hatch/gouuid"
+	"github.com/onsi/say"
 )
 
-var bbsClient bbs.InternalClient
-var domain string
-var otherDomain string
-var defaultRootFS string
-var guid string
-var startTime time.Time
+var (
+	bbsClient     bbs.InternalClient
+	domain        string
+	otherDomain   string
+	guid          string
+	startTime     time.Time
+	timeout       time.Duration
+	dockerTimeout time.Duration
+	sshHost       string
+	sshPort       string
+	logger        lager.Logger
 
-var bbsAddress string
-var bbsClientCert string
-var bbsClientKey string
-var routableDomainSuffix string
-var sshAddress string
-var sshHost string
-var sshPort string
-var sshPassword string
-var hostAddress string
-var logger lager.Logger
-
-var timeout time.Duration
-var dockerTimeout time.Duration
+	config vizziniconfig.VizziniConfig
+)
 
 func init() {
-	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.2:8889", "http address for the bbs (required)")
-	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
-	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
-	flag.StringVar(&sshAddress, "ssh-address", "ssh.bosh-lite.com:2222", "domain and port for the ssh proxy (required)")
-	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
-	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
-	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
-	flag.StringVar(&defaultRootFS, "default-rootfs", "", "default rootfs to run Tasks and LRPs with")
-	flag.Parse()
+	var err error
+	config, err = vizziniconfig.NewVizziniConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	if bbsAddress == "" {
+	if config.BBSAddress == "" {
 		log.Fatal("i need a bbs address to talk to Diego...")
 	}
 
-	if sshAddress == "" {
+	if config.SSHAddress == "" {
 		log.Fatal("i need an SSH address to talk to Diego...")
 	}
 }
@@ -92,14 +80,14 @@ var _ = BeforeSuite(func() {
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 
-	rootfsURI, err := url.Parse(defaultRootFS)
+	rootfsURI, err := url.Parse(config.DefaultRootFS)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rootfsURI.Scheme).To(Equal("preloaded"))
 	Expect(rootfsURI.Opaque).NotTo(BeEmpty())
 
 	bbsClient = initializeBBSClient()
 
-	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
+	sshHost, sshPort, err = net.SplitHostPort(config.SSHAddress)
 	Expect(err).NotTo(HaveOccurred())
 
 	logger = lagertest.NewTestLogger("vizzini")
@@ -134,14 +122,14 @@ var _ = AfterSuite(func() {
 })
 
 func initializeBBSClient() bbs.InternalClient {
-	bbsURL, err := url.Parse(bbsAddress)
+	bbsURL, err := url.Parse(config.BBSAddress)
 	Expect(err).NotTo(HaveOccurred())
 
 	if bbsURL.Scheme != "https" {
-		return bbs.NewClient(bbsAddress)
+		return bbs.NewClient(config.BBSAddress)
 	}
 
-	bbsClient, err := bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
+	bbsClient, err := bbs.NewSecureSkipVerifyClient(config.BBSAddress, config.BBSClientCertPath, config.BBSClientKeyPath, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
 }

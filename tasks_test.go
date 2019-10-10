@@ -447,7 +447,7 @@ var _ = Describe("Tasks", func() {
 				},
 			))
 
-			task.CompletionCallbackUrl = "http://" + hostAddress + ":" + port + "/endpoint"
+			task.CompletionCallbackUrl = "http://" + config.HostAddress + ":" + port + "/endpoint"
 		})
 
 		AfterEach(func() {

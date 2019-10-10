@@ -104,7 +104,7 @@ var _ = Describe("Actions", func() {
 		It("should cancel the download", func() {
 			desiredLRP := &models.DesiredLRP{
 				ProcessGuid: guid,
-				RootFs:      defaultRootFS,
+				RootFs:      config.DefaultRootFS,
 				Domain:      domain,
 				Instances:   1,
 				Action: models.WrapAction(&models.DownloadAction{
