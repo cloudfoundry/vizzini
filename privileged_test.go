@@ -42,7 +42,7 @@ var _ = Describe("Privileged", func() {
 
 	Context("with a privileged container", func() {
 		BeforeEach(func() {
-			if !enablePrivilegedContainerTests {
+			if !config.EnablePrivilegedContainerTests {
 				Skip("privileged container tests are disabled")
 			}
 

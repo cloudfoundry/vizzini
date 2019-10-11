@@ -23,7 +23,7 @@ var _ = Describe("TLS Proxy", func() {
 	)
 
 	BeforeEach(func() {
-		if !enableContainerProxyTests {
+		if !config.EnableContainerProxyTests {
 			Skip("container proxy tests are disabled")
 		}
 
@@ -83,10 +83,10 @@ var _ = Describe("TLS Proxy", func() {
 
 func containerProxyTLSConfig(instanceGuid string) (*tls.Config, error) {
 	caCertPool := x509.NewCertPool()
-	if proxyCA == "" {
+	if config.ProxyCAPath == "" {
 		return nil, errors.New("proxy CA file not provided")
 	}
-	certBytes, err := ioutil.ReadFile(proxyCA)
+	certBytes, err := ioutil.ReadFile(config.ProxyCAPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed read ca cert file: %s", err.Error())
 	}
@@ -99,10 +99,10 @@ func containerProxyTLSConfig(instanceGuid string) (*tls.Config, error) {
 		RootCAs: caCertPool,
 	}
 
-	if proxyClientCert != "" && proxyClientKey != "" {
+	if config.ProxyClientCertPath != "" && config.ProxyClientKeyPath != "" {
 		tlsConfig, err = tlsconfig.Build(
 			tlsconfig.WithInternalServiceDefaults(),
-			tlsconfig.WithIdentityFromFile(proxyClientCert, proxyClientKey),
+			tlsconfig.WithIdentityFromFile(config.ProxyClientCertPath, config.ProxyClientKeyPath),
 		).Server(
 			tlsconfig.WithClientAuthentication(caCertPool),
 		)

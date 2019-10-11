@@ -158,7 +158,7 @@ var _ = Describe("SSH Tests", func() {
 	}
 
 	BeforeEach(func() {
-		password = sshPassword
+		password = config.SSHPassword
 		target = sshTarget{
 			User: "diego:" + guid + "/0",
 			Port: sshPort,

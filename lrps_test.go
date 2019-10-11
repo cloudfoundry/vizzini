@@ -200,7 +200,7 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should run", func() {
-			if !enableDeclarativeHealthCheck {
+			if !config.EnableDeclarativeHealthcheck {
 				Skip("declarative are not enabled")
 			}
 

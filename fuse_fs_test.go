@@ -14,7 +14,7 @@ var _ = Describe("FuseFS", func() {
 	var url string
 
 	BeforeEach(func() {
-		if !enablePrivilegedContainerTests {
+		if !config.EnablePrivilegedContainerTests {
 			Skip("privileged container tests are disabled")
 		}
 		lrp = DesiredLRPWithGuid(guid)

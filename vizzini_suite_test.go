@@ -2,25 +2,23 @@ package vizzini_test
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/url"
 	"os"
-
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/onsi/say"
-
-	"github.com/nu7hatch/gouuid"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"testing"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"code.cloudfoundry.org/bbs"
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
+	vizziniconfig "code.cloudfoundry.org/vizzini/config"
+	"github.com/nu7hatch/gouuid"
+	"github.com/onsi/say"
 )
 
 var (
@@ -30,55 +28,27 @@ var (
 	defaultRootFS string
 	guid          string
 	startTime     time.Time
-
-	bbsAddress           string
-	bbsClientCert        string
-	bbsClientKey         string
-	repPlacementTags     multiArgList
-	routableDomainSuffix string
-	sshAddress           string
-	sshHost              string
-	sshPort              string
-	sshPassword          string
-	hostAddress          string
-	logger               lager.Logger
-	maxTaskRetries       int
-
 	timeout       time.Duration
 	dockerTimeout time.Duration
+	logger        lager.Logger
+	sshHost       string
+	sshPort       string
 
-	enableDeclarativeHealthCheck   bool
-	enableContainerProxyTests      bool
-	proxyClientCert                string
-	proxyClientKey                 string
-	proxyCA                        string
-	enablePrivilegedContainerTests bool
+	config vizziniconfig.VizziniConfig
 )
 
 func init() {
-	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.2:8889", "http address for the bbs (required)")
-	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
-	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
-	flag.StringVar(&sshAddress, "ssh-address", "ssh.bosh-lite.com:2222", "domain and port for the ssh proxy (required)")
-	flag.StringVar(&sshPassword, "ssh-password", "bosh-lite-ssh-secret", "password for the ssh proxy's diego authenticator")
-	flag.StringVar(&routableDomainSuffix, "routable-domain-suffix", "bosh-lite.com", "suffix to use when constructing FQDN")
-	flag.StringVar(&hostAddress, "host-address", "10.0.2.2", "address that a process running in a container on Diego can use to reach the machine running this test.  Typically the gateway on the vagrant VM.")
-	flag.BoolVar(&enableDeclarativeHealthCheck, "enable-declarative-healthcheck", false, "true if the rep is configured to prefer declarative healthchecks, false otherwise")
-	flag.BoolVar(&enableContainerProxyTests, "enable-container-proxy-tests", false, "true if the rep is configured to run an envoy proxy in the container")
-	flag.StringVar(&proxyCA, "proxy-ca", "", "proxy ssl CA used to verify container proxy server certificates (required if `enable-container-proxy-tests` is true)")
-	flag.StringVar(&proxyClientCert, "proxy-client-cert", "", "proxy client SSL certificate to present to container proxies")
-	flag.StringVar(&proxyClientKey, "proxy-client-key", "", "proxy client SSL private key to use with container proxies")
-	flag.BoolVar(&enablePrivilegedContainerTests, "enable-privileged-container-tests", true, "false if garden is setup to be rootless")
-	flag.Var(&repPlacementTags, "rep-placement-tag", "rep placement tag, can be set more than once")
-	flag.IntVar(&maxTaskRetries, "max-task-retries", 0, "BBS max_task_retries configuration")
-	flag.StringVar(&defaultRootFS, "default-rootfs", "", "default rootfs to run Tasks and LRPs with")
-	flag.Parse()
+	var err error
+	config, err = vizziniconfig.NewVizziniConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	if bbsAddress == "" {
+	if config.BBSAddress == "" {
 		log.Fatal("i need a bbs address to talk to Diego...")
 	}
 
-	if sshAddress == "" {
+	if config.SSHAddress == "" {
 		log.Fatal("i need an SSH address to talk to Diego...")
 	}
 }
@@ -123,11 +93,11 @@ var _ = BeforeSuite(func() {
 
 	bbsClient = initializeBBSClient()
 
-	sshHost, sshPort, err = net.SplitHostPort(sshAddress)
+	sshHost, sshPort, err = net.SplitHostPort(config.SSHAddress)
 	Expect(err).NotTo(HaveOccurred())
 
 	// conservative taskFailureTimeout since tasks retries happen during convergence
-	taskFailureTimeout = ConvergerInterval * time.Duration(maxTaskRetries+1)
+	taskFailureTimeout = ConvergerInterval * time.Duration(config.MaxTaskRetries+1)
 
 	logger = lagertest.NewTestLogger("vizzini")
 })
@@ -161,7 +131,7 @@ var _ = AfterSuite(func() {
 })
 
 func initializeBBSClient() bbs.InternalClient {
-	bbsClient, err := bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
+	bbsClient, err := bbs.NewSecureSkipVerifyClient(config.BBSAddress, config.BBSClientCertPath, config.BBSClientKeyPath, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
 }

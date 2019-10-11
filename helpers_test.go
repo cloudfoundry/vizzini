@@ -242,7 +242,7 @@ func StartedAtGetter(guid string) func() (int64, error) {
 }
 
 func RouteForGuid(guid string) string {
-	return fmt.Sprintf("%s.%s", guid, routableDomainSuffix)
+	return fmt.Sprintf("%s.%s", guid, config.RoutableDomainSuffix)
 }
 
 func DirectAddressFor(guid string, index int, containerPort uint32) string {
@@ -317,5 +317,5 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 }
 
 func PlacementTags() []string {
-	return repPlacementTags
+	return config.RepPlacementTags
 }

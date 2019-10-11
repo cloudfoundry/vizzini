@@ -249,7 +249,7 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
-							if !enableDeclarativeHealthCheck {
+							if !config.EnableDeclarativeHealthcheck {
 								Skip("declarative are not enabled")
 							}
 
@@ -298,7 +298,7 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
-							if !enableDeclarativeHealthCheck {
+							if !config.EnableDeclarativeHealthcheck {
 								Skip("declarative are not enabled")
 							}
 
@@ -327,7 +327,7 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
-							if !enableDeclarativeHealthCheck {
+							if !config.EnableDeclarativeHealthcheck {
 								Skip("declarative are not enabled")
 							}
 
@@ -362,7 +362,7 @@ var _ = Describe("Crashes", func() {
 						})
 
 						It("shows the monitor crash reasons", func() {
-							if !enableDeclarativeHealthCheck {
+							if !config.EnableDeclarativeHealthcheck {
 								Skip("declarative are not enabled")
 							}
 
