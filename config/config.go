@@ -23,6 +23,9 @@ type VizziniConfig struct {
 	RepPlacementTags               []string `json:"rep_placement_tags"`
 	MaxTaskRetries                 int      `json:"max_task_retries"`
 	DefaultRootFS                  string   `json:"default_rootfs"`
+	GraceTarballURL                string   `json:"grace_tarball_url"`
+	GraceTarballChecksum           string   `json:"grace_tarball_checksum"`
+	GraceBusyboxImageURL           string   `json:"grace_busybox_image_url"`
 }
 
 func NewVizziniConfig() (VizziniConfig, error) {
