@@ -59,7 +59,7 @@ func Task() *models.TaskDefinition {
 			Args: []string{"-c", "echo 'some output' > /tmp/bar"},
 			User: "vcap",
 		}),
-		RootFs:        defaultRootFS,
+		RootFs:        config.DefaultRootFS,
 		MemoryMb:      128,
 		DiskMb:        128,
 		CpuWeight:     100,
@@ -250,7 +250,7 @@ func StartedAtGetter(guid string) func() (int64, error) {
 }
 
 func RouteForGuid(guid string) string {
-	return fmt.Sprintf("%s.%s", guid, routableDomainSuffix)
+	return fmt.Sprintf("%s.%s", guid, config.RoutableDomainSuffix)
 }
 
 func DirectAddressFor(guid string, index int, containerPort uint32) string {
@@ -298,7 +298,7 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 			Args: []string{"-z", "0.0.0.0", "8080"},
 			User: "vcap",
 		}),
-		RootFs:     defaultRootFS,
+		RootFs:     config.DefaultRootFS,
 		MemoryMb:   128,
 		DiskMb:     128,
 		CpuWeight:  100,
@@ -311,5 +311,5 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 }
 
 func PlacementTags() []string {
-	return repPlacementTags
+	return config.RepPlacementTags
 }

@@ -105,7 +105,7 @@ var _ = Describe("Actions", func() {
 			desiredLRP := &models.DesiredLRP{
 				PlacementTags: PlacementTags(),
 				ProcessGuid:   guid,
-				RootFs:        defaultRootFS,
+				RootFs:        config.DefaultRootFS,
 				Domain:        domain,
 				Instances:     1,
 				Action: models.WrapAction(&models.DownloadAction{

@@ -158,7 +158,7 @@ var _ = Describe("SSH Tests", func() {
 	}
 
 	BeforeEach(func() {
-		password = sshPassword
+		password = config.SSHPassword
 		target = sshTarget{
 			User: "diego:" + guid + "/0",
 			Port: sshPort,
@@ -253,7 +253,7 @@ var _ = Describe("SSH Tests", func() {
 	Context("in a fully-featured preloaded rootfs", func() {
 		BeforeEach(func() {
 			user = "vcap"
-			rootfs = defaultRootFS
+			rootfs = config.DefaultRootFS
 			gracePath = "/tmp/grace/grace"
 		})
 
