@@ -17,7 +17,7 @@ var _ = Describe("Download Checksums", func() {
 	Context("when the checksum is valid but incorrect", func() {
 		It("should crash", func() {
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
-				From:              GraceTarballURL,
+				From:              config.GraceTarballURL,
 				To:                ".",
 				User:              "vcap",
 				ChecksumAlgorithm: "sha1",

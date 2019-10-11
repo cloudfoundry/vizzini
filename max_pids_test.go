@@ -17,7 +17,7 @@ var _ = Describe("MaxPids", func() {
 	Describe("Max Pid Limits", func() {
 		BeforeEach(func() {
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
-				From:     GraceTarballURL,
+				From:     config.GraceTarballURL,
 				To:       ".",
 				CacheKey: "grace",
 				User:     "vcap",
@@ -61,7 +61,7 @@ var _ = Describe("MaxPids", func() {
 	})
 	Describe("{DOCKER} with a docker-image rootfs", func() {
 		BeforeEach(func() {
-			lrp.RootFs = GraceBusyboxImageURL
+			lrp.RootFs = config.GraceBusyboxImageURL
 			lrp.Setup = nil //note: we copy nothing in, the docker image on its own should cause this failure
 			lrp.Action = models.WrapAction(&models.RunAction{
 				Path: "/grace",
