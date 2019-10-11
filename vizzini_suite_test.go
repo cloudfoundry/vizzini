@@ -25,7 +25,6 @@ var (
 	bbsClient     bbs.InternalClient
 	domain        string
 	otherDomain   string
-	defaultRootFS string
 	guid          string
 	startTime     time.Time
 	timeout       time.Duration
@@ -86,7 +85,7 @@ var _ = BeforeSuite(func() {
 	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
 	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
 
-	rootfsURI, err := url.Parse(defaultRootFS)
+	rootfsURI, err := url.Parse(config.DefaultRootFS)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(rootfsURI.Scheme).To(Equal("preloaded"))
 	Expect(rootfsURI.Opaque).NotTo(BeEmpty())
