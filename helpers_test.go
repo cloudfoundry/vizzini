@@ -20,10 +20,6 @@ const HealthyCheckInterval = 30 * time.Second
 const ConvergerInterval = 30 * time.Second
 const CrashRestartTimeout = 30 * time.Second
 
-const GraceTarballURL = "https://storage.googleapis.com/diego-assets-bucket/grace.tar.gz"
-const GraceTarballURLSHAChecksum = "f27ff4f9df2c95612d364e5138a604edc56bfa4e"
-const GraceBusyboxImageURL = "docker:///cfdiegodocker/grace"
-
 //Tasks
 
 func TaskGetter(logger lager.Logger, guid string) func() (*models.Task, error) {
@@ -278,11 +274,11 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		Instances:   1,
 		CachedDependencies: []*models.CachedDependency{
 			&models.CachedDependency{
-				From:              GraceTarballURL,
+				From:              config.GraceTarballURL,
 				To:                "/tmp/grace",
 				CacheKey:          "grace",
 				ChecksumAlgorithm: "sha1",
-				ChecksumValue:     GraceTarballURLSHAChecksum,
+				ChecksumValue:     config.GraceTarballChecksum,
 			},
 		},
 		LegacyDownloadUser: "vcap",

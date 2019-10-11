@@ -199,7 +199,7 @@ var _ = Describe("SSH Tests", func() {
 			CachedDependencies: []*models.CachedDependency{
 				&models.CachedDependency{
 					Name:     "grace",
-					From:     GraceTarballURL,
+					From:     config.GraceTarballURL,
 					To:       "/tmp/grace",
 					CacheKey: "grace",
 				},
@@ -426,7 +426,7 @@ var _ = Describe("SSH Tests", func() {
 	Context("{DOCKER} in a bare-bones docker image with /bin/sh", func() {
 		BeforeEach(func() {
 			user = "root"
-			rootfs = GraceBusyboxImageURL
+			rootfs = config.GraceBusyboxImageURL
 			startTimeout = dockerTimeout
 			gracePath = "/grace"
 		})
