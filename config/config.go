@@ -26,6 +26,7 @@ type VizziniConfig struct {
 	GraceTarballURL                string   `json:"grace_tarball_url"`
 	GraceTarballChecksum           string   `json:"grace_tarball_checksum"`
 	GraceBusyboxImageURL           string   `json:"grace_busybox_image_url"`
+	FileServerAddress              string   `json:"file_server_address"`
 }
 
 func NewVizziniConfig() (VizziniConfig, error) {

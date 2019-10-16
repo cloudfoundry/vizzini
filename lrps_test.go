@@ -172,7 +172,7 @@ var _ = Describe("LRPs", func() {
 					User:     "vcap",
 				},
 				&models.DownloadAction{
-					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					From:     config.FileServerAddress + "/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 					To:       "/tmp/lifecycle",
 					CacheKey: "buildpack-app-lifecycle",
 					User:     "vcap",
@@ -218,7 +218,7 @@ var _ = Describe("LRPs", func() {
 					User:     "vcap",
 				},
 				&models.DownloadAction{
-					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					From:     config.FileServerAddress + "/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 					To:       "/tmp/lifecycle",
 					CacheKey: "buildpack-app-lifecycle",
 					User:     "vcap",
@@ -306,7 +306,7 @@ var _ = Describe("LRPs", func() {
 		BeforeEach(func() {
 			lrp.RootFs = config.GraceBusyboxImageURL
 			lrp.Setup = models.WrapAction(&models.DownloadAction{
-				From:     "http://file-server.service.cf.internal:8080/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
+				From:     config.FileServerAddress + "/v1/static/docker_app_lifecycle/docker_app_lifecycle.tgz",
 				To:       "/tmp/lifecycle",
 				CacheKey: "docker-app-lifecycle",
 				User:     "root",

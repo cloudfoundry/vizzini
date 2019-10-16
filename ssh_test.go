@@ -206,7 +206,7 @@ var _ = Describe("SSH Tests", func() {
 				},
 				&models.CachedDependency{
 					Name:     "lifecycle bundle",
-					From:     "http://file-server.service.cf.internal:8080/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
+					From:     config.FileServerAddress + "/v1/static/buildpack_app_lifecycle/buildpack_app_lifecycle.tgz",
 					To:       "/tmp/lifecycle",
 					CacheKey: "lifecycle",
 				},
