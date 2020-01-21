@@ -6,6 +6,10 @@
 
 Vizzini is a suite of tests that runs against the Diego BBS API.
 
+## Reporting issues and requesting features
+
+Please report all issues and feature requests in [cloudfoundry/diego-release](https://github.com/cloudfoundry/diego-release/issues).
+
 ## What's In Here
 
 - Under the top-level directory are tests that exercise the core of Diego and
