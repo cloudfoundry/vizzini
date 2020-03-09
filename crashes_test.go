@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	. "code.cloudfoundry.org/vizzini/matchers"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -25,6 +26,10 @@ func MakeGraceExit(baseURL string, status int) {
 		if resp.StatusCode == http.StatusOK {
 			return
 		}
+		logger.Info(
+			"grace-exit-request-failed",
+			lager.Data{"response-status-code": resp.StatusCode, "attempt": i, "desired-exit-status": status},
+		)
 		time.Sleep(10 * time.Millisecond)
 	}
 	Fail("failed to make grace exit")
