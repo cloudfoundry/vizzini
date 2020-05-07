@@ -18,7 +18,7 @@ func MakeGraceExit(baseURL string, status int) {
 	Eventually(EndpointCurler(baseURL + "/env")).Should(Equal(http.StatusOK))
 
 	//make Grace exit
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 10; i++ {
 		url := fmt.Sprintf("%s/exit/%d", baseURL, status)
 		resp, err := http.Post(url, "application/octet-stream", nil)
 		Expect(err).NotTo(HaveOccurred())
