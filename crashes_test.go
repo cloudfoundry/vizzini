@@ -52,13 +52,11 @@ var _ = Describe("Crashes", func() {
 	BeforeEach(func() {
 		url = fmt.Sprintf("http://%s", RouteForGuid(guid))
 		lrp = DesiredLRPWithGuid(guid)
-		lrp.Monitor = nil
 	})
 
 	Describe("Annotating the Crash Reason", func() {
 		BeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("adds the crash reason to the application", func() {
@@ -73,7 +71,6 @@ var _ = Describe("Crashes", func() {
 	Describe("backoff behavior", func() {
 		BeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("{SLOW} restarts the application immediately twice, and then starts backing it off, and updates the modification tag as it goes", func() {
@@ -125,7 +122,6 @@ var _ = Describe("Crashes", func() {
 	Describe("killing crashed applications", func() {
 		BeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
-			Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 		})
 
 		It("should delete the Crashed ActualLRP succesfully", func() {
@@ -148,6 +144,10 @@ var _ = Describe("Crashes", func() {
 	})
 
 	Context("with no monitor action", func() {
+		BeforeEach(func() {
+			lrp.Monitor = nil
+		})
+
 		Context("when running a single action", func() {
 			BeforeEach(func() {
 				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
