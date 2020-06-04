@@ -63,7 +63,7 @@ func NewGuid() string {
 	return domain + "-" + u.String()[:8]
 }
 
-const DefaultEventuallyTimeout = 10 * time.Second
+const DefaultEventuallyTimeout = 20 * time.Second
 
 var taskFailureTimeout time.Duration
 
