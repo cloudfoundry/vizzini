@@ -212,13 +212,14 @@ var _ = Describe("Crashes", func() {
 				Context("when lot of subprocesses fail", func() {
 					BeforeEach(func() {
 						actions := []models.ActionInterface{}
-						for i := 0; i < 200; i++ {
+						for i := 0; i < 100; i++ {
 							actions = append(actions, &models.RunAction{
 								Path: "bash",
 								Args: []string{"-c", "exit 0"},
 								User: "vcap",
 							})
 						}
+						lrp.MemoryMb = 256
 						lrp.Action = models.WrapAction(models.Codependent(actions...))
 					})
 
@@ -229,9 +230,9 @@ var _ = Describe("Crashes", func() {
 									"ProcessGuid": Equal(guid),
 									"Index":       Equal(int32(0)),
 								}),
-								"CrashCount": Equal(int32(1)),
+								"CrashCount": BeNumerically(">=", 1),
 								"CrashReason": And(
-									MatchRegexp("200 error\\(s\\) occurred:\n\n\\* Codependent step exited.*"),
+									MatchRegexp("100 error\\(s\\) occurred:\n\n\\* Codependent step exited.*"),
 									HaveLen(1024),
 								),
 							}),
