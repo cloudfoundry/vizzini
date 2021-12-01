@@ -61,6 +61,7 @@ var _ = Describe("The container environment", func() {
 			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{
 				{External: actualLRP.Ports[0].HostPort, Internal: actualLRP.Ports[0].ContainerPort, ExternalTLS: actualLRP.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.Ports[0].ContainerTlsProxyPort},
 				{External: actualLRP.Ports[1].HostPort, Internal: actualLRP.Ports[1].ContainerPort, ExternalTLS: actualLRP.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.Ports[1].ContainerTlsProxyPort},
+				{External: actualLRP.Ports[2].HostPort, Internal: actualLRP.Ports[2].ContainerPort, ExternalTLS: actualLRP.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.Ports[2].ContainerTlsProxyPort},
 			})
 			Expect(err).NotTo(HaveOccurred())
 
