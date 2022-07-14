@@ -264,7 +264,7 @@ var _ = Describe("Crashes", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance never healthy after"))
-							Expect(actualLRP.CrashReason).To(ContainSubstring("failed to make TCP connection to port 9090: connection refused"))
+							Expect(actualLRP.CrashReason).To(MatchRegexp("failed to make TCP connection to .*:9090: connection refused"))
 							Expect(actualLRP.CrashReason).To(ContainSubstring("failed to make HTTP request to '/ping' on port 9090: connection refused"))
 						})
 					})
@@ -343,7 +343,7 @@ var _ = Describe("Crashes", func() {
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
 
-							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy: Liveness check unsuccessful: failed to make TCP connection to port 8080: connection refused"))
+							Expect(actualLRP.CrashReason).To(MatchRegexp("Instance became unhealthy: Liveness check unsuccessful: failed to make TCP connection to .*:8080: connection refused"))
 						})
 					})
 
@@ -380,7 +380,7 @@ var _ = Describe("Crashes", func() {
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
 							Expect(actualLRP.CrashReason).To(SatisfyAny(
-								ContainSubstring("failed to make TCP connection to port 8080: connection refused"),
+								MatchRegexp("failed to make TCP connection to .*:8080: connection refused"),
 								ContainSubstring("failed to make HTTP request to '/ping' on port 8080: connection refused"),
 							))
 						})
