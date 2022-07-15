@@ -343,7 +343,7 @@ var _ = Describe("Crashes", func() {
 							actualLRP, err := ActualGetter(logger, guid, 0)()
 							Expect(err).NotTo(HaveOccurred())
 
-							Expect(actualLRP.CrashReason).To(MatchRegexp("Instance became unhealthy: Liveness check unsuccessful: failed to make TCP connection to .*:8080: connection refused"))
+							Expect(actualLRP.CrashReason).To(MatchRegexp("Instance became unhealthy: Liveness check unsuccessful: failed to make TCP connection to .*:8080: dial tcp .*:8080: connect: connection refused"))
 						})
 					})
 
