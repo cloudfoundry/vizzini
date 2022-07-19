@@ -82,8 +82,8 @@ var _ = BeforeSuite(func() {
 	SetDefaultEventuallyTimeout(timeout)
 	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 	SetDefaultConsistentlyPollingInterval(200 * time.Millisecond)
-	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelNode())
-	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelNode())
+	domain = fmt.Sprintf("vizzini-%d", GinkgoParallelProcess())
+	otherDomain = fmt.Sprintf("vizzini-other-%d", GinkgoParallelProcess())
 
 	rootfsURI, err := url.Parse(config.DefaultRootFS)
 	Expect(err).NotTo(HaveOccurred())
