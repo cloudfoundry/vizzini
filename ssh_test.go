@@ -152,7 +152,7 @@ var _ = Describe("SSH Tests", func() {
 			"-v",
 			"-P", target.Port,
 			"-o", "User=" + target.User,
-			fmt.Sprintf("diego:%s/0@%s", guid, sshHost),
+			sshHost,
 		}
 		return secureCommand("sftp", append(sftpArgs, args...)...)
 	}
