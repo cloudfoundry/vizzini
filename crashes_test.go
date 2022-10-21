@@ -380,7 +380,7 @@ var _ = Describe("Crashes", func() {
 
 							Expect(actualLRP.CrashReason).To(ContainSubstring("Instance became unhealthy:"))
 							Expect(actualLRP.CrashReason).To(SatisfyAny(
-								MatchRegexp("failed to make TCP connection to .*:8080: dial tcp .*:9090: connect: connection refused"),
+								MatchRegexp("failed to make TCP connection to .*:8080: dial tcp .*:8080: connect: connection refused"),
 								ContainSubstring("failed to make HTTP request to '/ping' on port 8080: connection refused"),
 							))
 						})
