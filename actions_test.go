@@ -109,7 +109,7 @@ var _ = Describe("Actions", func() {
 				Domain:        domain,
 				Instances:     1,
 				Action: models.WrapAction(&models.DownloadAction{
-					From: "https://storage.googleapis.com/diego-assets-bucket/large-file.txt",
+					From: "https://storage.googleapis.com/diego-assets/large-file.txt",
 					To:   "/tmp",
 					User: "vcap",
 				}),
