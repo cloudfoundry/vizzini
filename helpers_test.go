@@ -308,6 +308,7 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		Routes:     &routingInfo,
 		LogGuid:    guid,
 		LogSource:  "VIZ",
+		MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 		Annotation: "arbitrary-data",
 	}
 }

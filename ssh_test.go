@@ -238,11 +238,12 @@ var _ = Describe("SSH Tests", func() {
 					User: user,
 				},
 			)),
-			RootFs:   rootfs,
-			MemoryMb: 128,
-			DiskMb:   128,
-			Ports:    []uint32{2222},
-			Routes:   &routes,
+			RootFs:     rootfs,
+			MemoryMb:   128,
+			DiskMb:     128,
+			Ports:      []uint32{2222},
+			Routes:     &routes,
+			MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 		}
 
 		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
