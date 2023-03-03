@@ -119,6 +119,7 @@ var _ = Describe("Actions", func() {
 				LogGuid:    guid,
 				LogSource:  "VIZ",
 				Annotation: "arbitrary-data",
+				MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 			}
 
 			Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
