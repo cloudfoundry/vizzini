@@ -24,7 +24,7 @@ import (
 	ssh_routes "code.cloudfoundry.org/diego-ssh/routes"
 
 	. "code.cloudfoundry.org/vizzini/matchers"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

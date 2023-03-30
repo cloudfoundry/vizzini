@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/bbs"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	vizziniconfig "code.cloudfoundry.org/vizzini/config"
 	"github.com/nu7hatch/gouuid"
 	"github.com/onsi/say"
