@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 	. "code.cloudfoundry.org/vizzini/matchers"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -135,8 +135,8 @@ var _ = Describe("LRPs", func() {
 	Describe("Specifying environment variables", func() {
 		BeforeEach(func() {
 			lrp.EnvironmentVariables = []*models.EnvironmentVariable{
-				{"CONTAINER_LEVEL", "AARDVARK"},
-				{"OVERRIDE", "BANANA"},
+				{Name: "CONTAINER_LEVEL", Value: "AARDVARK"},
+				{Name: "OVERRIDE", Value: "BANANA"},
 			}
 
 			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())

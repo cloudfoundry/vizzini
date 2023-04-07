@@ -14,7 +14,7 @@ import (
 	"code.cloudfoundry.org/bbs/models"
 	. "code.cloudfoundry.org/vizzini/matchers"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -153,16 +153,16 @@ var _ = Describe("Tasks", func() {
 	Describe("Specifying environment variables", func() {
 		BeforeEach(func() {
 			task.EnvironmentVariables = []*models.EnvironmentVariable{
-				{"CONTAINER_LEVEL", "A"},
-				{"OVERRIDE", "B"},
+				{Name: "CONTAINER_LEVEL", Value: "A"},
+				{Name: "OVERRIDE", Value: "B"},
 			}
 			task.Action = models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", "env > /tmp/bar"},
 				User: "vcap",
 				Env: []*models.EnvironmentVariable{
-					{"ACTION_LEVEL", "C"},
-					{"OVERRIDE", "D"},
+					{Name: "ACTION_LEVEL", Value: "C"},
+					{Name: "OVERRIDE", Value: "D"},
 				},
 			})
 		})

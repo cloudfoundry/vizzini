@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/routing-info/cfroutes"
 
 	. "code.cloudfoundry.org/vizzini/matchers"
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -293,7 +293,10 @@ func DesiredLRPWithGuid(guid string) *models.DesiredLRP {
 		Action: models.WrapAction(&models.RunAction{
 			Path: "/tmp/grace/grace",
 			User: "vcap",
-			Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}, {"ACTION_LEVEL", "COYOTE"}, {"OVERRIDE", "DAQUIRI"}},
+			Env: []*models.EnvironmentVariable{
+				{Name: "PORT", Value: "8080"},
+				{Name: "ACTION_LEVEL", Value: "COYOTE"},
+				{Name: "OVERRIDE", Value: "DAQUIRI"}},
 		}),
 		Monitor: models.WrapAction(&models.RunAction{
 			Path: "nc",
