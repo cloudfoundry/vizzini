@@ -34,7 +34,7 @@ var _ = Describe("Security groups", func() {
 			allowedCallerGuid, disallowedCallerGuid = NewGuid(), NewGuid()
 			allowedCaller, disallowedCaller = DesiredLRPWithGuid(allowedCallerGuid), DesiredLRPWithGuid(disallowedCallerGuid)
 
-			Expect(bbsClient.DesireLRP(logger, disallowedCaller)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, disallowedCaller)).To(Succeed())
 			Eventually(ActualGetter(logger, disallowedCallerGuid, 0)).Should(BeActualLRPWithState(disallowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(disallowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 
@@ -45,7 +45,7 @@ var _ = Describe("Security groups", func() {
 				},
 			}
 
-			Expect(bbsClient.DesireLRP(logger, allowedCaller)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, allowedCaller)).To(Succeed())
 			Eventually(ActualGetter(logger, allowedCallerGuid, 0)).Should(BeActualLRPWithState(allowedCallerGuid, 0, models.ActualLRPStateRunning))
 			Eventually(EndpointCurler("http://" + RouteForGuid(allowedCallerGuid) + "/env")).Should(Equal(http.StatusOK))
 		})
@@ -96,26 +96,26 @@ var _ = Describe("Security groups", func() {
 		})
 
 		It("should allow access to an internal IP", func() {
-			Expect(bbsClient.DesireTask(logger, allowedTaskGuid, domain, allowedTask)).To(Succeed())
-			Expect(bbsClient.DesireTask(logger, disallowedTaskGuid, domain, disallowedTask)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, traceID, allowedTaskGuid, domain, allowedTask)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, traceID, disallowedTaskGuid, domain, disallowedTask)).To(Succeed())
 
 			Eventually(TaskGetter(logger, allowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 			Eventually(TaskGetter(logger, disallowedTaskGuid)).Should(HaveTaskState(models.Task_Completed))
 
 			By("verifiying that without egress rules, this network call is disallowed")
-			task, err := bbsClient.TaskByGuid(logger, disallowedTaskGuid)
+			task, err := bbsClient.TaskByGuid(logger, traceID, disallowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(true))
 
 			By("asserting that opening up the security group rule allows us to call into the internal IP")
-			task, err = bbsClient.TaskByGuid(logger, allowedTaskGuid)
+			task, err = bbsClient.TaskByGuid(logger, traceID, allowedTaskGuid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.Failed).To(Equal(false))
 
-			Expect(bbsClient.ResolvingTask(logger, allowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(logger, allowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.ResolvingTask(logger, disallowedTaskGuid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(logger, disallowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, traceID, allowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, traceID, allowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, traceID, disallowedTaskGuid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, traceID, disallowedTaskGuid)).To(Succeed())
 		})
 	})
 })

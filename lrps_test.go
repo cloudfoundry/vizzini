@@ -25,7 +25,7 @@ var _ = Describe("LRPs", func() {
 	Describe("Desiring LRPs", func() {
 		Context("when the LRP is well-formed", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			})
 
 			It("desires the LRP", func() {
@@ -33,7 +33,7 @@ var _ = Describe("LRPs", func() {
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRP(guid, 0)))
 
-				fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
+				fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fetchedLRP.Annotation).To(Equal("arbitrary-data"))
 			})
@@ -42,31 +42,31 @@ var _ = Describe("LRPs", func() {
 		Context("when the LRP's process guid contains invalid characters", func() {
 			It("should fail to create", func() {
 				lrp.ProcessGuid = "abc def"
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(logger, traceID, lrp)
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 
 				lrp.ProcessGuid = "abc/def"
-				Expect(bbsClient.DesireLRP(logger, lrp)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).NotTo(Succeed())
 
 				lrp.ProcessGuid = "abc,def"
-				Expect(bbsClient.DesireLRP(logger, lrp)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).NotTo(Succeed())
 
 				lrp.ProcessGuid = "abc.def"
-				Expect(bbsClient.DesireLRP(logger, lrp)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).NotTo(Succeed())
 
 				lrp.ProcessGuid = "abc∆def"
-				Expect(bbsClient.DesireLRP(logger, lrp)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).NotTo(Succeed())
 			})
 		})
 
 		Context("when the LRP's # of instances is == 0", func() {
 			It("should create the LRP and allow the user to subsequently scale up", func() {
 				lrp.Instances = 0
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 
 				dlu := &models.DesiredLRPUpdate{}
 				dlu.SetInstances(2)
-				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(logger, traceID, lrp.ProcessGuid, dlu)).To(Succeed())
 
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
@@ -79,34 +79,34 @@ var _ = Describe("LRPs", func() {
 				By("not having ProcessGuid")
 				*lrpCopy = *lrp
 				lrpCopy.ProcessGuid = ""
-				Expect(bbsClient.DesireLRP(logger, lrpCopy)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrpCopy)).NotTo(Succeed())
 
 				By("not having a domain")
 				*lrpCopy = *lrp
 				lrpCopy.Domain = ""
-				Expect(bbsClient.DesireLRP(logger, lrpCopy)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrpCopy)).NotTo(Succeed())
 
 				By("not having an action")
 				*lrpCopy = *lrp
 				lrpCopy.Action = nil
-				Expect(bbsClient.DesireLRP(logger, lrpCopy)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrpCopy)).NotTo(Succeed())
 
 				By("not having a rootfs")
 				*lrpCopy = *lrp
 				lrpCopy.RootFs = ""
-				Expect(bbsClient.DesireLRP(logger, lrpCopy)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrpCopy)).NotTo(Succeed())
 
 				By("having a malformed rootfs")
 				*lrpCopy = *lrp
 				lrpCopy.RootFs = "ploop"
-				Expect(bbsClient.DesireLRP(logger, lrpCopy)).NotTo(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrpCopy)).NotTo(Succeed())
 			})
 		})
 
 		Context("when the CPUWeight is out of bounds", func() {
 			It("should fail", func() {
 				lrp.CpuWeight = 101
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(logger, traceID, lrp)
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 			})
 		})
@@ -114,19 +114,19 @@ var _ = Describe("LRPs", func() {
 		Context("when the annotation is too large", func() {
 			It("should fail", func() {
 				lrp.Annotation = strings.Repeat("7", 1024*10+1)
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(logger, traceID, lrp)
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
 			})
 		})
 
 		Context("when the DesiredLRP already exists", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should fail", func() {
-				err := bbsClient.DesireLRP(logger, lrp)
+				err := bbsClient.DesireLRP(logger, traceID, lrp)
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceExists))
 			})
 		})
@@ -139,7 +139,7 @@ var _ = Describe("LRPs", func() {
 				{Name: "OVERRIDE", Value: "BANANA"},
 			}
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
@@ -196,7 +196,7 @@ var _ = Describe("LRPs", func() {
 				},
 			}
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should run", func() {
@@ -231,7 +231,7 @@ var _ = Describe("LRPs", func() {
 				User: "vcap",
 			})
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should run", func() {
@@ -272,7 +272,7 @@ var _ = Describe("LRPs", func() {
 				},
 			}
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should run", func() {
@@ -294,7 +294,7 @@ var _ = Describe("LRPs", func() {
 				}),
 			})
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("gets marked as crashed (immediately)", func() {
@@ -322,7 +322,7 @@ var _ = Describe("LRPs", func() {
 				User: "root",
 			})
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should succeed", func() {
@@ -335,9 +335,9 @@ var _ = Describe("LRPs", func() {
 		var tag *models.ModificationTag
 
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
-			fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, lrp.ProcessGuid)
+			fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, lrp.ProcessGuid)
 			Expect(err).NotTo(HaveOccurred())
 			tag = fetchedLRP.ModificationTag
 		})
@@ -347,7 +347,7 @@ var _ = Describe("LRPs", func() {
 				It("allows updating instances", func() {
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetInstances(2)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 				})
@@ -355,7 +355,7 @@ var _ = Describe("LRPs", func() {
 				It("allows scaling down to 0", func() {
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetInstances(0)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(0))
 				})
@@ -368,7 +368,7 @@ var _ = Describe("LRPs", func() {
 					routes[0].Hostnames = append(routes[0].Hostnames, newRoute)
 					routingInfo := routes.RoutingInfo()
 
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &models.DesiredLRPUpdate{
 						Routes: &routingInfo,
 					})).To(Succeed())
 
@@ -380,9 +380,9 @@ var _ = Describe("LRPs", func() {
 					annotation := "my new annotation"
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetAnnotation(annotation)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
-					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
+					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lrp.Annotation).To(Equal("my new annotation"))
 				})
@@ -399,32 +399,32 @@ var _ = Describe("LRPs", func() {
 					dlu := &models.DesiredLRPUpdate{Routes: &routingInfo}
 					dlu.SetInstances(2)
 					dlu.SetAnnotation("my new annotation")
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 
 					Eventually(EndpointCurler("http://" + newRoute + "/env")).Should(Equal(http.StatusOK))
 					Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
-					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
+					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(lrp.Annotation).To(Equal("my new annotation"))
 				})
 
 				It("updates the modification index when a change occurs", func() {
 					By("not modifying if no change has been made")
-					fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, lrp.ProcessGuid)
+					fetchedLRP, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, lrp.ProcessGuid)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fetchedLRP.ModificationTag).To(Equal(tag))
 
 					By("modifying when a change is made")
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetInstances(2)
-					Expect(bbsClient.UpdateDesiredLRP(logger, guid, dlu)).To(Succeed())
+					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
 
-					fetchedLRP, err = bbsClient.DesiredLRPByProcessGuid(logger, lrp.ProcessGuid)
+					fetchedLRP, err = bbsClient.DesiredLRPByProcessGuid(logger, traceID, lrp.ProcessGuid)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fetchedLRP.ModificationTag.Epoch).To(Equal(tag.Epoch))
 					Expect(fetchedLRP.ModificationTag.Index).To(BeNumerically(">", tag.Index))
@@ -435,7 +435,7 @@ var _ = Describe("LRPs", func() {
 				It("errors", func() {
 					dlu := &models.DesiredLRPUpdate{}
 					dlu.SetInstances(2)
-					err := bbsClient.UpdateDesiredLRP(logger, "flooberdoobey", dlu)
+					err := bbsClient.UpdateDesiredLRP(logger, traceID, "flooberdoobey", dlu)
 					Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 				})
 			})
@@ -445,12 +445,12 @@ var _ = Describe("LRPs", func() {
 	Describe("Getting a DesiredLRP", func() {
 		Context("when the DesiredLRP exists", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("should succeed", func() {
-				lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
+				lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(lrp.ProcessGuid).To(Equal(guid))
 			})
@@ -458,7 +458,7 @@ var _ = Describe("LRPs", func() {
 
 		Context("when the DesiredLRP does not exist", func() {
 			It("should error", func() {
-				lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, "floobeedoo")
+				lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, "floobeedoo")
 				Expect(lrp).To(BeZero())
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 			})
@@ -469,24 +469,24 @@ var _ = Describe("LRPs", func() {
 		var otherGuids []string
 
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
 			otherGuids = []string{NewGuid(), NewGuid()}
 			for _, otherGuid := range otherGuids {
 				otherLRP := DesiredLRPWithGuid(otherGuid)
 				otherLRP.Domain = otherDomain
-				Expect(bbsClient.DesireLRP(logger, otherLRP)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, otherLRP)).To(Succeed())
 				url := "http://" + RouteForGuid(otherGuid) + "/env"
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK), "LRP '"+otherGuid+"' failed to become routable within the timeout")
 			}
 		})
 
 		It("should fetch desired lrps in the given domain", func() {
-			lrpsInDomain, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{Domain: domain})
+			lrpsInDomain, err := bbsClient.DesiredLRPs(logger, traceID, models.DesiredLRPFilter{Domain: domain})
 			Expect(err).NotTo(HaveOccurred())
 
-			lrpsInOtherDomain, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{Domain: otherDomain})
+			lrpsInOtherDomain, err := bbsClient.DesiredLRPs(logger, traceID, models.DesiredLRPFilter{Domain: otherDomain})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(lrpsInDomain).To(HaveLen(1))
@@ -495,13 +495,13 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should not error if a domain is empty", func() {
-			lrpsInDomain, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{Domain: "farfignoogan"})
+			lrpsInDomain, err := bbsClient.DesiredLRPs(logger, traceID, models.DesiredLRPFilter{Domain: "farfignoogan"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lrpsInDomain).To(BeEmpty())
 		})
 
 		It("should fetch all desired lrps", func() {
-			allDesiredLRPs, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{})
+			allDesiredLRPs, err := bbsClient.DesiredLRPs(logger, traceID, models.DesiredLRPFilter{})
 			Expect(err).NotTo(HaveOccurred())
 
 			//if we're running in parallel there may be more than 3 things here!
@@ -519,11 +519,11 @@ var _ = Describe("LRPs", func() {
 	Describe("Deleting DesiredLRPs", func() {
 		Context("when the DesiredLRP exists", func() {
 			It("should be deleted", func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 
-				Expect(bbsClient.RemoveDesiredLRP(logger, guid)).To(Succeed())
-				_, err := bbsClient.DesiredLRPByProcessGuid(logger, guid)
+				Expect(bbsClient.RemoveDesiredLRP(logger, traceID, guid)).To(Succeed())
+				_, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 				Expect(err).To(HaveOccurred())
 				Eventually(EndpointCurler(url)).ShouldNot(Equal(http.StatusOK))
 			})
@@ -531,17 +531,17 @@ var _ = Describe("LRPs", func() {
 
 		Context("when the DesiredLRP is deleted after it is claimed but before it is running #86668966", func() {
 			It("should succesfully remove any ActualLRP", func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(logger, lrp.ProcessGuid)).Should(ContainElement(BeActualLRPWithState(lrp.ProcessGuid, 0, models.ActualLRPStateClaimed)))
 				//note: we don't wait for the ActualLRP to start running
-				Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
+				Expect(bbsClient.RemoveDesiredLRP(logger, traceID, lrp.ProcessGuid)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(logger, lrp.ProcessGuid)).Should(BeEmpty())
 			})
 		})
 
 		Context("when the DesiredLRP does not exist", func() {
 			It("should not be deleted, and should error", func() {
-				err := bbsClient.RemoveDesiredLRP(logger, "floobeedoobee")
+				err := bbsClient.RemoveDesiredLRP(logger, traceID, "floobeedoobee")
 				Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 			})
 		})
@@ -549,7 +549,7 @@ var _ = Describe("LRPs", func() {
 
 	Describe("Getting all ActualLRPs", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 		})
 
@@ -573,18 +573,18 @@ var _ = Describe("LRPs", func() {
 			var otherDomainLRP2 *models.DesiredLRP
 
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 
 				otherGuid1 := NewGuid()
 				otherDomainLRP1 = DesiredLRPWithGuid(otherGuid1)
 				otherDomainLRP1.Instances = 2
 				otherDomainLRP1.Domain = otherDomain
-				Expect(bbsClient.DesireLRP(logger, otherDomainLRP1)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, otherDomainLRP1)).To(Succeed())
 
 				otherGuid2 := NewGuid()
 				otherDomainLRP2 = DesiredLRPWithGuid(otherGuid2)
 				otherDomainLRP2.Domain = otherDomain
-				Expect(bbsClient.DesireLRP(logger, otherDomainLRP2)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, otherDomainLRP2)).To(Succeed())
 
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 				Eventually(IndexCounter(otherDomainLRP1.ProcessGuid)).Should(Equal(2), "LRP '"+otherGuid1+"' instances failed to come up")
@@ -620,7 +620,7 @@ var _ = Describe("LRPs", func() {
 		Context("when there are ActualLRPs for a given ProcessGuid", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
 
@@ -645,7 +645,7 @@ var _ = Describe("LRPs", func() {
 
 		Context("when there are no ActualLRPs at the given index", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(1))
 			})
 
@@ -659,7 +659,7 @@ var _ = Describe("LRPs", func() {
 		Context("when there is an ActualLRP at the given index", func() {
 			BeforeEach(func() {
 				lrp.Instances = 2
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(IndexCounter(guid)).Should(Equal(2))
 			})
 
@@ -674,25 +674,25 @@ var _ = Describe("LRPs", func() {
 		Context("when there is no matching ProcessGuid", func() {
 			It("returns an error", func() {
 				lrpKey := models.NewActualLRPKey(guid, 0, domain)
-				Expect(bbsClient.RetireActualLRP(logger, &lrpKey)).NotTo(Succeed())
+				Expect(bbsClient.RetireActualLRP(logger, traceID, &lrpKey)).NotTo(Succeed())
 			})
 		})
 
 		Context("when there is no ActualLRP at the given index", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
 			It("returns an error", func() {
 				lrpKey := models.NewActualLRPKey(guid, 1, domain)
-				Expect(bbsClient.RetireActualLRP(logger, &lrpKey)).NotTo(Succeed())
+				Expect(bbsClient.RetireActualLRP(logger, traceID, &lrpKey)).NotTo(Succeed())
 			})
 		})
 
 		Context("{SLOW} when an ActualLRP exists at the given ProcessGuid and index", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 			})
 
@@ -700,7 +700,7 @@ var _ = Describe("LRPs", func() {
 				initialTime, err := StartedAtGetter(guid)()
 				Expect(err).NotTo(HaveOccurred())
 				lrpKey := models.NewActualLRPKey(guid, 0, domain)
-				Expect(bbsClient.RetireActualLRP(logger, &lrpKey)).To(Succeed())
+				Expect(bbsClient.RetireActualLRP(logger, traceID, &lrpKey)).To(Succeed())
 				//This needs a large timeout as the converger needs to run for it to return
 				Eventually(StartedAtGetter(guid), ConvergerInterval*2).Should(BeNumerically(">", initialTime))
 			})
@@ -714,7 +714,7 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("should report this fact on the UNCLAIMED ActualLRP", func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
 
 				actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
@@ -731,7 +731,7 @@ var _ = Describe("LRPs", func() {
 			})
 
 			It("should allow creation of the task but should (fairly quickly) mark the task as failed", func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeUnclaimedActualLRPWithPlacementError(guid, 0))
 
 				actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)

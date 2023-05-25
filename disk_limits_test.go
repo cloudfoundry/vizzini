@@ -27,7 +27,7 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit exceeds the contents to be copied in", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 		})
@@ -35,7 +35,7 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit is less than the contents to be copied in", func() {
 			It("should crash", func() {
 				lrp.DiskMb = 4
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail
@@ -61,7 +61,7 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit exceeds the size of the docker image", func() {
 			It("should not crash, but should start succesfully", func() {
 				lrp.DiskMb = 64
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0), dockerTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 			})
 		})
@@ -69,7 +69,7 @@ var _ = Describe("DiskLimits", func() {
 		Context("when the disk limit is less than the size of the docker image", func() {
 			It("should crash", func() {
 				lrp.DiskMb = 4
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail

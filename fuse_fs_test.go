@@ -21,7 +21,7 @@ var _ = Describe("FuseFS", func() {
 		lrp.Privileged = true
 		url = "http://" + RouteForGuid(guid) + "/env"
 
-		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 	})
 

@@ -19,7 +19,7 @@ var _ = Describe("The container environment", func() {
 		lrp = DesiredLRPWithGuid(guid)
 		lrp.Ports = []uint32{8080, 5000}
 
-		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		Eventually(EndpointCurler(url)).Should(Equal(http.StatusOK))
 	})
 

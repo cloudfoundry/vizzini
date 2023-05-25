@@ -67,6 +67,8 @@ const DefaultEventuallyTimeout = 20 * time.Second
 
 var taskFailureTimeout time.Duration
 
+var traceID = "vizzini-trace-id"
+
 var _ = BeforeSuite(func() {
 	var err error
 	timeout = DefaultEventuallyTimeout
@@ -120,7 +122,7 @@ var _ = AfterEach(func() {
 
 var _ = AfterSuite(func() {
 	for _, domain := range []string{domain, otherDomain} {
-		bbsClient.UpsertDomain(logger, domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
+		bbsClient.UpsertDomain(logger, traceID, domain, 5*time.Minute) //leave the domain around forever so that Diego cleans up if need be
 	}
 
 	for _, domain := range []string{domain, otherDomain} {

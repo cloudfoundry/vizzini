@@ -28,7 +28,7 @@ var _ = Describe("TLS Proxy", func() {
 		}
 
 		lrp = DesiredLRPWithGuid(guid)
-		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		actualGetterFn := ActualGetter(logger, guid, 0)
 		Eventually(actualGetterFn).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 		var err error

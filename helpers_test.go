@@ -25,26 +25,26 @@ const CrashRestartTimeout = 30 * time.Second
 
 func TaskGetter(logger lager.Logger, guid string) func() (*models.Task, error) {
 	return func() (*models.Task, error) {
-		return bbsClient.TaskByGuid(logger, guid)
+		return bbsClient.TaskByGuid(logger, traceID, guid)
 	}
 }
 
 func TasksByDomainGetter(logger lager.Logger, domain string) func() ([]*models.Task, error) {
 	return func() ([]*models.Task, error) {
-		return bbsClient.TasksByDomain(logger, domain)
+		return bbsClient.TasksByDomain(logger, traceID, domain)
 	}
 }
 
 func ClearOutTasksInDomain(domain string) {
-	tasks, err := bbsClient.TasksByDomain(logger, domain)
+	tasks, err := bbsClient.TasksByDomain(logger, traceID, domain)
 	Expect(err).NotTo(HaveOccurred())
 	for _, task := range tasks {
 		if task.State != models.Task_Completed {
-			bbsClient.CancelTask(logger, task.TaskGuid)
+			bbsClient.CancelTask(logger, traceID, task.TaskGuid)
 			Eventually(TaskGetter(logger, task.TaskGuid)).Should(HaveTaskState(models.Task_Completed))
 		}
-		Expect(bbsClient.ResolvingTask(logger, task.TaskGuid)).To(Succeed())
-		Expect(bbsClient.DeleteTask(logger, task.TaskGuid)).To(Succeed())
+		Expect(bbsClient.ResolvingTask(logger, traceID, task.TaskGuid)).To(Succeed())
+		Expect(bbsClient.DeleteTask(logger, traceID, task.TaskGuid)).To(Succeed())
 	}
 	Eventually(TasksByDomainGetter(logger, domain)).Should(BeEmpty())
 }
@@ -72,13 +72,13 @@ func Task() *models.TaskDefinition {
 
 func LRPGetter(logger lager.Logger, guid string) func() (*models.DesiredLRP, error) {
 	return func() (*models.DesiredLRP, error) {
-		return bbsClient.DesiredLRPByProcessGuid(logger, guid)
+		return bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
 	}
 }
 
 func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int) (models.ActualLRP, error) {
 	i := int32(index)
-	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
+	lrps, err := bbsClient.ActualLRPs(logger, traceID, models.ActualLRPFilter{ProcessGuid: guid, Index: &i})
 	if err != nil {
 		return models.ActualLRP{}, err
 	}
@@ -89,7 +89,7 @@ func ActualLRPByProcessGuidAndIndex(logger lager.Logger, guid string, index int)
 }
 
 func ActualsByProcessGuid(logger lager.Logger, guid string) ([]models.ActualLRP, error) {
-	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: guid})
+	lrps, err := bbsClient.ActualLRPs(logger, traceID, models.ActualLRPFilter{ProcessGuid: guid})
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func ActualsByProcessGuid(logger lager.Logger, guid string) ([]models.ActualLRP,
 }
 
 func ActualsByDomain(logger lager.Logger, domain string) ([]models.ActualLRP, error) {
-	lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{Domain: domain})
+	lrps, err := bbsClient.ActualLRPs(logger, traceID, models.ActualLRPFilter{Domain: domain})
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +134,10 @@ func ActualByDomainGetter(logger lager.Logger, domain string) func() ([]models.A
 }
 
 func ClearOutDesiredLRPsInDomain(domain string) {
-	lrps, err := bbsClient.DesiredLRPs(logger, models.DesiredLRPFilter{Domain: domain})
+	lrps, err := bbsClient.DesiredLRPs(logger, traceID, models.DesiredLRPFilter{Domain: domain})
 	Expect(err).NotTo(HaveOccurred())
 	for _, lrp := range lrps {
-		Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
+		Expect(bbsClient.RemoveDesiredLRP(logger, traceID, lrp.ProcessGuid)).To(Succeed())
 	}
 	// Wait enough time for the Grace app to exit if it was run with -catchTerminate
 	Eventually(ActualByDomainGetter(logger, domain), timeout+8*time.Second).Should(BeEmpty())

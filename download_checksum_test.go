@@ -23,7 +23,7 @@ var _ = Describe("Download Checksums", func() {
 				ChecksumAlgorithm: "sha1",
 				ChecksumValue:     "0123456789abcdef0123456789abcdef01234567",
 			})
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 			// getting all the way helps ensure the tests don't spuriously fail

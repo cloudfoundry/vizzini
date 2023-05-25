@@ -54,13 +54,13 @@ var _ = Describe("EventStream", func() {
 	})
 
 	It("should receive events as the LRP goes through its lifecycle", func() {
-		bbsClient.DesireLRP(logger, desiredLRP)
+		bbsClient.DesireLRP(logger, traceID, desiredLRP)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(guid)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(guid, 0)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateClaimed)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateRunning)))
 
-		bbsClient.RemoveDesiredLRP(logger, guid)
+		bbsClient.RemoveDesiredLRP(logger, traceID, guid)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPRemovedEvent(guid)))
 		Eventually(getEvents).Should(ContainElement(MatchActualLRPRemovedEvent(guid, 0)))
 	})

@@ -56,7 +56,7 @@ var _ = Describe("Crashes", func() {
 
 	Describe("Annotating the Crash Reason", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("adds the crash reason to the application", func() {
@@ -70,7 +70,7 @@ var _ = Describe("Crashes", func() {
 
 	Describe("backoff behavior", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("{SLOW} restarts the application immediately twice, and then starts backing it off, and updates the modification tag as it goes", func() {
@@ -114,14 +114,14 @@ var _ = Describe("Crashes", func() {
 			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 
 			By("deleting the DesiredLRP")
-			Expect(bbsClient.RemoveDesiredLRP(logger, guid)).To(Succeed())
+			Expect(bbsClient.RemoveDesiredLRP(logger, traceID, guid)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(logger, guid)).Should(BeEmpty())
 		})
 	})
 
 	Describe("killing crashed applications", func() {
 		BeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should delete the Crashed ActualLRP succesfully", func() {
@@ -138,7 +138,7 @@ var _ = Describe("Crashes", func() {
 			Eventually(ActualGetter(logger, guid, 0), ConvergerInterval).Should(BeActualLRPWithStateAndCrashCount(guid, 0, models.ActualLRPStateCrashed, 3))
 
 			actualLRPKey := models.NewActualLRPKey(guid, 0, domain)
-			Expect(bbsClient.RetireActualLRP(logger, &actualLRPKey)).To(Succeed())
+			Expect(bbsClient.RetireActualLRP(logger, traceID, &actualLRPKey)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(logger, guid)).Should(BeEmpty())
 		})
 	})
@@ -150,7 +150,7 @@ var _ = Describe("Crashes", func() {
 
 		Context("when running a single action", func() {
 			BeforeEach(func() {
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 			})
 
@@ -199,7 +199,7 @@ var _ = Describe("Crashes", func() {
 				})
 
 				JustBeforeEach(func() {
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				})
 
 				Context("when one of the actions finishes", func() {
@@ -217,7 +217,7 @@ var _ = Describe("Crashes", func() {
 
 			Context("with a failing check definition", func() {
 				JustBeforeEach(func() {
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				})
 
 				Context("when failing readiness", func() {
@@ -402,7 +402,7 @@ var _ = Describe("Crashes", func() {
 							User: "vcap",
 						},
 					))
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 					Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				})
 
@@ -437,7 +437,7 @@ var _ = Describe("Crashes", func() {
 					User: "vcap",
 				})
 
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
 				directURL = "http://" + DirectAddressFor(guid, 0, 8080)
@@ -513,7 +513,7 @@ var _ = Describe("Crashes", func() {
 					User: "vcap",
 				})
 
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateClaimed))
 			})
 

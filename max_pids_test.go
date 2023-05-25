@@ -28,7 +28,7 @@ var _ = Describe("MaxPids", func() {
 			Context("when the max pids is a large positive integer", func() {
 				It("should start succesfully", func() {
 					lrp.MaxPids = 1024
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				})
 			})
@@ -36,7 +36,7 @@ var _ = Describe("MaxPids", func() {
 				//0 is unlimited as per the garden container specs
 				It("should not crash, but should start succesfully", func() {
 					lrp.MaxPids = 0
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 					Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				})
 			})
@@ -45,7 +45,7 @@ var _ = Describe("MaxPids", func() {
 		Context("when the max pid limit is less than the required number of processes", func() {
 			It("should crash when the limits is low positive integer", func() {
 				lrp.MaxPids = 1
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail
@@ -55,7 +55,7 @@ var _ = Describe("MaxPids", func() {
 			})
 			It("should fail call to bbs when the limit is negative integer", func() {
 				lrp.MaxPids = -1
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Not(Succeed()))
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Not(Succeed()))
 			})
 		})
 	})
@@ -74,7 +74,7 @@ var _ = Describe("MaxPids", func() {
 			Context("when the max pids is a large positive integer", func() {
 				It("should start succesfully", func() {
 					lrp.MaxPids = 1024
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 					Eventually(ActualGetter(logger, guid, 0), dockerTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				})
 			})
@@ -82,7 +82,7 @@ var _ = Describe("MaxPids", func() {
 				//0 is unlimited as per the garden container specs
 				It("should not crash, but should start succesfully", func() {
 					lrp.MaxPids = 0
-					Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+					Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 					Eventually(ActualGetter(logger, guid, 0), dockerTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				})
 			})
@@ -91,7 +91,7 @@ var _ = Describe("MaxPids", func() {
 		Context("when the max pid limit is less than the required number of processes", func() {
 			It("should crash when the limits is low positive integer", func() {
 				lrp.MaxPids = 1
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPThatHasCrashed(guid, 0))
 
 				//getting all the way helps ensure the tests don't spuriously fail
@@ -101,7 +101,7 @@ var _ = Describe("MaxPids", func() {
 			})
 			It("should fail call to bbs when the limit is negative integer", func() {
 				lrp.MaxPids = -1
-				Expect(bbsClient.DesireLRP(logger, lrp)).To(Not(Succeed()))
+				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Not(Succeed()))
 			})
 		})
 	})

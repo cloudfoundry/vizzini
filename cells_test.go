@@ -7,7 +7,7 @@ import (
 
 var _ = Describe("Cells", func() {
 	It("should return all cells", func() {
-		cells, err := bbsClient.Cells(logger)
+		cells, err := bbsClient.Cells(logger, traceID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(cells)).To(BeNumerically(">=", 1))
 

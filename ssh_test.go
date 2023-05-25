@@ -246,7 +246,7 @@ var _ = Describe("SSH Tests", func() {
 			MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 		}
 
-		Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+		Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		Eventually(ActualGetter(logger, guid, 0), startTimeout).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 	})
 

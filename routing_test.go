@@ -31,7 +31,7 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(IndexCounter(guid, httpClient)).Should(Equal(3))
 		})
 
@@ -58,7 +58,7 @@ var _ = Describe("Routing Related Tests", func() {
 			lrp.Ports = []uint32{8080, 9999}
 			primaryURL = "http://" + RouteForGuid(guid) + "/env"
 
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(EndpointCurler(primaryURL)).Should(Equal(http.StatusOK))
 		})
 
@@ -72,7 +72,7 @@ var _ = Describe("Routing Related Tests", func() {
 				Port:      9999,
 			})
 			routingInfo := routes.RoutingInfo()
-			Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &models.DesiredLRPUpdate{
 				Routes: &routingInfo,
 			})).To(
 
@@ -88,7 +88,7 @@ var _ = Describe("Routing Related Tests", func() {
 			veryNewRoute := RouteForGuid(NewGuid())
 			routes[1].Hostnames = append(routes[1].Hostnames, veryNewRoute)
 			routingInfo = routes.RoutingInfo()
-			Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &models.DesiredLRPUpdate{
 				Routes: &routingInfo,
 			})).To(
 
@@ -99,7 +99,7 @@ var _ = Describe("Routing Related Tests", func() {
 			Expect(EndpointContentCurler(primaryURL)()).To(ContainSubstring("DAQUIRI"), "something on the original endpoint that's not in the new one")
 
 			By("tearing down the new port")
-			Expect(bbsClient.UpdateDesiredLRP(logger, guid, &models.DesiredLRPUpdate{
+			Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &models.DesiredLRPUpdate{
 				Routes: lrp.Routes,
 			})).To(
 
@@ -117,7 +117,7 @@ var _ = Describe("Routing Related Tests", func() {
 			url = "http://" + RouteForGuid(guid) + "/env"
 			lrp = DesiredLRPWithGuid(guid)
 			lrp.Instances = 3
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(logger, guid)).Should(ConsistOf(
 				BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 				BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
@@ -155,14 +155,14 @@ var _ = Describe("Routing Related Tests", func() {
 
 			for i := 0; i < 4; i++ {
 				By(fmt.Sprintf("Scaling down then back up #%d", i+1))
-				Expect(bbsClient.UpdateDesiredLRP(logger, guid, &updateToOne)).To(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &updateToOne)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(logger, guid)).Should(ConsistOf(
 					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 				))
 
 				time.Sleep(200 * time.Millisecond)
 
-				Expect(bbsClient.UpdateDesiredLRP(logger, guid, &updateToThree)).To(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, &updateToThree)).To(Succeed())
 				Eventually(ActualByProcessGuidGetter(logger, guid)).Should(ConsistOf(
 					BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning),
 					BeActualLRPWithState(guid, 1, models.ActualLRPStateRunning),
@@ -192,14 +192,14 @@ var _ = Describe("Routing Related Tests", func() {
 		})
 
 		JustBeforeEach(func() {
-			Expect(bbsClient.DesireLRP(logger, lrp)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 			Eventually(IndexCounter(guid), 15).Should(Equal(int(lrp.Instances)))
 		})
 
 		AfterEach(func() {
-			Expect(bbsClient.RemoveDesiredLRP(logger, lrp.ProcessGuid)).To(Succeed())
+			Expect(bbsClient.RemoveDesiredLRP(logger, traceID, lrp.ProcessGuid)).To(Succeed())
 			Eventually(func() []*models.ActualLRP {
-				lrps, err := bbsClient.ActualLRPs(logger, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid})
+				lrps, err := bbsClient.ActualLRPs(logger, traceID, models.ActualLRPFilter{ProcessGuid: lrp.ProcessGuid})
 				Expect(err).NotTo(HaveOccurred())
 				return lrps
 			}, 20*time.Second).Should(BeEmpty())
@@ -230,7 +230,7 @@ var _ = Describe("Routing Related Tests", func() {
 				dlu.SetInstances(0)
 				dlu.SetAnnotation(lrp.Annotation)
 
-				Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
+				Expect(bbsClient.UpdateDesiredLRP(logger, traceID, lrp.ProcessGuid, dlu)).To(Succeed())
 
 				Consistently(errCh, 5*time.Second).ShouldNot(Receive())
 			})
@@ -241,7 +241,7 @@ var _ = Describe("Routing Related Tests", func() {
 			dlu.SetInstances(1)
 			dlu.SetAnnotation(lrp.Annotation)
 
-			Expect(bbsClient.UpdateDesiredLRP(logger, lrp.ProcessGuid, dlu)).To(Succeed())
+			Expect(bbsClient.UpdateDesiredLRP(logger, traceID, lrp.ProcessGuid, dlu)).To(Succeed())
 
 			Eventually(IndexCounterWithAttempts(guid, 10), 2*time.Second).Should(Equal(1))
 			Consistently(IndexCounterWithAttempts(guid, 10), 5*time.Second).Should(Equal(1))

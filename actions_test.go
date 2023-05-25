@@ -29,19 +29,19 @@ var _ = Describe("Actions", func() {
 			))
 			taskDef.ResultFile = ""
 
-			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, traceID, guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should fail the Task within the timeout window", func() {
 			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Running))
 			Eventually(TaskGetter(logger, guid), 10).Should(HaveTaskState(models.Task_Completed))
-			task, err := bbsClient.TaskByGuid(logger, guid)
+			task, err := bbsClient.TaskByGuid(logger, traceID, guid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeTrue())
 			Expect(task.GetFailureReason()).To(ContainSubstring("timeout"))
 
-			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, traceID, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, traceID, guid)).To(Succeed())
 		})
 	})
 
@@ -55,18 +55,18 @@ var _ = Describe("Actions", func() {
 				User: "vcap",
 			})
 
-			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, traceID, guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("should be possible to specify a working directory", func() {
 			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Completed))
-			task, err := bbsClient.TaskByGuid(logger, guid)
+			task, err := bbsClient.TaskByGuid(logger, traceID, guid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeFalse())
 			Expect(task.GetResult()).To(ContainSubstring("/etc"))
 
-			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, traceID, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, traceID, guid)).To(Succeed())
 		})
 
 	})
@@ -85,18 +85,18 @@ var _ = Describe("Actions", func() {
 				ResourceLimits: rl,
 			})
 
-			Expect(bbsClient.DesireTask(logger, guid, domain, taskDef)).To(Succeed())
+			Expect(bbsClient.DesireTask(logger, traceID, guid, domain, taskDef)).To(Succeed())
 		})
 
 		It("is possible to limit the number of processes", func() {
 			Eventually(TaskGetter(logger, guid)).Should(HaveTaskState(models.Task_Completed))
-			task, err := bbsClient.TaskByGuid(logger, guid)
+			task, err := bbsClient.TaskByGuid(logger, traceID, guid)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(task.GetFailed()).To(BeFalse())
 			Expect(task.GetResult()).To(ContainSubstring(strconv.FormatUint(processLimit, 10)))
 
-			Expect(bbsClient.ResolvingTask(logger, guid)).To(Succeed())
-			Expect(bbsClient.DeleteTask(logger, guid)).To(Succeed())
+			Expect(bbsClient.ResolvingTask(logger, traceID, guid)).To(Succeed())
+			Expect(bbsClient.DeleteTask(logger, traceID, guid)).To(Succeed())
 		})
 	})
 
@@ -122,9 +122,9 @@ var _ = Describe("Actions", func() {
 				MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 			}
 
-			Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
+			Expect(bbsClient.DesireLRP(logger, traceID, desiredLRP)).To(Succeed())
 			Eventually(ActualGetter(logger, desiredLRP.ProcessGuid, 0)).Should(BeActualLRPWithState(desiredLRP.ProcessGuid, 0, "RUNNING"))
-			Expect(bbsClient.RemoveDesiredLRP(logger, desiredLRP.ProcessGuid)).To(Succeed())
+			Expect(bbsClient.RemoveDesiredLRP(logger, traceID, desiredLRP.ProcessGuid)).To(Succeed())
 			Eventually(ActualByProcessGuidGetter(logger, desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
 	})
