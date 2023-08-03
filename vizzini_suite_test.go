@@ -111,7 +111,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	defer func() {
 		endTime := time.Now()
-		fmt.Fprint(GinkgoWriter, say.Cyan("\n%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n", CurrentSpecReport().FullText(), guid, startTime, startTime.Unix(), endTime, endTime.Unix()))
+		fmt.Fprint(GinkgoWriter, say.F("{{cyan}}\n%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n{{/}}", CurrentSpecReport().FullText(), guid, startTime, startTime.Unix(), endTime, endTime.Unix()))
 	}()
 
 	for _, domain := range []string{domain, otherDomain} {
