@@ -193,7 +193,8 @@ var _ = Describe("Tasks", func() {
 				User: "alice",
 			})
 			task.ResultFile = "/home/alice/payload"
-
+		})
+		JustBeforeEach(func() {
 			Expect(bbsClient.DesireTask(logger, traceID, guid, domain, task)).To(Succeed())
 		})
 
@@ -207,6 +208,28 @@ var _ = Describe("Tasks", func() {
 
 			Expect(bbsClient.ResolvingTask(logger, traceID, guid)).To(Succeed())
 			Expect(bbsClient.DeleteTask(logger, traceID, guid)).To(Succeed())
+		})
+		Context("with an OCI image", func() {
+			BeforeEach(func() {
+				task.RootFs = config.DiegoDockerOCIImageURL
+				task.Action = models.WrapAction(&models.RunAction{
+					Path: "sh",
+					Args: []string{"-c", "echo 'down-the-rabbit-hole' > /payload && chmod 0400 /payload"},
+					User: "root",
+				})
+				task.ResultFile = "/payload"
+			})
+			It("should succeed", func() {
+				Eventually(TaskGetter(logger, guid), 120).Should(HaveTaskState(models.Task_Completed), "Docker can be quite slow to spin up....")
+
+				task, err := bbsClient.TaskByGuid(logger, traceID, guid)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(task.Failed).To(BeFalse())
+				Expect(task.Result).To(ContainSubstring("down-the-rabbit-hole"))
+
+				Expect(bbsClient.ResolvingTask(logger, traceID, guid)).To(Succeed())
+				Expect(bbsClient.DeleteTask(logger, traceID, guid)).To(Succeed())
+			})
 		})
 	})
 
