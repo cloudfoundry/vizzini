@@ -321,13 +321,30 @@ var _ = Describe("LRPs", func() {
 				Args: []string{"-port=8080"},
 				User: "root",
 			})
-
+		})
+		JustBeforeEach(func() {
 			Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 		})
 
 		It("should succeed", func() {
 			Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
 			Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRP(guid, 0)))
+		})
+
+		Context("with an OCI image", func() {
+			BeforeEach(func() {
+				lrp.RootFs = config.DiegoDockerOCIImageURL
+				lrp.Action = models.WrapAction(&models.RunAction{
+					Path: "dockerapp",
+					Args: []string{"-name", "with_oci_image_index"},
+					User: "root",
+					Env:  []*models.EnvironmentVariable{{Name: "PORT", Value: "8080"}},
+				})
+			})
+			It("should succeed", func() {
+				Eventually(EndpointCurler(url), 120).Should(Equal(http.StatusOK), "Docker can be quite slow to spin up...")
+				Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRP(guid, 0)))
+			})
 		})
 	})
 
