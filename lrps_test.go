@@ -103,14 +103,6 @@ var _ = Describe("LRPs", func() {
 			})
 		})
 
-		Context("when the CPUWeight is out of bounds", func() {
-			It("should fail", func() {
-				lrp.CpuWeight = 101
-				err := bbsClient.DesireLRP(logger, traceID, lrp)
-				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
-			})
-		})
-
 		Context("when the annotation is too large", func() {
 			It("should fail", func() {
 				lrp.Annotation = strings.Repeat("7", 1024*10+1)

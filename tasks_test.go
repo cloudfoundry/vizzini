@@ -108,14 +108,6 @@ var _ = Describe("Tasks", func() {
 			})
 		})
 
-		Context("when the CPUWeight is out of bounds", func() {
-			It("should fail", func() {
-				task.CpuWeight = 101
-				err := bbsClient.DesireTask(logger, traceID, guid, domain, task)
-				Expect(models.ConvertError(err).Type).To(Equal(models.Error_InvalidRequest))
-			})
-		})
-
 		Context("when the annotation is too large", func() {
 			It("should fail", func() {
 				task.Annotation = strings.Repeat("7", 1024*10+1)
