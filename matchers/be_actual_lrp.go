@@ -114,7 +114,7 @@ func (matcher *BeActualLRPMatcher) expectedContents() string {
 		}
 	}
 	if matcher.HasPlacementError {
-		expectedContents = append(expectedContents, fmt.Sprintf("PlacementError Exists"))
+		expectedContents = append(expectedContents, "PlacementError Exists")
 	}
 
 	return strings.Join(expectedContents, "\n")
