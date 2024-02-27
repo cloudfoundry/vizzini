@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -226,7 +225,7 @@ func StartedAtGetter(guid string) func() (int64, error) {
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return 0, errors.New(fmt.Sprintf("invalid status code: %d", resp.StatusCode))
+			return 0, fmt.Errorf("invalid status code: %d", resp.StatusCode)
 		}
 		content, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
