@@ -1,7 +1,6 @@
 package vizzini_test
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -135,19 +134,4 @@ func initializeBBSClient() bbs.InternalClient {
 	bbsClient, err := bbs.NewSecureSkipVerifyClient(config.BBSAddress, config.BBSClientCertPath, config.BBSClientKeyPath, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
-}
-
-type multiArgList []string
-
-func (p *multiArgList) String() string {
-	return fmt.Sprintf("%v", *p)
-}
-
-func (p *multiArgList) Set(value string) error {
-	if value == "" {
-		return errors.New("Cannot set blank value")
-	}
-
-	*p = append(*p, value)
-	return nil
 }
