@@ -1,7 +1,7 @@
 package vizzini_test
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -33,7 +33,7 @@ var _ = Describe("FuseFS", func() {
 		resp, err = http.Get("http://" + RouteForGuid(guid) + "/fuse-fs/ls")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
-		contents, err := ioutil.ReadAll(resp.Body)
+		contents, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(contents).To(ContainSubstring("fuse-fs-works.txt"))
 	})

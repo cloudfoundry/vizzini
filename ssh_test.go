@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -299,7 +298,7 @@ var _ = Describe("SSH Tests", func() {
 
 				defer resp.Body.Close()
 
-				payload, err := ioutil.ReadAll(resp.Body)
+				payload, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(string(payload)).To(Equal("inconceivable!"))
@@ -317,7 +316,7 @@ var _ = Describe("SSH Tests", func() {
 				inpath string
 			)
 			BeforeEach(func() {
-				dir, err = ioutil.TempDir("", "vizzini-ssh")
+				dir, err = os.MkdirTemp("", "vizzini-ssh")
 				Expect(err).NotTo(HaveOccurred())
 
 				inpath = path.Join(dir, "inbound")
@@ -350,7 +349,7 @@ var _ = Describe("SSH Tests", func() {
 
 				Eventually(outsession).Should(gexec.Exit())
 
-				contents, err := ioutil.ReadFile(outpath)
+				contents, err := os.ReadFile(outpath)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(contents).To(Equal([]byte("hello from vizzini")))
 			})
@@ -364,7 +363,7 @@ var _ = Describe("SSH Tests", func() {
 			)
 
 			BeforeEach(func() {
-				sourceDir, err = ioutil.TempDir("", "sftp-source")
+				sourceDir, err = os.MkdirTemp("", "sftp-source")
 				Expect(err).NotTo(HaveOccurred())
 
 				fileContents := make([]byte, 1024)
@@ -375,13 +374,13 @@ var _ = Describe("SSH Tests", func() {
 				generatedFileName = "binary.dat"
 				generatedFile = filepath.Join(sourceDir, generatedFileName)
 
-				err = ioutil.WriteFile(generatedFile, fileContents, 0644)
+				err = os.WriteFile(generatedFile, fileContents, 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				_, err = os.Stat(generatedFile)
 				Expect(err).NotTo(HaveOccurred())
 
-				targetDir, err = ioutil.TempDir("", "sftp-target")
+				targetDir, err = os.MkdirTemp("", "sftp-target")
 				Expect(err).NotTo(HaveOccurred())
 
 			})
@@ -453,7 +452,7 @@ var _ = Describe("SSH Tests", func() {
 
 				defer resp.Body.Close()
 
-				payload, err := ioutil.ReadAll(resp.Body)
+				payload, err := io.ReadAll(resp.Body)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(string(payload)).To(Equal("inconceivable!"))
@@ -546,10 +545,10 @@ func compareDir(actualDir, expectedDir string) {
 
 	Expect(actualDirInfo.Mode()).To(Equal(expectedDirInfo.Mode()))
 
-	actualFiles, err := ioutil.ReadDir(actualDir)
+	actualFiles, err := os.ReadDir(actualDir)
 	Expect(err).NotTo(HaveOccurred())
 
-	expectedFiles, err := ioutil.ReadDir(actualDir)
+	expectedFiles, err := os.ReadDir(actualDir)
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(len(actualFiles)).To(Equal(len(expectedFiles)))
@@ -573,10 +572,10 @@ func compareFile(actualFile, expectedFile string) {
 	Expect(actualFileInfo.Mode()).To(Equal(expectedFileInfo.Mode()))
 	Expect(actualFileInfo.Size()).To(Equal(expectedFileInfo.Size()))
 
-	actualContents, err := ioutil.ReadFile(actualFile)
+	actualContents, err := os.ReadFile(actualFile)
 	Expect(err).NotTo(HaveOccurred())
 
-	expectedContents, err := ioutil.ReadFile(expectedFile)
+	expectedContents, err := os.ReadFile(expectedFile)
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(actualContents).To(Equal(expectedContents))

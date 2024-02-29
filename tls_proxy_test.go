@@ -5,8 +5,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"code.cloudfoundry.org/bbs/models"
 	"code.cloudfoundry.org/tlsconfig"
@@ -86,7 +86,7 @@ func containerProxyTLSConfig(instanceGuid string) (*tls.Config, error) {
 	if config.ProxyCAPath == "" {
 		return nil, errors.New("proxy CA file not provided")
 	}
-	certBytes, err := ioutil.ReadFile(config.ProxyCAPath)
+	certBytes, err := os.ReadFile(config.ProxyCAPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed read ca cert file: %s", err.Error())
 	}

@@ -2,7 +2,7 @@ package vizzini_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -156,7 +156,7 @@ func EndpointContentCurler(endpoint string) func() string {
 		resp, err := http.Get(endpoint)
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()
-		content, err := ioutil.ReadAll(resp.Body)
+		content, err := io.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		return string(content)
 	}
@@ -192,7 +192,7 @@ func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) in
 		resp.Body.Close()
 		return -1
 	}
-	content, err := ioutil.ReadAll(resp.Body)
+	content, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -208,7 +208,7 @@ func GraceCounterGetter(guid string) func() (int, error) {
 			return 0, err
 		}
 		defer resp.Body.Close()
-		content, err := ioutil.ReadAll(resp.Body)
+		content, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return 0, err
 		}
@@ -227,7 +227,7 @@ func StartedAtGetter(guid string) func() (int64, error) {
 			resp.Body.Close()
 			return 0, fmt.Errorf("invalid status code: %d", resp.StatusCode)
 		}
-		content, err := ioutil.ReadAll(resp.Body)
+		content, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			return 0, err

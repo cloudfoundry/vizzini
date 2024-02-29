@@ -2,7 +2,7 @@ package vizzini_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -140,7 +140,7 @@ var _ = Describe("LRPs", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			bodyBytes, err := io.ReadAll(resp.Body)
 			Expect(err).NotTo(HaveOccurred())
 
 			env := [][]string{}
