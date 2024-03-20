@@ -27,7 +27,7 @@ var _ = Describe("EventStream", func() {
 	BeforeEach(func() {
 		var err error
 		desiredLRP = DesiredLRPWithGuid(guid)
-		eventSource, err = bbsClient.SubscribeToEvents(logger)
+		eventSource, err = bbsClient.SubscribeToInstanceEvents(logger)
 		Expect(err).NotTo(HaveOccurred())
 
 		done = make(chan struct{})
@@ -56,12 +56,12 @@ var _ = Describe("EventStream", func() {
 	It("should receive events as the LRP goes through its lifecycle", func() {
 		bbsClient.DesireLRP(logger, traceID, desiredLRP)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPCreatedEvent(guid)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPCreatedEvent(guid, 0)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateClaimed)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPChangedEvent(guid, 0, models.ActualLRPStateRunning)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceCreatedEvent(guid, 0)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceChangedEvent(guid, 0, models.ActualLRPStateClaimed)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceChangedEvent(guid, 0, models.ActualLRPStateRunning)))
 
 		bbsClient.RemoveDesiredLRP(logger, traceID, guid)
 		Eventually(getEvents).Should(ContainElement(MatchDesiredLRPRemovedEvent(guid)))
-		Eventually(getEvents).Should(ContainElement(MatchActualLRPRemovedEvent(guid, 0)))
+		Eventually(getEvents).Should(ContainElement(MatchActualLRPInstanceRemovedEvent(guid, 0)))
 	})
 })
