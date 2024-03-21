@@ -93,105 +93,99 @@ func (matcher *DesiredLRPRemovedEventMatcher) NegatedFailureMessage(actual inter
 
 //
 
-func MatchActualLRPCreatedEvent(processGuid string, index int) gomega.OmegaMatcher {
-	return &ActualLRPCreatedEventMatcher{
+func MatchActualLRPInstanceCreatedEvent(processGuid string, index int) gomega.OmegaMatcher {
+	return &ActualLRPInstanceCreatedEventMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
 	}
 }
 
-type ActualLRPCreatedEventMatcher struct {
+type ActualLRPInstanceCreatedEventMatcher struct {
 	ProcessGuid string
 	Index       int
 }
 
-func (matcher *ActualLRPCreatedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(*models.ActualLRPCreatedEvent)
+func (matcher *ActualLRPInstanceCreatedEventMatcher) Match(actual interface{}) (success bool, err error) {
+	event, ok := actual.(*models.ActualLRPInstanceCreatedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPCreatedEventMatcher matcher expects a models.ActualLRPCreatedEvent.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPInstanceCreatedEventMatcher matcher expects a models.ActualLRPInstanceCreatedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	actualLRP, _, err := event.ActualLrpGroup.Resolve()
-	if err != nil {
-		return false, err
-	}
+	actualLRP := event.ActualLrp
 	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
-func (matcher *ActualLRPCreatedEventMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPCreatedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+func (matcher *ActualLRPInstanceCreatedEventMatcher) FailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPInstanceCreatedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
 }
 
-func (matcher *ActualLRPCreatedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPCreatedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+func (matcher *ActualLRPInstanceCreatedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPInstanceCreatedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
 }
 
 //
 
-func MatchActualLRPChangedEvent(processGuid string, index int, state string) gomega.OmegaMatcher {
-	return &ActualLRPChangedEventMatcher{
+func MatchActualLRPInstanceChangedEvent(processGuid string, index int, state string) gomega.OmegaMatcher {
+	return &ActualLRPInstanceChangedEventMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
 		State:       state,
 	}
 }
 
-type ActualLRPChangedEventMatcher struct {
+type ActualLRPInstanceChangedEventMatcher struct {
 	ProcessGuid string
 	Index       int
 	State       string
 }
 
-func (matcher *ActualLRPChangedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(*models.ActualLRPChangedEvent)
+func (matcher *ActualLRPInstanceChangedEventMatcher) Match(actual interface{}) (success bool, err error) {
+	event, ok := actual.(*models.ActualLRPInstanceChangedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPChangedEventMatcher matcher expects a models.ActualLRPChangedEvent.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPInstanceChangedEventMatcher matcher expects a models.ActualLRPInstanceChangedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
 
-	actualLRP, _, err := event.After.Resolve()
+	actualLRP := event.ActualLRPKey
 	if err != nil {
 		return false, err
 	}
-	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index) && actualLRP.State == matcher.State, nil
+	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index) && event.After.State == matcher.State, nil
 }
 
-func (matcher *ActualLRPChangedEventMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPChangedEvent with\n  ProcessGuid=%s\n  Index=%d\n  State=%s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
+func (matcher *ActualLRPInstanceChangedEventMatcher) FailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPInstanceChangedEvent with\n  ProcessGuid=%s\n  Index=%d\n  State=%s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
 }
 
-func (matcher *ActualLRPChangedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPChangedEvent with\n  ProcessGuid=%s\n  Index=%d\n  State=%s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
+func (matcher *ActualLRPInstanceChangedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPInstanceChangedEvent with\n  ProcessGuid=%s\n  Index=%d\n  State=%s", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index, matcher.State)
 }
 
 //
 
-func MatchActualLRPRemovedEvent(processGuid string, index int) gomega.OmegaMatcher {
-	return &ActualLRPRemovedEventMatcher{
+func MatchActualLRPInstanceRemovedEvent(processGuid string, index int) gomega.OmegaMatcher {
+	return &ActualLRPInstanceRemovedEventMatcher{
 		ProcessGuid: processGuid,
 		Index:       index,
 	}
 }
 
-type ActualLRPRemovedEventMatcher struct {
+type ActualLRPInstanceRemovedEventMatcher struct {
 	ProcessGuid string
 	Index       int
 }
 
-func (matcher *ActualLRPRemovedEventMatcher) Match(actual interface{}) (success bool, err error) {
-	event, ok := actual.(*models.ActualLRPRemovedEvent)
+func (matcher *ActualLRPInstanceRemovedEventMatcher) Match(actual interface{}) (success bool, err error) {
+	event, ok := actual.(*models.ActualLRPInstanceRemovedEvent)
 	if !ok {
-		return false, fmt.Errorf("ActualLRPRemovedEventMatcher matcher expects a models.ActualLRPRemovedEvent.  Got:\n%s", format.Object(actual, 1))
+		return false, fmt.Errorf("ActualLRPInstanceRemovedEventMatcher matcher expects a models.ActualLRPInstanceRemovedEvent.  Got:\n%s", format.Object(actual, 1))
 	}
-	actualLRP, _, err := event.ActualLrpGroup.Resolve()
-	if err != nil {
-		return false, err
-	}
+	actualLRP := event.ActualLrp
 	return actualLRP.ProcessGuid == matcher.ProcessGuid && actualLRP.Index == int32(matcher.Index), nil
 }
 
-func (matcher *ActualLRPRemovedEventMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPRemovedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+func (matcher *ActualLRPInstanceRemovedEventMatcher) FailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nto be a ActualLRPInstanceRemovedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
 }
 
-func (matcher *ActualLRPRemovedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPRemovedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
+func (matcher *ActualLRPInstanceRemovedEventMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	return fmt.Sprintf("Expected\n%s\nnot to be a ActualLRPInstanceRemovedEvent with\n  ProcessGuid=%s\n  Index=%d", format.Object(actual, 1), matcher.ProcessGuid, matcher.Index)
 }
