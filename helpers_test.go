@@ -245,9 +245,9 @@ func TLSDirectAddressFor(guid string, index int, containerPort uint32) string {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(actualLRP).NotTo(BeZero())
 
-	for _, portMapping := range actualLRP.Ports {
+	for _, portMapping := range actualLRP.ActualLrpNetInfo.Ports {
 		if portMapping.ContainerPort == containerPort {
-			return fmt.Sprintf("%s:%d", actualLRP.Address, portMapping.HostTlsProxyPort)
+			return fmt.Sprintf("%s:%d", actualLRP.ActualLrpNetInfo.Address, portMapping.HostTlsProxyPort)
 		}
 	}
 
