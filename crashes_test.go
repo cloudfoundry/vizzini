@@ -84,7 +84,7 @@ var _ = Describe("Crashes", func() {
 
 			restartedActualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(restartedActualLRP.InstanceGuid).NotTo(Equal(actualLRP.InstanceGuid))
+			Expect(restartedActualLRP.ActualLrpInstanceKey.InstanceGuid).NotTo(Equal(actualLRP.ActualLrpInstanceKey.InstanceGuid))
 			Expect(restartedActualLRP.ModificationTag.Epoch).To(Equal(tag.Epoch))
 			Expect(restartedActualLRP.ModificationTag.Index).To(BeNumerically(">", tag.Index))
 

@@ -39,7 +39,7 @@ var _ = Describe("TLS Proxy", func() {
 	It("proxies traffic to the application process inside the container", func() {
 		directURL := "https://" + TLSDirectAddressFor(guid, 0, 8080)
 
-		tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+		tlsConfig, err := containerProxyTLSConfig(actualLRP.ActualLrpInstanceKey.InstanceGuid)
 		Expect(err).NotTo(HaveOccurred())
 
 		client := http.Client{
@@ -60,7 +60,7 @@ var _ = Describe("TLS Proxy", func() {
 		)
 
 		BeforeEach(func() {
-			tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+			tlsConfig, err := containerProxyTLSConfig(actualLRP.ActualLrpInstanceKey.InstanceGuid)
 			Expect(err).NotTo(HaveOccurred())
 
 			conn, err := tls.Dial("tcp", TLSDirectAddressFor(guid, 0, 8080), tlsConfig)
@@ -76,7 +76,7 @@ var _ = Describe("TLS Proxy", func() {
 		})
 
 		It("has a common name that matches the instance guid", func() {
-			Expect(certs[0].Subject.CommonName).To(Equal(actualLRP.InstanceGuid))
+			Expect(certs[0].Subject.CommonName).To(Equal(actualLRP.ActualLrpInstanceKey.InstanceGuid))
 		})
 	})
 })
