@@ -2,7 +2,7 @@
 
 **Note**: This repository should be imported as `code.cloudfoundry.org/vizzini`.
 
-[Inconceivable tests!](http://www.imdb.com/character/ch0003791/)
+[Inconceivable tests!](https://www.imdb.com/title/tt0093779/characters/nm0001728/?ref_=tt_cl_c_6)
 
 Vizzini is a suite of tests that runs against the Diego BBS API.
 
@@ -38,7 +38,7 @@ bosh deploy
 bosh run-errand vizzini
 ```
 
-If you are using [cf-deployment](https://github.com/cloudfoundry/cf-deployment/) you can simply deploy again using [this operations file](https://github.com/cloudfoundry/diego-release/blob/develop/operations/add-vizzini-errand.yml), e.g.:
+If you are using [cf-deployment](https://github.com/cloudfoundry/cf-deployment/) you can simply deploy again using [this operations file](https://github.com/cloudfoundry/wg-app-platform-runtime-ci/blob/main/diego-release/opsfiles/add-vizzini-errand.yml), e.g.:
 
 
 ``` shell
