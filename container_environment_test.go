@@ -51,16 +51,16 @@ var _ = Describe("The container environment", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			type cfPortMapping struct {
-				External    uint32 `json:"external"`
+				External    uint32 `json:"external,omitempty"`
 				Internal    uint32 `json:"internal"`
 				ExternalTLS uint32 `json:"external_tls_proxy,omitempty"`
 				InternalTLS uint32 `json:"internal_tls_proxy,omitempty"`
 			}
 
 			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{
-				{External: actualLRP.Ports[0].HostPort, Internal: actualLRP.Ports[0].ContainerPort, ExternalTLS: actualLRP.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.Ports[0].ContainerTlsProxyPort},
-				{External: actualLRP.Ports[1].HostPort, Internal: actualLRP.Ports[1].ContainerPort, ExternalTLS: actualLRP.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.Ports[1].ContainerTlsProxyPort},
-				{External: actualLRP.Ports[2].HostPort, Internal: actualLRP.Ports[2].ContainerPort, ExternalTLS: actualLRP.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.Ports[2].ContainerTlsProxyPort},
+				{Internal: actualLRP.Ports[0].ContainerPort, ExternalTLS: actualLRP.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.Ports[0].ContainerTlsProxyPort},
+				{Internal: actualLRP.Ports[1].ContainerPort, ExternalTLS: actualLRP.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.Ports[1].ContainerTlsProxyPort},
+				{Internal: actualLRP.Ports[2].ContainerPort, ExternalTLS: actualLRP.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.Ports[2].ContainerTlsProxyPort},
 			})
 			Expect(err).NotTo(HaveOccurred())
 
