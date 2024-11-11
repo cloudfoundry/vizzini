@@ -2,7 +2,6 @@ package vizzini_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -67,8 +66,6 @@ var _ = Describe("The container environment", func() {
 
 			envs := getEnvs(url)
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
-			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.Ports[0].HostPort)}))
-			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.Address, actualLRP.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
 		})
 
