@@ -440,7 +440,7 @@ var _ = Describe("Crashes", func() {
 				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 				Eventually(ActualGetter(logger, guid, 0)).Should(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning))
 				Eventually(EndpointCurler(url + "/env")).Should(Equal(http.StatusOK))
-				directURL = "http://" + DirectAddressFor(guid, 0, 8080)
+				directURL = "https://" + TLSDirectAddressFor(guid, 0, 8080)
 				indirectURL = "http://" + RouteForGuid(guid)
 			})
 
@@ -488,12 +488,21 @@ var _ = Describe("Crashes", func() {
 				})
 
 				It("{SLOW} is marked as crashed (and reaped)", func() {
+					actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
+					Expect(err).ToNot(HaveOccurred())
+
+					tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+					Expect(err).NotTo(HaveOccurred())
+
 					httpClient := &http.Client{
 						Timeout: time.Second,
+						Transport: &http.Transport{
+							TLSClientConfig: tlsConfig,
+						},
 					}
 
 					By("first validate that we can connect to the container directly using " + directURL)
-					_, err := httpClient.Get(directURL + "/env")
+					_, err = httpClient.Get(directURL + "/env")
 					Expect(err).NotTo(HaveOccurred())
 
 					By("being marked as crashed")

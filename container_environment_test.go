@@ -2,7 +2,6 @@ package vizzini_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"code.cloudfoundry.org/bbs/models"
@@ -52,23 +51,21 @@ var _ = Describe("The container environment", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			type cfPortMapping struct {
-				External    uint32 `json:"external"`
+				External    uint32 `json:"external,omitempty"`
 				Internal    uint32 `json:"internal"`
 				ExternalTLS uint32 `json:"external_tls_proxy,omitempty"`
 				InternalTLS uint32 `json:"internal_tls_proxy,omitempty"`
 			}
 
 			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{
-				{External: actualLRP.ActualLrpNetInfo.Ports[0].HostPort, Internal: actualLRP.ActualLrpNetInfo.Ports[0].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].ContainerTlsProxyPort},
-				{External: actualLRP.ActualLrpNetInfo.Ports[1].HostPort, Internal: actualLRP.ActualLrpNetInfo.Ports[1].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].ContainerTlsProxyPort},
-				{External: actualLRP.ActualLrpNetInfo.Ports[2].HostPort, Internal: actualLRP.ActualLrpNetInfo.Ports[2].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[0].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[1].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[2].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].ContainerTlsProxyPort},
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			envs := getEnvs(url)
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.ActualLrpNetInfo.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
-			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORT", fmt.Sprintf("%d", actualLRP.ActualLrpNetInfo.Ports[0].HostPort)}))
-			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_ADDR", fmt.Sprintf("%s:%d", actualLRP.ActualLrpNetInfo.Address, actualLRP.ActualLrpNetInfo.Ports[0].HostPort)}))
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
 		})
 
