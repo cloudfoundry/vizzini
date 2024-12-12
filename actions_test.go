@@ -1,6 +1,7 @@
 package vizzini_test
 
 import (
+	"fmt"
 	"strconv"
 
 	"time"
@@ -100,7 +101,7 @@ var _ = Describe("Actions", func() {
 		})
 	})
 
-	Describe("Cancelling Downloads", func() {
+	FDescribe("Cancelling Downloads", func() {
 		It("should cancel the download", func() {
 			desiredLRP := &models.DesiredLRP{
 				PlacementTags: PlacementTags(),
@@ -122,9 +123,13 @@ var _ = Describe("Actions", func() {
 				MetricTags: map[string]*models.MetricTagValue{"source_id": {Static: guid}},
 			}
 
+			fmt.Println("VIZZINI: bbsClient.DesireLRP")
 			Expect(bbsClient.DesireLRP(logger, traceID, desiredLRP)).To(Succeed())
+			fmt.Println("VIZZINI: ActualGetter")
 			Eventually(ActualGetter(logger, desiredLRP.ProcessGuid, 0)).Should(BeActualLRPWithState(desiredLRP.ProcessGuid, 0, "RUNNING"))
+			fmt.Println("VIZZINI: bbsClient.RemoveDesiredLRP")
 			Expect(bbsClient.RemoveDesiredLRP(logger, traceID, desiredLRP.ProcessGuid)).To(Succeed())
+			fmt.Println("VIZZINI: ActualByProcessGuidGetter")
 			Eventually(ActualByProcessGuidGetter(logger, desiredLRP.ProcessGuid), 5).Should(BeEmpty())
 		})
 	})
