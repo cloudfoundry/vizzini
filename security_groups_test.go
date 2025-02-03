@@ -64,7 +64,7 @@ var _ = Describe("Security groups", func() {
 			resp, err = http.Get(urlToProxyThroughAllowedCaller)
 			Expect(err).NotTo(HaveOccurred())
 			// Any reply from the gorouter indicates that the application security group is in place
-			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 		})
 	})
 
