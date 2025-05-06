@@ -41,7 +41,7 @@ var _ = Describe("The container environment", func() {
 			envs := getEnvs(url)
 
 			Expect(envs).To(ContainElement([]string{"INSTANCE_INDEX", "0"}))
-			Expect(envs).To(ContainElement([]string{"INSTANCE_GUID", actualLRP.InstanceGuid}))
+			Expect(envs).To(ContainElement([]string{"INSTANCE_GUID", actualLRP.ActualLrpInstanceKey.InstanceGuid}))
 		})
 	})
 
@@ -58,14 +58,14 @@ var _ = Describe("The container environment", func() {
 			}
 
 			cfPortMappingPayload, err := json.Marshal([]cfPortMapping{
-				{Internal: actualLRP.Ports[0].ContainerPort, ExternalTLS: actualLRP.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.Ports[0].ContainerTlsProxyPort},
-				{Internal: actualLRP.Ports[1].ContainerPort, ExternalTLS: actualLRP.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.Ports[1].ContainerTlsProxyPort},
-				{Internal: actualLRP.Ports[2].ContainerPort, ExternalTLS: actualLRP.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.Ports[2].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[0].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[0].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[1].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[1].ContainerTlsProxyPort},
+				{Internal: actualLRP.ActualLrpNetInfo.Ports[2].ContainerPort, ExternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].HostTlsProxyPort, InternalTLS: actualLRP.ActualLrpNetInfo.Ports[2].ContainerTlsProxyPort},
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			envs := getEnvs(url)
-			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
+			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_IP", actualLRP.ActualLrpNetInfo.Address}), "If this fails, then your executor may not be configured to expose ip:port to the container")
 			Expect(envs).To(ContainElement([]string{"CF_INSTANCE_PORTS", string(cfPortMappingPayload)}))
 		})
 

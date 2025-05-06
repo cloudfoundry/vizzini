@@ -84,7 +84,7 @@ var _ = Describe("Crashes", func() {
 
 			restartedActualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(restartedActualLRP.InstanceGuid).NotTo(Equal(actualLRP.InstanceGuid))
+			Expect(restartedActualLRP.ActualLrpInstanceKey.InstanceGuid).NotTo(Equal(actualLRP.ActualLrpInstanceKey.InstanceGuid))
 			Expect(restartedActualLRP.ModificationTag.Epoch).To(Equal(tag.Epoch))
 			Expect(restartedActualLRP.ModificationTag.Index).To(BeNumerically(">", tag.Index))
 
@@ -491,7 +491,7 @@ var _ = Describe("Crashes", func() {
 					actualLRP, err := ActualLRPByProcessGuidAndIndex(logger, guid, 0)
 					Expect(err).ToNot(HaveOccurred())
 
-					tlsConfig, err := containerProxyTLSConfig(actualLRP.InstanceGuid)
+					tlsConfig, err := containerProxyTLSConfig(actualLRP.ActualLrpInstanceKey.InstanceGuid)
 					Expect(err).NotTo(HaveOccurred())
 
 					httpClient := &http.Client{
