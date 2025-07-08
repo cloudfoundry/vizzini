@@ -192,9 +192,6 @@ var _ = Describe("LRPs", func() {
 		})
 
 		It("should run", func() {
-			if !config.EnableDeclarativeHealthcheck {
-				Skip("declarative are not enabled")
-			}
 
 			Eventually(ActualByDomainGetter(logger, domain)).Should(ContainElement(BeActualLRPWithState(guid, 0, models.ActualLRPStateRunning)))
 		})
