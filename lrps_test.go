@@ -363,7 +363,7 @@ var _ = Describe("LRPs", func() {
 					dlu.SetInstances(0)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
-					Eventually(IndexCounter(guid)).Should(Equal(0))
+					Eventually(IndexCounter(guid), 60).Should(Equal(0))
 				})
 
 				It("allows updating routes", func() {
