@@ -187,7 +187,9 @@ func GetIndexFromEndpointFor(guid string, optionalHttpClient ...*http.Client) in
 	}
 	url := "http://" + RouteForGuid(guid) + "/index"
 	resp, err := httpClient.Get(url)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return -1
+	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		return -1
