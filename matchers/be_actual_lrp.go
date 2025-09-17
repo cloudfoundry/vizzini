@@ -95,7 +95,7 @@ func (matcher *BeActualLRPMatcher) Match(actual interface{}) (success bool, err 
 		matchesPlacementErrorRequirement = lrp.PlacementError != ""
 	}
 
-	return matchesPlacementErrorRequirement && matchesState && matchesCrashCount && lrp.ProcessGuid == matcher.ProcessGuid && int(lrp.Index) == matcher.Index, nil
+	return matchesPlacementErrorRequirement && matchesState && matchesCrashCount && lrp.ActualLrpKey.ProcessGuid == matcher.ProcessGuid && int(lrp.ActualLrpKey.Index) == matcher.Index, nil
 }
 
 func (matcher *BeActualLRPMatcher) expectedContents() string {

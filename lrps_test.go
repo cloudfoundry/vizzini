@@ -65,7 +65,8 @@ var _ = Describe("LRPs", func() {
 				Expect(bbsClient.DesireLRP(logger, traceID, lrp)).To(Succeed())
 
 				dlu := &models.DesiredLRPUpdate{}
-				dlu.SetInstances(2)
+				instances := int32(2)
+				dlu.SetInstances(&instances)
 				Expect(bbsClient.UpdateDesiredLRP(logger, traceID, lrp.ProcessGuid, dlu)).To(Succeed())
 
 				Eventually(IndexCounter(guid)).Should(Equal(2))
@@ -352,7 +353,8 @@ var _ = Describe("LRPs", func() {
 			Context("when the LRP exists", func() {
 				It("allows updating instances", func() {
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetInstances(2)
+					instances := int32(2)
+					dlu.SetInstances(&instances)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
@@ -360,7 +362,8 @@ var _ = Describe("LRPs", func() {
 
 				It("allows scaling down to 0", func() {
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetInstances(0)
+					instances := int32(0)
+					dlu.SetInstances(&instances)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid), 60).Should(Equal(0))
@@ -385,7 +388,7 @@ var _ = Describe("LRPs", func() {
 				It("allows updating annotations", func() {
 					annotation := "my new annotation"
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetAnnotation(annotation)
+					dlu.SetAnnotation(&annotation)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					lrp, err := bbsClient.DesiredLRPByProcessGuid(logger, traceID, guid)
@@ -403,8 +406,10 @@ var _ = Describe("LRPs", func() {
 					routingInfo := routes.RoutingInfo()
 
 					dlu := &models.DesiredLRPUpdate{Routes: &routingInfo}
-					dlu.SetInstances(2)
-					dlu.SetAnnotation("my new annotation")
+					instances := int32(2)
+					dlu.SetInstances(&instances)
+					annotation := "my new annotation"
+					dlu.SetAnnotation(&annotation)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
@@ -425,7 +430,8 @@ var _ = Describe("LRPs", func() {
 
 					By("modifying when a change is made")
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetInstances(2)
+					instances := int32(2)
+					dlu.SetInstances(&instances)
 					Expect(bbsClient.UpdateDesiredLRP(logger, traceID, guid, dlu)).To(Succeed())
 
 					Eventually(IndexCounter(guid)).Should(Equal(2))
@@ -440,7 +446,8 @@ var _ = Describe("LRPs", func() {
 			Context("when the LRP does not exist", func() {
 				It("errors", func() {
 					dlu := &models.DesiredLRPUpdate{}
-					dlu.SetInstances(2)
+					instances := int32(2)
+					dlu.SetInstances(&instances)
 					err := bbsClient.UpdateDesiredLRP(logger, traceID, "flooberdoobey", dlu)
 					Expect(models.ConvertError(err).Type).To(Equal(models.Error_ResourceNotFound))
 				})

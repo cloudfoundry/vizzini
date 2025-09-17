@@ -76,7 +76,7 @@ var _ = Describe("Actions", func() {
 		BeforeEach(func() {
 			taskDef = Task()
 			rl := &models.ResourceLimits{}
-			rl.SetNofile(processLimit)
+			rl.SetNofile(&processLimit)
 			taskDef.Action = models.WrapAction(&models.RunAction{
 				Path:           "bash",
 				Dir:            "/etc",
